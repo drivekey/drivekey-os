@@ -1,22 +1,43 @@
 # DriveKey OS
 
-Bootable offline wallet OS. Prepare online, review and sign in a separate offline session, then verify and explicitly submit online.
+### Your keys. Your rules. Your approval.
 
-## Downloads
+**An offline wallet operating system built for self-custody and agentic finance.**
 
-Open [Releases](https://github.com/drivekey/drivekey-os/releases) for published ISO images, SHA-256 checksums and verification reports. Download the `.iso` attachment, not GitHub’s automatic Source code ZIP. A saved draft is not yet a public download.
+DriveKey turns a bootable USB into a dedicated workspace for reviewing transactions, signing payments and defining what an agent wallet can spend. Pair it with the online companion to prepare requests and submit signed transactions while keeping your signing workflow offline.
 
-## RC20 Warsaw RTC edition
+[Open the app](https://drivekey-app.vercel.app) · [Explore DriveKey](https://drivekey.info) · [OS releases](https://github.com/drivekey/drivekey-os/releases)
 
-This candidate expects a PC hardware clock set to **Europe/Warsaw local time**. It converts that clock to UTC at startup without writing the hardware RTC. Do not use this edition on a PC whose hardware clock already keeps UTC or another local timezone.
+## Built around your control
 
-The exact image was tested in disconnected BIOS and UEFI VMs with synthetic, unfunded wallets. It is a prerelease and has not been independently audited.
+- **Offline signing** — review payment details in a separate offline session before authorizing them.
+- **Agentic wallet rules** — define allowances, payment caps, approved recipients, schedules and expiry.
+- **Simple mode** — move through Spending, Recipients & timing, and Review & sign with a guided interface.
+- **Advanced controls** — access detailed limits while working with the same complete policy.
+- **Separate wallet roles** — distinguish the agent, offline approver and emergency stop wallet.
+- **A connected overview** — check reported spending status, remaining allowance, approval requests and recent activity in the companion.
 
-## Before flashing
+## From intention to signed action
 
-Flashing erases the selected USB. Use a spare USB or preserve a separate encrypted vault backup first. Verify the checksum and read the release’s compatibility notes before booting. Never upload private keys, passphrases or vault files to this repository.
+**Prepare online → Review offline → Sign offline → Submit online**
 
-- [DriveKey website](https://drivekey.info)
-- [Companion app](https://drivekey-app.vercel.app)
+Use the companion to prepare a request, transfer it to DriveKey OS, inspect the details and sign. Bring the signed result back online for explicit submission. Agent-wallet rule updates follow the same deliberate approval flow.
 
-This is a release-distribution repository, not a complete OS source checkout. Third-party components retain their respective licenses and bundled notices.
+## Agentic finance, with boundaries you choose
+
+Automation starts with permissions. Set who an agent may pay, how much it may spend and when a separate offline signature is required. Keep the everyday workflow clear while retaining access to the controls behind it.
+
+**Give agents spending rules. Keep authorization in your hands.**
+
+## Get started
+
+1. Open [OS releases](https://github.com/drivekey/drivekey-os/releases) and read the selected build’s compatibility and setup notes.
+2. Choose the ISO asset and verify its SHA-256 checksum.
+3. Flash a spare USB and boot into DriveKey OS. Flashing erases the selected drive; preserve any existing vault backup separately.
+4. Pair your offline workflow with the [DriveKey companion](https://drivekey-app.vercel.app).
+
+Release pages contain build-specific availability, verification reports and screenshots. Current builds are prerelease candidates.
+
+---
+
+This repository distributes DriveKey OS release artifacts. GitHub’s automatic source archives contain the repository files; the bootable OS is supplied as an ISO release asset. Third-party components retain their respective licenses and bundled notices.
