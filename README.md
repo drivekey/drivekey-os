@@ -52,4 +52,10 @@ Release pages contain build-specific availability, verification reports and scre
 
 ---
 
-This repository distributes DriveKey OS release artifacts. GitHub’s automatic source archives contain the repository files; the bootable OS is supplied as an ISO release asset. Third-party components retain their respective licenses and bundled notices.
+This repository contains DriveKey OS source code and release downloads. See [Source and build guide](docs/BUILD.md) for the component map, development commands and image-build prerequisites. The bootable OS is supplied as an ISO release asset. Third-party components retain their respective licenses and bundled notices.
+
+## Built with
+
+**Python · TypeScript · Shell · Solidity · C# · JavaScript**
+
+Explore [desktop source](packaging), [offline signer](offline-signer), [protocols](core), [contracts](contracts), and the [source and build guide](docs/BUILD.md).

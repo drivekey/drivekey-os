@@ -1,0 +1,53 @@
+{
+  "family": "Inter",
+  "license": "SIL Open Font License 1.1",
+  "reservedFontNameReview": "The pinned OFL copyright header names The Inter Project Authors and does not specify a Reserved Font Name. Static instances retain the Inter family and preserve the full OFL license.",
+  "officialSource": "https://github.com/google/fonts/tree/0b58fb370093f9a9f4ff785d94405710b79de67c/ofl/inter",
+  "commit": "0b58fb370093f9a9f4ff785d94405710b79de67c",
+  "sourceVariableFont": {
+    "file": "Inter-Variable.ttf",
+    "upstreamFile": "Inter[opsz,wght].ttf",
+    "sha256": "29160a80ff49ddcab2c97711247e08b1fab27a484a329ce8b813d820dc559031"
+  },
+  "build": {
+    "script": "build-inter-static.py",
+    "tool": "fonttools==4.60.2",
+    "opticalSize": 14,
+    "weights": {
+      "Regular": 400,
+      "Medium": 500,
+      "SemiBold": 600,
+      "Bold": 700
+    },
+    "changes": "Static optical-size14 instances of the upstream variable font. Conventional Inter family for Regular/Bold; legacy Inter Medium/Inter SemiBold family aliases expose exact500/600 weights to Tk. Preserve glyphs, copyright and license records.",
+    "runtimeNetworkAccess": false,
+    "runtimeBuildDependency": false
+  },
+  "installedFiles": [
+    {
+      "file": "Inter-Regular.ttf",
+      "sha256": "22bbd051a87620d83c04e570ac4fe0ae3e17a9fd2344472eef0118b44fba014b",
+      "weight": 400
+    },
+    {
+      "file": "Inter-Medium.ttf",
+      "sha256": "900e2f9611309cc7fd57fa9714ceda711c67cb649933cad77588a1dd82f15f09",
+      "weight": 500
+    },
+    {
+      "file": "Inter-SemiBold.ttf",
+      "sha256": "9bcc72db0e3a92420db333f9b2cedfa83ae3ae40bb97ffa1871d8ff66d1b6a89",
+      "weight": 600
+    },
+    {
+      "file": "Inter-Bold.ttf",
+      "sha256": "a69f78af9476337952229fb1814e7782ca9c29e430f73a429707528cd14ed27b",
+      "weight": 700
+    },
+    {
+      "file": "Inter-OFL.txt",
+      "sha256": "5b9321a4298cfeb6b34354164a1c3afc3db114569984c502b9b35d988fd58c57"
+    }
+  ],
+  "isoInstallation": "Four static weights in /usr/share/fonts/truetype/drivekey; Inter-OFL.txt and Inter-PROVENANCE.json in /usr/share/doc/drivekey-fonts; fc-cache -f at build time; no runtime downloads or font build dependency"
+}

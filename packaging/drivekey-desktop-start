@@ -1,0 +1,8 @@
+#!/bin/bash
+set -euo pipefail
+[[ $EUID == 0 && $# == 0 && -f /etc/drivekey-live ]] || exit 1
+ulimit -c 0
+/usr/local/bin/drivekey-isolate
+/usr/bin/python3 /opt/drivekey/drivekey_rtc.py
+# The X server needs the physical VT. All wallet presentation and workers drop to user.
+exec /usr/bin/xinit /usr/local/bin/drivekey-desktop-xsession -- :0 -nolisten tcp vt1

@@ -1,0 +1,20 @@
+#!/usr/bin/python3 -I
+"""Fixed privileged helper: bounded UTC input only, no request files or general commands."""
+import json
+import math
+import sys
+sys.path.insert(0, '/opt/drivekey')
+from drivekey_clock import parse_clock, apply_clock
+
+try:
+    if len(sys.argv)!=1:raise ValueError('No arguments accepted.')
+    raw=sys.stdin.buffer.read(1025)
+    if len(raw)>1024:raise ValueError('Clock input too large.')
+    data=json.loads(raw)
+    if not isinstance(data,dict) or set(data)!={'target','elapsed'}:raise ValueError('Invalid clock correction.')
+    if not isinstance(data['target'],str) or type(data['elapsed']) not in (float,int) or not math.isfinite(data['elapsed']):raise ValueError('Invalid clock correction.')
+    result=apply_clock(parse_clock(data['target']),data['elapsed'])
+    print(json.dumps({'ok':True,'message':'UTC corrected for this session. Hardware clock unchanged.','utc':result.isoformat()}))
+except Exception as e:
+    print(json.dumps({'ok':False,'error':str(e) if isinstance(e,ValueError) else 'Clock correction refused. Use the booted offline image and an independent UTC source.'}))
+    sys.exit(1)

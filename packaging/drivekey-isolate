@@ -1,0 +1,14 @@
+#!/bin/bash
+set -euo pipefail
+[[ $EUID == 0 && -f /etc/drivekey-live ]] || exit 1
+swapoff -a
+rfkill block all
+for iface in /sys/class/net/*; do
+  name=${iface##*/}
+  [[ $name == lo ]] && continue
+  ip link set dev "$name" down
+  ip addr flush dev "$name"
+  [[ $(cat "$iface/operstate") == down ]] || exit 1
+done
+[[ $(wc -l < /proc/swaps) == 1 ]] || exit 1
+[[ -z $(ip -o addr show | grep -v ' lo ' || true) ]] || exit 1

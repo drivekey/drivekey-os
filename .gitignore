@@ -1,0 +1,16 @@
+node_modules/
+outputs/
+work/
+__pycache__/
+*.pyc
+*.iso
+*.exe
+.env*
+.vercel/
+.next/
+*tsbuildinfo
+vault*.json
+wallet-public.json
+wallet-multi-public.json
+unsigned-request.json
+signed-response.json

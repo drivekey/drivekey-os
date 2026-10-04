@@ -1,0 +1,19 @@
+{
+  "image": {
+    "filename": "drivekey-offline-amd64-v5-desktop-r20.iso",
+    "bytes": 571867136,
+    "sha256": "2c1656adace4fad021209d235855c1ebb194fa6fe7a3b098b6e74eb6281523f8",
+    "url": "https://github.com/pszymansky1-spec/drivekey-releases/releases/download/desktop-r20/drivekey-offline-amd64-v5-desktop-r20.iso",
+    "available": true
+  },
+  "companion": {
+    "filename": "drivekey-companion-v2.zip",
+    "bytes": 35858778,
+    "sha256": "1568f0cc877143f4d91e4b8b2d937b138009e5a5cc58a5ea9a01a798082c0271"
+  },
+  "source": {
+    "filename": "drivekey-offline-v3.zip",
+    "bytes": 31331382,
+    "sha256": "49c45ce85e0faf586b67fbe464be6bb2cfc6f4eca774bb9fb3ba7c398a2e08e3"
+  }
+}

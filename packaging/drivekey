@@ -1,0 +1,33 @@
+#!/bin/bash
+set -euo pipefail
+[[ $# -le 1 && ${1:-menu} =~ ^(menu|create|sign|check|export|backup|check-backup|restore|status|help|clock|shutdown|--ascii|sol-(create|upgrade|sign|check|export|backup|check-backup|restore|status))$ ]] || { echo 'drivekey [create|sign|check|export|backup|check-backup|restore|status|help|clock|shutdown|--ascii]'; echo 'drivekey sol-[create|upgrade|sign|check|export|backup|check-backup|restore|status]'; exit 1; }
+if [[ $EUID != 0 ]]; then exec sudo /usr/local/bin/drivekey "$@"; fi
+[[ -f /etc/drivekey-live ]] || { echo 'Boot the DriveKey live image first.'; exit 1; }
+ulimit -c 0
+export TZ=UTC
+/usr/local/bin/drivekey-isolate || { echo 'Network isolation failed. Wallet operations locked.'; exit 1; }
+/usr/bin/python3 /opt/drivekey/drivekey_rtc.py
+exec 9>/run/drivekey-session.lock
+flock -n 9 || { echo 'Another offline session is active.'; exit 1; }
+while read -r source; do
+  [[ $source == /dev/* && $source != /dev/loop* ]] || continue
+  lsblk -snro TRAN "$(readlink -f "$source")" | grep -qx usb || { echo 'Non-USB storage mounted. Stop.'; exit 1; }
+done < <(findmnt -rn -o SOURCE)
+mapfile -t devices < <(blkid -t LABEL=DRIVEKEY -o device)
+[[ ${#devices[@]} == 1 ]] || { echo 'Exactly one DRIVEKEY USB data partition required. No storage mounted.'; exit 1; }
+lsblk -snro TRAN "${devices[0]}" | grep -qx usb || { echo 'Data partition is not USB-backed.'; exit 1; }
+mkdir -p /mnt/drivekey
+mountpoint -q /mnt/drivekey && { echo 'Data path already mounted. Finish the other session first.'; exit 1; }
+mount -o nosuid,nodev,noexec "${devices[0]}" /mnt/drivekey
+trap 'sync; umount /mnt/drivekey' EXIT
+mkdir -p /mnt/drivekey/DriveKey
+status=0
+if [[ ${1:-menu} == menu ]]; then
+  /usr/bin/python3 /opt/drivekey/drivekey-terminal.py || status=$?
+else
+  /usr/bin/python3 /opt/drivekey/drivekey-terminal.py "$1" || status=$?
+fi
+sync
+umount /mnt/drivekey
+trap - EXIT
+if [[ $status == 42 ]]; then /sbin/poweroff; else exit "$status"; fi

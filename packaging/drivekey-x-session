@@ -1,0 +1,12 @@
+#!/bin/bash
+set -u
+# X is local only (-nolisten tcp in the boot profile). No online browser is used.
+xset s off
+xset -dpms
+openbox &
+sudo --preserve-env=DISPLAY,XAUTHORITY /usr/local/bin/drivekey-offline gui
+status=$?
+if [[ $status != 0 ]]; then
+  xmessage -center 'DriveKey stopped before completing the session. Inspect the console error. Do not remove the USB until fully shut down. No automatic retry was attempted.'
+fi
+exit "$status"

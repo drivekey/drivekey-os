@@ -1,0 +1,19 @@
+#!/bin/bash
+set -u
+export TZ=UTC
+xset s off
+xset -dpms
+xhost +SI:localuser:user
+openbox &
+status=0
+/usr/local/bin/drivekey-desktop-session || status=$?
+if [[ $status == 43 ]]; then
+  exec runuser -u user -- env -i HOME=/home/user DISPLAY=:0 TERM=xterm-256color PATH=/usr/local/bin:/usr/bin:/bin TZ=UTC /usr/bin/xterm -fullscreen -fa 'DejaVu Sans Mono' -fs 13 -e /usr/local/bin/drivekey
+fi
+if [[ $status != 0 ]]; then
+  choice=0
+  xmessage -center -buttons 'Safe shutdown:42,Terminal recovery:43' -default 'Safe shutdown' $'DriveKey startup stopped.\n\nOne USB-backed DRIVEKEY\nexchange partition is required.\nNetwork isolation must pass.\nNo vault was overwritten.\n\nShut down before removing USB.\nOr choose terminal recovery.' || choice=$?
+  if [[ $choice == 42 ]]; then sync; exec /sbin/poweroff; fi
+  if [[ $choice == 43 ]]; then exec runuser -u user -- env -i HOME=/home/user DISPLAY=:0 TERM=xterm-256color PATH=/usr/local/bin:/usr/bin:/bin TZ=UTC /usr/bin/xterm -hold -fullscreen -e /usr/local/bin/drivekey; fi
+fi
+exit "$status"

@@ -1,0 +1,42 @@
+#!/bin/bash
+set -euo pipefail
+# Run only in the purpose-built, nonpersistent Linux live environment.
+[[ $EUID == 0 ]] || { echo 'Run sudo drivekey-offline create|sign|export-public|check-vault'; exit 1; }
+[[ ${1:-} =~ ^(gui|create|sign|export-public|check-vault)$ ]] || { echo 'Choose gui, create, sign, export-public, or check-vault'; exit 1; }
+[[ -f /etc/drivekey-live ]] || { echo 'Use the DriveKey live image, not an installed OS.'; exit 1; }
+ulimit -c 0
+swapoff -a
+for iface in /sys/class/net/*; do
+  name=${iface##*/}
+  [[ $name == lo ]] && continue
+  ip link set dev "$name" down
+  ip addr flush dev "$name"
+done
+if command -v rfkill >/dev/null; then rfkill block all; fi
+# Refuse already-mounted non-USB block storage. This is a check, not automatic unmounting.
+while read -r source; do
+  [[ $source == /dev/* && $source != /dev/loop* ]] || continue
+  real=$(readlink -f "$source")
+  lsblk -snro TRAN "$real" | grep -qx usb || { echo 'Non-USB disk mounted. Stop and inspect the live environment.'; exit 1; }
+done < <(findmnt -rn -o SOURCE)
+mapfile -t devices < <(blkid -t LABEL=DRIVEKEY -o device)
+[[ ${#devices[@]} == 1 ]] || { echo 'Exactly one DRIVEKEY exchange partition is required.'; exit 1; }
+device=${devices[0]}
+lsblk -snro TRAN "$device" | grep -qx usb || { echo 'Exchange partition is not USB-backed.'; exit 1; }
+mkdir -p /mnt/drivekey
+mountpoint -q /mnt/drivekey && { echo 'Exchange path already mounted. Restart the offline session.'; exit 1; }
+mount -o nosuid,nodev,noexec "$device" /mnt/drivekey
+trap 'sync; umount /mnt/drivekey' EXIT
+mkdir -p /mnt/drivekey/DriveKey
+if [[ $1 == gui ]]; then
+  status=0
+  /usr/bin/python3 /opt/drivekey/drivekey-gui.py || status=$?
+  sync
+  umount /mnt/drivekey
+  trap - EXIT
+  if [[ $status == 42 ]]; then /sbin/poweroff; else exit "$status"; fi
+else
+  /opt/drivekey/node/bin/node /opt/drivekey/drivekey-signer.cjs "$1" /mnt/drivekey/DriveKey
+fi
+sync
+echo 'Operation finished. Fully shut down this offline system before removing USB.'

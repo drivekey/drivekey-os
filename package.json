@@ -1,0 +1,52 @@
+{
+  "name": "drivekey-os",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build:tools": "node scripts/build-tools.mjs",
+    "build:contracts": "node scripts/build-rules-v4.mjs",
+    "test": "vitest run",
+    "test:clock": "python3 scripts/test-rtc-clock.py"
+  },
+  "dependencies": {
+    "@ledgerhq/device-management-kit": "^1.8.0",
+    "@ledgerhq/device-signer-kit-ethereum": "^1.17.0",
+    "@ledgerhq/device-transport-kit-web-hid": "^1.2.4",
+    "@neondatabase/serverless": "^1.1.0",
+    "@simplewebauthn/browser": "^13.3.0",
+    "@simplewebauthn/server": "^13.3.3",
+    "@solana/spl-token": "0.4.14",
+    "@solana/web3.js": "1.98.4",
+    "bs58": "6.0.0",
+    "class-variance-authority": "0.7.1",
+    "clsx": "2.1.1",
+    "ethers": "^6.15.0",
+    "jsqr": "1.4.0",
+    "lucide-react": "^0.468.0",
+    "next": "^16.0.0",
+    "qrcode": "1.5.4",
+    "radix-ui": "1.4.3",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "server-only": "^0.0.1",
+    "tweetnacl": "1.0.3",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@foundry-rs/anvil": "^1.7.1",
+    "@playwright/test": "^1.55.0",
+    "@types/node": "^22.10.0",
+    "@types/qrcode": "1.5.6",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@uniswap/v3-core": "1.0.0",
+    "@uniswap/v3-periphery": "1.0.0",
+    "esbuild": "0.25.12",
+    "solc": "0.8.30",
+    "typescript": "^5.7.0",
+    "vitest": "^3.2.0"
+  },
+  "packageManager": "pnpm@11.19.0"
+}

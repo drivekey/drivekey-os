@@ -1,0 +1,350 @@
+{
+  "scope": "Offline desktop only",
+  "source": "Existing pinned Lucide and CC0 cryptocurrency vectors",
+  "utilityStroke": 1.75,
+  "displayPixels": [
+    14,
+    16,
+    18,
+    20
+  ],
+  "changes": "192px source sampling; ETH disc removed; SOL disc removed and gradient applied to original licensed symbol paths",
+  "files": [
+    {
+      "file": "asset-aave.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "5bb46aeb3896bec8cfcfc05d9f347b6a3a965f96d30ba47661a3cc556bf34dfc",
+      "vector": "crypto/aave.svg",
+      "sourceSha256": "0884e64b1b44256a2c1dd4e2a195e7c929bf5b516c09d3f847f334b25ef6f878"
+    },
+    {
+      "file": "asset-btc.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "d4f36da8561c1d1396b7df1f5d0df8fcdb567fae6ba76e8b08bb95a7dd46f861",
+      "vector": "crypto/btc.svg",
+      "sourceSha256": "5a8131ecdf855b12cb56080aeeeefea266976529c45b2d58c284a13b7519f4ca"
+    },
+    {
+      "file": "asset-dai.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "4612e0b0923b0424ae1b3af672923b8a3a3ff8aefa1e709eead1bd1f33b7f0f2",
+      "vector": "crypto/dai.svg",
+      "sourceSha256": "030fdb32f1563c8d0997ff87940587a65af3a41171bba668f55b361d5ce6b561"
+    },
+    {
+      "file": "asset-eth.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "17c661aea87cca2a9fd0a36d01186eb547139dffb4ed2eeaa7785bbb24a86f98",
+      "vector": "crypto/eth.svg",
+      "sourceSha256": "1f94df8533f61806f7b17eaf9cd28678cdba66e1d82a9ca8f9fb38d35a907e9c"
+    },
+    {
+      "file": "asset-link.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "e021bf84b0580dad4173bc10656da30fc49cbcf499f92a506d3ec853ea608249",
+      "vector": "crypto/link.svg",
+      "sourceSha256": "2457990f68e333130633497d20456de38af8421aba8fdb4149900e4e051f10fa"
+    },
+    {
+      "file": "asset-sol.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "962eef340d26c58967c81a6103bc70db3c8a8714659a8b0b43d9af4297360e6f",
+      "vector": "crypto/sol.svg",
+      "sourceSha256": "94e47e7c108a338cc4a79b82673d66cfbadfcf4c934ccb9c2ca8f13e8ea7dbb2"
+    },
+    {
+      "file": "asset-uni.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "77fbc6171405b2d5a65f8533188b46c69ec26bc0b22b407f6b99922558043760",
+      "vector": "crypto/uni.svg",
+      "sourceSha256": "2a3192f07ade04f86a45b30de0b006400803b84488b2d4266a4dd33cda192773"
+    },
+    {
+      "file": "asset-usdc.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "62513b7b18e4ee605faed8de477e123351e5fa60ec608f3006dd01510803019d",
+      "vector": "crypto/usdc.svg",
+      "sourceSha256": "7281e8cadfe9abc14e98b15b05cdc24cc24d68533a51e746141d4d98f2ca2bc8"
+    },
+    {
+      "file": "arrow-down-left.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "26f06bd14f9009285057b91125d67c5e25d4712993517bd86c76e416357078cc",
+      "vector": "lucide/arrow-down-left.svg",
+      "sourceSha256": "a0e72a3f47e9a8803ddfce675e3caf9119ef041b38c103065ec707af15d90202"
+    },
+    {
+      "file": "arrow-left-right.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "93bf8b10797b0a5cf07b08457adb77afd48986c854a18386268e354aa0098255",
+      "vector": "lucide/arrow-left-right.svg",
+      "sourceSha256": "2d64da427cbb3f14e522658459903829575b09ec15162c1a69ea6ad341a4359a"
+    },
+    {
+      "file": "arrow-up-right.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "baf194d677df94352f7623a7e1a8f0fc4b529df4b800d2a031f8da473ecaeca7",
+      "vector": "lucide/arrow-up-right.svg",
+      "sourceSha256": "50b2503b9d11881142255466b7e3461d022b919735841c321d72003ac9959fe1"
+    },
+    {
+      "file": "check.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "50130e998a8313dcc3af05281093e30bca9ec4fe99e2c20788b438130f09ca2c",
+      "vector": "lucide/check.svg",
+      "sourceSha256": "7f33acc9a77a61659531044525fc008edebe215bf4dcf1c789c8674ad3277db0"
+    },
+    {
+      "file": "chevron-down.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "0c868fa3b6cea9fe4523d2dc7b821d4eff51590207d62b58186d9acb5699c6dc",
+      "vector": "lucide/chevron-down.svg",
+      "sourceSha256": "66ea878e72ed3488bb3b464c39dfdccee8d1f78e560dccea40e5e12da0e87e87"
+    },
+    {
+      "file": "chevron-right.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "9e5186fcc5064bbeca310283e0e27804e8322338ca9980190836089f979a6b5a",
+      "vector": "lucide/chevron-right.svg",
+      "sourceSha256": "2758143d7b2434e4aa7307dfd34405c87909ff4052f21b5f3f40d45224b4f19b"
+    },
+    {
+      "file": "copy.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "b7ce37288a599105dfeb01068cdf6f77480dc0bad678200f7de3f179e63e5b7d",
+      "vector": "lucide/copy.svg",
+      "sourceSha256": "ea80e566c7a12628a447cb53179b19aea4f60b9143e2becd0d0f20bf260e5718"
+    },
+    {
+      "file": "download.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "7349384e8b36cd9bb44ae8f335e94903162ad5f297f57def9201176e13f7d9d9",
+      "vector": "lucide/download.svg",
+      "sourceSha256": "21ee20839a201a74e612aafe7eaaf56f6ddc095c74aa5fcbb252c51f74a7535c"
+    },
+    {
+      "file": "external-link.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "f4ac1b770427aa9d9f75f4ac6183f29654629a199b21583b759f7c9157a06d37",
+      "vector": "lucide/external-link.svg",
+      "sourceSha256": "3891241b8c3bfc3a8a930078f26ffc5a7e9763da6d0162ace2050b28d4c1d1fe"
+    },
+    {
+      "file": "eye-off.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "d617f0b4948b29fced870e220a12c7e8989838ad65059f17d2e5574fb5452a78",
+      "vector": "lucide/eye-off.svg",
+      "sourceSha256": "774bcd975c5de781a4ee778c76e5591bcdeb409955f7054847e7e6003da0a520"
+    },
+    {
+      "file": "eye.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "aa4adb481e7a4fabc76901daf4a28dac28ea2ab7c38e06fe1ea0619a0c1ddfe4",
+      "vector": "lucide/eye.svg",
+      "sourceSha256": "5bf90197dd7629cad64a2e48d1186a71559deb6121207d10e3dc5b19ebaffdcf"
+    },
+    {
+      "file": "file-check-2.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "2c6e46545fff53efe89a027b48cc245d869306bd9dcae2ff6c0276b2e93b1d5b",
+      "vector": "lucide/file-check-2.svg",
+      "sourceSha256": "da162e219b48e0701f41bc9af0935d40abfcdeec3b8bd4f5a8be2fcfe9b4b379"
+    },
+    {
+      "file": "file-pen-line.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "401d7c336bb80d052fe48fe0da3a0def1329ab9b362b558480dbb5b3657c4cb7",
+      "vector": "lucide/file-pen-line.svg",
+      "sourceSha256": "9ef17e4fa10b82aa760b1ff40f04257288be508bb10ad343a9d932578819a7b4"
+    },
+    {
+      "file": "folder-open.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "a39709b95b165dd08a5633d7339279cf018c5e8fce8f6c08d663b0a61fa652b9",
+      "vector": "lucide/folder-open.svg",
+      "sourceSha256": "ee57452b40e71df310214091dd9da1941a397c83197b8ff8d7ae66dd4242578b"
+    },
+    {
+      "file": "history.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "ec2dcf47f899e3b63acd2f2bd3c5ffda9725389d8de828bdad08c76977fefc26",
+      "vector": "lucide/history.svg",
+      "sourceSha256": "a98ff758157910b9fc9d42d5d5dc80c2f4e037afa5f8ea4dee5f5649f03d438d"
+    },
+    {
+      "file": "house.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "cd91c3359ded0a7560112e07890927a49db100b7f830d6f0f826917016746029",
+      "vector": "lucide/house.svg",
+      "sourceSha256": "1d3bb0587b8ffbe5e59de3436f880785c3eec7911bd06aabd7932195448b120b"
+    },
+    {
+      "file": "inbox.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "95a1b1c18c4518c8834ef2623d7066b7afd5e59c1478d51ab74852f377672c37",
+      "vector": "lucide/inbox.svg",
+      "sourceSha256": "1838482c53d0846badef9be96fdcf7a167064241bd4891efa995c77ebec5f187"
+    },
+    {
+      "file": "key-round.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "a08fec2321ffbde090406bfc77638c5a53d0472a87f78d0dc3a613ba42296778",
+      "vector": "lucide/key-round.svg",
+      "sourceSha256": "f8cdea843754ed360e36b04bf6aa2c2b3610935dd39ffc685a36c4d0a05be248"
+    },
+    {
+      "file": "lock-keyhole.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "8b65a7ec4769336b46be698c03d8979d8cbf690de1400291a2a5f9602b3a4738",
+      "vector": "lucide/lock-keyhole.svg",
+      "sourceSha256": "fc0b8b7590d1d9e9bb0112c5c2e15a78ade0bfeca6d6f8c79fbbe149236d74be"
+    },
+    {
+      "file": "minus.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "a3adf870334243acb66c707a93b39b22370fc07baacd808eefefe932da7892e5",
+      "vector": "lucide/minus.svg",
+      "sourceSha256": "a0c743ab6dbf545d8a6e19ef3874f48ede686ce68d25e231bd81f540d97b1f19"
+    },
+    {
+      "file": "plus.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "8f04a24beec6b0f48f68cb64879e21ccb26fbd62e3ce08e76022b5c68580211f",
+      "vector": "lucide/plus.svg",
+      "sourceSha256": "7f6af73bf1ff6c4bca3f18351c8d1bdec6749c0c2530c4de5da85d520c21df17"
+    },
+    {
+      "file": "qr-code.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "6ae125783eba21008430f8458824c31730d12f71ea6c973348f18788148d5327",
+      "vector": "lucide/qr-code.svg",
+      "sourceSha256": "920cb79ab4b2fd23c36a16de3ca533c4896cb989adb823eb7dec97fd840d30f5"
+    },
+    {
+      "file": "refresh-cw.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "a0be886e7536adc89ad8d2b00e5b56d8f6d51b9d8c535aa683b9ef4f197e4e49",
+      "vector": "lucide/refresh-cw.svg",
+      "sourceSha256": "2e10dd403c85a24f163d59fc6151aa21147fe9402e1305dfc8979208caee8944"
+    },
+    {
+      "file": "scan-line.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "4e8378aef27fea8bd1239af079a95fc5064cb0ab58fdaf4c58468bb81923a197",
+      "vector": "lucide/scan-line.svg",
+      "sourceSha256": "d17ec0ebae568a92e18e18968bb85658fec088bc3d97b92b729df6f7f9c4848e"
+    },
+    {
+      "file": "search.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "23bb3859c57bc203ab04a72b5afbdcd1aff556da119332cc33ac39e9f54e82f7",
+      "vector": "lucide/search.svg",
+      "sourceSha256": "9322d964b61cf729b3a81210568d5a97eaf4a1f3239f25a056fda3013bf35611"
+    },
+    {
+      "file": "settings-2.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "954533e96c9815534466b160588ebbdbceaab875b092517645b649df0c29b6a1",
+      "vector": "lucide/settings-2.svg",
+      "sourceSha256": "461a8c978685f762e024c23647230f59f00bcae599a025645829435cadb6f3a4"
+    },
+    {
+      "file": "shield-check.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "2477ebe3ab82331b8c7fa1d70cfe9ac7f6606288fc2a6456dbc37a01f5d16f29",
+      "vector": "lucide/shield-check.svg",
+      "sourceSha256": "8d4fcdbde5bba4abb1a2f6fe53e37ceb6343a1d5449a9d88f6f97c1971d26c4e"
+    },
+    {
+      "file": "triangle-alert.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "0d3d2cb65c94659f4f1ea04ec29b8fdd5198d9feed97d00a501bf12e060f9674",
+      "vector": "lucide/triangle-alert.svg",
+      "sourceSha256": "4866f38b8560d410f21e3226413e0b77997b6dfbb6931fadfe0a0d5aef9ffeb4"
+    },
+    {
+      "file": "upload.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "553860c9ff7936bf67f563dbbdf0596dcd635b6a928b01c66a45fef347ac9e58",
+      "vector": "lucide/upload.svg",
+      "sourceSha256": "04b9443355c959b3477b7856ee40dffa79438e5bfdb4e9dbf5159341ace26408"
+    },
+    {
+      "file": "usb.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "ebad59650acc021d4cd30c8804f14a45708a00b681b24f32550a5655217c35bd",
+      "vector": "lucide/usb.svg",
+      "sourceSha256": "6d3feae2abc694973d7dc8000a7016688306b82530426288c163257ac90d3e21"
+    },
+    {
+      "file": "user-round.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "f898dc0a7fda364e69280248014b0e0db7215f906e47f5265327b071302f539f",
+      "vector": "lucide/user-round.svg",
+      "sourceSha256": "84870f26f3faf8da45da84174517519e81b9e8f00319c78954fcbb74f50038a1"
+    },
+    {
+      "file": "vault.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "1c79e1cc5be95d81adb42d1d3ce41862a568ae842247534580d9dacb9092e6d4",
+      "vector": "lucide/vault.svg",
+      "sourceSha256": "8cd0b1faa0251b6f2db020976254ef263432e4bbd468d0d051745edbcf327e91"
+    },
+    {
+      "file": "wallet.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "bb6986c9195196662b8ef75b89995cb25ac69f394db1951bbb7bd0d0c6367ec2",
+      "vector": "lucide/wallet.svg",
+      "sourceSha256": "76c9596f629a2abf9cfabb573452f3113ed7e9502c699aa811e630f156eb7556"
+    },
+    {
+      "file": "x.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "33db2970141bb405033306d7833e945266e88a05b48e9b1dafa80cfa5f912943",
+      "vector": "lucide/x.svg",
+      "sourceSha256": "4a9cdab38fbb96162e7dace28e33f4ca0e49d8963a6162abc3d4691b7d675117"
+    }
+  ]
+}

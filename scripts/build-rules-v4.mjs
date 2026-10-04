@@ -1,0 +1,11 @@
+import {readFile,writeFile,mkdir} from 'node:fs/promises';
+import solc from 'solc';
+const source=await readFile('contracts/DriveKeyRulesV4.sol','utf8');
+const input={language:'Solidity',sources:{'Rules.sol':{content:source}},settings:{optimizer:{enabled:true,runs:200},viaIR:true,outputSelection:{'*':{'*':['abi','evm.bytecode.object','evm.deployedBytecode.object','evm.deployedBytecode.immutableReferences']}}}};
+const output=JSON.parse(solc.compile(JSON.stringify(input)));
+for(const error of output.errors??[])console.error(error.formattedMessage);
+if(output.errors?.some(e=>e.severity==='error'))process.exit(1);
+await mkdir('work/rc20',{recursive:true});
+await writeFile('work/rc20/contracts.json',JSON.stringify(output.contracts,null,2));
+await writeFile('work/rc20/compiler-input.json',JSON.stringify(input,null,2));
+console.log('RC20 contracts compiled with '+solc.version()+'. No deployment performed.');

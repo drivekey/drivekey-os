@@ -1,0 +1,44 @@
+{
+  "family": "Nunito",
+  "license": "SIL Open Font License 1.1",
+  "officialSource": "https://github.com/google/fonts/tree/8b0a1d0f5983c89bc2b93f1b5fb55f9e252744b5/ofl/nunito",
+  "commit": "8b0a1d0f5983c89bc2b93f1b5fb55f9e252744b5",
+  "sourceVariableFont": {
+    "file": "Nunito-Variable.ttf",
+    "upstreamFile": "Nunito[wght].ttf",
+    "sha256": "bb55a5ca5c2042335b3991af27c4d0705d0ef41cac6164ac737fd8f2a1e85207"
+  },
+  "licenseSha256": "580df76c95a1ec5ab878ceb25bb3d85c6a076804e9c970c8c6972aea775fdf65",
+  "build": {
+    "script": "build-static.py",
+    "tool": "fonttools==4.60.2",
+    "axes": {
+      "Regular": {
+        "wght": 400
+      },
+      "Bold": {
+        "wght": 700
+      }
+    },
+    "changes": "Static instances of the unmodified upstream variable font. Set conventional Nunito family/subfamily and matching weight/style metadata for Linux fontconfig/Tk. Preserve copyright and license records; no glyph or outline edits.",
+    "runtimeNetworkAccess": false,
+    "runtimeBuildDependency": false
+  },
+  "installedFiles": [
+    {
+      "file": "Nunito-Regular.ttf",
+      "sha256": "0a590070a68330924dd04b4b1593b4479d2e66f2bb843cb54403e0258dd4da8e",
+      "fontconfig": "Nunito Regular 80"
+    },
+    {
+      "file": "Nunito-Bold.ttf",
+      "sha256": "452490694a32df825403270d3d0ec36cb2525aafb9d26b4c92bfc2c7e5213f62",
+      "fontconfig": "Nunito Bold 200"
+    },
+    {
+      "file": "OFL.txt",
+      "sha256": "580df76c95a1ec5ab878ceb25bb3d85c6a076804e9c970c8c6972aea775fdf65"
+    }
+  ],
+  "isoInstallation": "Regular and Bold fonts in /usr/share/fonts/truetype/drivekey; OFL.txt and PROVENANCE.json in /usr/share/doc/drivekey-fonts; fc-cache -f at build time; no runtime font downloads"
+}
