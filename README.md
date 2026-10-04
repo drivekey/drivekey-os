@@ -4,6 +4,18 @@
 
 **An offline wallet operating system built for self-custody and agentic finance.**
 
+## ⬇ Download DriveKey OS
+
+### [Download bootable ISO · RC20 · 546 MiB](https://github.com/drivekey/drivekey-os/releases/download/v21-rc20-warsaw-rtc/drivekey-offline-amd64-v5-desktop-r21-rc20-warsaw-rtc.iso)
+
+**x86-64 · USB boot · Prerelease**
+
+[Compatibility & setup](https://github.com/drivekey/drivekey-os/releases/tag/v21-rc20-warsaw-rtc) · [SHA-256 checksum](https://github.com/drivekey/drivekey-os/releases/download/v21-rc20-warsaw-rtc/drivekey-offline-amd64-v5-desktop-r21-rc20-warsaw-rtc.iso.sha256) · [Verification report](https://github.com/drivekey/drivekey-os/releases/download/v21-rc20-warsaw-rtc/RC20-Warsaw-RTC-VERIFICATION.md)
+
+> Read the build compatibility notes before flashing. The ISO above is the bootable OS download.
+
+---
+
 DriveKey turns a bootable USB into a dedicated workspace for reviewing transactions, signing payments and defining what an agent wallet can spend. Pair it with the online companion to prepare requests and submit signed transactions while keeping your signing workflow offline.
 
 [Open the app](https://drivekey-app.vercel.app) · [Explore DriveKey](https://drivekey.info) · [OS releases](https://github.com/drivekey/drivekey-os/releases)
