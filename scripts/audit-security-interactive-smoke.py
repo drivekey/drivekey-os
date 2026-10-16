@@ -39,6 +39,33 @@ def records(serial, name):
     return [json.loads(value) for value in re.findall(name + r' (\{[^\r\n]+\})', serial)]
 
 
+def audit_settings_input_trace(inputs, click, states, baseline, opened, keys):
+    require(isinstance(inputs, list), 'Missing Settings input trace')
+    split = next((i for i, item in enumerate(inputs) if item.get('kind') != 'pointer-click'), len(inputs))
+    pointers = inputs[:split]
+    require(1 <= len(pointers) <= 120, 'Unbounded or missing Settings clicks')
+    require(inputs[split:] == [{'kind': 'keys', 'qcodes': value} for value in keys],
+            'Settings key suffix differs from bounded display controls')
+    legacy = {'kind': 'pointer-click', 'target': 'Settings', **click}
+    if pointers == [legacy]:
+        return  # Historical one-click trace; baseline was validated by caller.
+    previous = baseline['sequence'] - 1
+    for pointer in pointers:
+        sequence = pointer.get('observedSequence')
+        require(type(sequence) is int and previous < sequence < opened['sequence']
+                and pointer == {**legacy, 'observedSequence': sequence},
+                'Settings retry trace is unordered or continues after opening')
+        matches = [state for state in states if state.get('sequence') == sequence]
+        require(len(matches) == 1, 'Settings retry lacks unique recorded state')
+        state = matches[0]
+        require(state.get('idle') is True and state.get('settingsOpen') is False
+                and state.get('messageboxMapped') is False and state.get('section') == 'Files'
+                and state.get('settingsButtonBounds') == click['bounds']
+                and state.get('displayPreferences') == baseline['displayPreferences'],
+                'Settings retry was busy, open, moved or changed preferences')
+        previous = sequence
+
+
 def audit_settings(report, states):
     """Bind session-only Settings assertions to ordered public GUI states."""
     checks = report.get('settingsChecks')
@@ -106,9 +133,7 @@ def audit_settings(report, states):
             + [['spc'], ['shift', 'tab'], ['spc'], ['shift', 'tab'], ['spc']]
             + [['shift', 'tab']] * (3 - original_index)
             + [['ret'], ['esc'], ['ret'], ['ret']])
-    expected_inputs = [{'kind': 'pointer-click', 'target': 'Settings', **click}]
-    expected_inputs += [{'kind': 'keys', 'qcodes': value} for value in keys]
-    require(checks.get('inputs') == expected_inputs, 'Settings input trace differs from bounded display controls')
+    audit_settings_input_trace(checks.get('inputs'), click, states, sequence[0], observations['opened'], keys)
     return {'interactionStatesVerified': True, 'initialButtonClickBoundsVerified': True,
             'boundedInputTraceVerified': True,
             'baseline': baseline, 'changed': changed, 'restored': checks['restored'],

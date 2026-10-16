@@ -32,6 +32,26 @@ def require(condition, message):
         raise ValueError(message)
 
 
+def open_settings_when_idle(read_view, click, guest_running, timeout=120):
+    """Wait through protected refreshes; never click an observed open panel."""
+    deadline = time.monotonic() + timeout
+    last_clicked_sequence = -1
+    while time.monotonic() < deadline:
+        current = read_view()
+        if current and current.get('settingsOpen') is True:
+            return current
+        if not guest_running():
+            raise RuntimeError('Guest stopped before opening Settings')
+        if current and current.get('idle') is True and current.get('settingsOpen') is False:
+            sequence = current.get('sequence')
+            require(type(sequence) is int, 'Settings retry lacks observed sequence')
+            if sequence > last_clicked_sequence:
+                click(current)
+                last_clicked_sequence = sequence
+        time.sleep(1)
+    raise TimeoutError('Settings did not open within the bounded pointer retry')
+
+
 def host_policy_snapshot(proc=Path('/proc')):
     """Separate stable host swap policy from naturally changing memory use."""
     rows = (proc / 'swaps').read_text().splitlines()
@@ -372,12 +392,18 @@ def main():
         absolute = [round(center[0] * 32767 / (width - 1)), round(center[1] * 32767 / (height - 1))]
         checks['pointerClick'] = {'bounds': bounds, 'desktopWidth': width, 'desktopHeight': height,
                                   'center': center, 'qmpAbsolute': absolute}
-        command('input-send-event', {'events': [
-            {'type': 'abs', 'data': {'axis': 'x', 'value': absolute[0]}},
-            {'type': 'abs', 'data': {'axis': 'y', 'value': absolute[1]}},
-            {'type': 'btn', 'data': {'down': True, 'button': 'left'}}]})
-        command('input-send-event', {'events': [{'type': 'btn', 'data': {'down': False, 'button': 'left'}}]})
-        checks['inputs'].append({'kind': 'pointer-click', 'target': 'Settings', **checks['pointerClick']})
+        # Background refresh can become protected between telemetry and a click.
+        # Retry only while observed closed and idle; still require actual opening.
+        def click_settings(current):
+            require(current.get('settingsButtonBounds') == bounds, 'Settings button moved before click')
+            command('input-send-event', {'events': [
+                {'type': 'abs', 'data': {'axis': 'x', 'value': absolute[0]}},
+                {'type': 'abs', 'data': {'axis': 'y', 'value': absolute[1]}},
+                {'type': 'btn', 'data': {'down': True, 'button': 'left'}}]})
+            command('input-send-event', {'events': [{'type': 'btn', 'data': {'down': False, 'button': 'left'}}]})
+            checks['inputs'].append({'kind': 'pointer-click', 'target': 'Settings',
+                                    'observedSequence': current['sequence'], **checks['pointerClick']})
+        open_settings_when_idle(view, click_settings, lambda: vm.poll() is None)
         opened = observations['opened'] = wait_view(
             lambda state: state.get('settingsOpen') is True, 'open Settings', after_sequence=baseline_state['sequence'])
         require(opened['displayPreferences'] == baseline, 'Opening Settings changed preferences')
