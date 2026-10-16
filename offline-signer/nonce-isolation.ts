@@ -1,0 +1,6 @@
+import {runSandbox} from './sandbox-process';
+import {decodeNonceRouteFrame,decodeNonceRequestFrame,encodeNonceSigningFrame,decodeNonceResponseFrame,MAX_NONCE_REQUEST_FRAME,MAX_NONCE_SIGN_FRAME,MAX_NONCE_RESPONSE_FRAME} from './nonce-boundary-codec';
+const node='/opt/drivekey/node/bin/node',parser='/opt/drivekey/drivekey-nonce-public-parser.cjs',signer='/opt/drivekey/drivekey-nonce-key-worker.cjs';
+export async function isNonceTradeBytes(bytes:Buffer){return decodeNonceRouteFrame(await runSandbox({node,program:parser,args:['nonce-route'],inputLimit:32768,outputLimit:9,timeoutMs:10000,heapMb:64},bytes));}
+export async function parseNonceRequestBytes(bytes:Buffer){return decodeNonceRequestFrame(await runSandbox({node,program:parser,args:['nonce-request'],inputLimit:32768,outputLimit:MAX_NONCE_REQUEST_FRAME,timeoutMs:10000,heapMb:64},bytes));}
+export async function isolatedNonceResponse(request:unknown,vault:unknown,fingerprint:string,password:string){const frame=encodeNonceSigningFrame(request,vault,fingerprint,password);try{return decodeNonceResponseFrame(await runSandbox({node,program:signer,args:[],inputLimit:MAX_NONCE_SIGN_FRAME,outputLimit:MAX_NONCE_RESPONSE_FRAME,timeoutMs:90000,heapMb:128},frame));}finally{frame.fill(0);}}

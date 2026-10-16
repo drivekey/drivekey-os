@@ -1,0 +1,4 @@
+Jupiter logo, unchanged from the official Jupiter developer documentation.
+Source: https://raw.githubusercontent.com/jup-ag/docs/main/logo/logo.png
+Logo reference: https://github.com/jup-ag/docs/blob/main/docs.json
+Retrieved 2026-10-04. Jupiter branding identifies the existing Jupiter Solana swap integration; it does not imply endorsement.

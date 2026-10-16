@@ -31,11 +31,11 @@ export function ethereumDeliveryEvidence(raw:string,logs:unknown,blockTimestamp?
   const token=Object.values(ETH_TOKENS).find(t=>same(t.address,tx.to!));
   if(token){
    const call=TOKEN.parseTransaction({data:tx.data});if(!call||!['transfer','approve'].includes(call.name)||TOKEN.encodeFunctionData(call.name,[...call.args])!==tx.data)throw Error('Unsupported token call.');
-   const [recipient,amount]=call.args;if(amount<=0n)throw Error('Invalid token amount.');
+   const [recipient,amount]=call.args;if(amount===0n&&call.name!=='approve')throw Error('Invalid token amount.');
    const name=call.name==='transfer'?'Transfer':'Approval';if(name==='Approval'&&!same(recipient,SWAP_ROUTER))throw Error('Unsupported approval spender.');
    const matched=logsFor(logs,token.address,name);
    const verified=matched.length===1&&same(matched[0][0],tx.from)&&same(matched[0][1],recipient)&&matched[0][2]===amount;
-   return {verified,kind:call.name==='transfer'?'token-payment':'approval',message:verified?'Exact canonical token event matches the approved action.':'Finalized transaction lacks a unique exact token event. Do not resend.'};
+   return {verified,kind:call.name==='transfer'?'token-payment':'approval',...(call.name==='approve'?{allowanceAction:amount===0n?'revoke':'set'}:{}),message:verified?(call.name==='approve'&&amount===0n?'Exact zero-allowance revocation event matched.':'Exact canonical token event matches the approved action.'):'Finalized transaction lacks a unique exact token event. Do not resend.'};
   }
   if(!same(tx.to,SWAP_ROUTER))throw Error('Unsupported Ethereum destination.');
   const call=ROUTER.parseTransaction({data:tx.data});if(!call||call.name!=='exactInputSingle'||ROUTER.encodeFunctionData(call.name,[...call.args])!==tx.data)throw Error('Unsupported swap call.');

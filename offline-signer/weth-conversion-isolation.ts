@@ -1,0 +1,5 @@
+import {runSandbox} from './sandbox-process';
+import {decodeWethRequestFrame,encodeWethSigningFrame,decodeWethResponseFrame,MAX_WETH_REQUEST_FRAME,MAX_WETH_SIGN_FRAME,MAX_WETH_RESPONSE_FRAME} from './weth-conversion-boundary-codec';
+const node='/opt/drivekey/node/bin/node';
+export async function parseWethConversionBytes(bytes:Buffer){return decodeWethRequestFrame(await runSandbox({node,program:'/opt/drivekey/drivekey-weth-conversion-public-parser.cjs',args:[],inputLimit:8192,outputLimit:MAX_WETH_REQUEST_FRAME,timeoutMs:10000,heapMb:64},bytes));}
+export async function isolatedWethConversionResponse(request:unknown,vault:unknown,fingerprint:string,password:string){const frame=encodeWethSigningFrame(request,vault,fingerprint,password);try{return decodeWethResponseFrame(await runSandbox({node,program:'/opt/drivekey/drivekey-weth-conversion-key-worker.cjs',args:[],inputLimit:MAX_WETH_SIGN_FRAME,outputLimit:MAX_WETH_RESPONSE_FRAME,timeoutMs:90000,heapMb:128},frame));}finally{frame.fill(0);}}

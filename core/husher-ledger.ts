@@ -1,3 +1,4 @@
+import {OperationalError} from './service-events';
 import 'server-only';
 import {neon,type NeonQueryFunction} from '@neondatabase/serverless';
 import {z} from 'zod';
@@ -24,7 +25,7 @@ export class HusherLedger implements HusherIntentStore {
   this.ns=namespace;this.sql=neon(url);
  }
  private async query(query:string,args:unknown[]=[]){
-  try{return await this.sql.query(query,args);}catch{throw Error('Durable Husher ledger operation failed. Reconcile saved intent; do not retry provider creation or submission.');}
+  try{return await this.sql.query(query,args,{fetchOptions:{signal:AbortSignal.timeout(5000)}});}catch{throw new OperationalError('Durable Husher ledger operation failed. Reconcile saved intent; do not retry provider creation or submission.','storage-unavailable');}
  }
  async reserveOnce(input:HusherCreationIntent,limit:'1000000000'){
   if(limit!=='1000000000')throw Error('Unsupported allowance.');const r=husherCreationIntentSchema.parse(input);
@@ -40,6 +41,29 @@ export class HusherLedger implements HusherIntentStore {
  async claimSubmission(id:string,input:unknown){z.string().uuid().parse(id);const r=husherSubmissionRecord.parse(input);const rows=await this.query(`select ${this.ns}.claim_submission($1,$2,$3::jsonb) as inserted`,[this.scope,id,JSON.stringify(r)]);return rows[0]?.inserted===true;}
  async submission(fingerprint:string){hash.parse(fingerprint);const rows=await this.query(`select document from ${this.ns}.submission where scope=$1 and fingerprint=$2`,[this.scope,fingerprint]);return rows.length?husherSubmissionRecord.parse(rows[0].document):null;}
  async history(){const rows=await this.query(`select document from ${this.ns}.submission where scope=$1 order by created_at desc limit 100`,[this.scope]);return rows.map(r=>husherSubmissionRecord.parse(r.document));}
+ // Stable keyset traversal for monitoring, separate from the latest-100 UI.
+ // This is a live page, not a database snapshot. Restart at null each sweep:
+ // a concurrently inserted smaller key will be visible on the next sweep.
+ async reconciliationPage(after:string|null=null,limit=10){
+  if(after!==null)hash.parse(after);z.number().int().min(1).max(25).parse(limit);
+  const rows=await this.query(`select fingerprint,document from ${this.ns}.submission where scope=$1 and ($2::text is null or fingerprint collate "C">$2::text collate "C") order by fingerprint collate "C" limit $3`,[this.scope,after,limit+1]);
+  if(rows.length>limit+1)throw Error('Unexpected reconciliation page size.');
+  let previous=after;
+  const records=rows.map(row=>{
+   const record=husherSubmissionRecord.parse(row.document);
+   if(row.fingerprint!==record.fingerprint||(previous!==null&&record.fingerprint<=previous))throw Error('Invalid reconciliation page identity.');
+   previous=record.fingerprint;return record;
+  });
+  const hasMore=records.length>limit,items=records.slice(0,limit);
+  return {records:items,nextCursor:hasMore?items[items.length-1].fingerprint:null};
+ }
+ async payoutAssociation(orderId:string,transactionHash:string,logIndex:number){
+  z.string().regex(/^[A-Za-z0-9_-]{1,64}$/).parse(orderId);hash.parse(transactionHash);z.number().int().nonnegative().safe().parse(logIndex);
+  const rows=await this.query(`select order_id from ${this.ns}.payout_claim where scope=$1 and hash=$2 and log_index=$3`,[this.scope,transactionHash,logIndex]);
+  if(!rows.length)return false;
+  if(rows.length!==1||rows[0]?.order_id!==orderId)throw Error('Payout evidence is associated with another order.');
+  return true;
+ }
  async claimPayout(orderId:string,transactionHash:string,logIndex:number){z.string().regex(/^[A-Za-z0-9_-]{1,64}$/).parse(orderId);hash.parse(transactionHash);z.number().int().nonnegative().safe().parse(logIndex);
   await this.query(`insert into ${this.ns}.payout_claim(scope,order_id,hash,log_index) values($1,$2,$3,$4) on conflict(scope,hash,log_index) do nothing`,[this.scope,orderId,transactionHash,logIndex]);
   const rows=await this.query(`select order_id from ${this.ns}.payout_claim where scope=$1 and hash=$2 and log_index=$3`,[this.scope,transactionHash,logIndex]);if(rows[0]?.order_id!==orderId)throw Error('Payout evidence is already associated with another order.');

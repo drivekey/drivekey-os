@@ -1,24 +1,32 @@
-import {Transaction} from 'ethers';
+// Husher v8 broker: media bytes and public objects only; never decrypts a vault.
+import {z} from 'zod';
 import {assertOfflineEnvironment} from './environment';
-import {readJsonFile,writeJsonFile} from '../core/files';
-import {multiVaultSchema,unlockMultiVault} from './multi-vault';
-import {validateHusherDeposit,husherDepositReview,husherDepositApproval,verifyHusherDepositResponse} from '../core/husher-deposit-protocol';
-
-export async function husherOfflineAction(c:{action:'inspect'|'sign';password?:string;fingerprint?:string;consent?:boolean},directory:string){
- await assertOfflineEnvironment();
- const r=validateHusherDeposit(await readJsonFile(directory,'unsigned-trade-request.json'),Date.now(),c.action==='sign');
- const v=multiVaultSchema.parse(await readJsonFile(directory,'vault-multi-encrypted.json'));
- if(v.public.deviceId!==r.payment.deviceId||v.public.evmAddress.toLowerCase()!==r.payment.from.toLowerCase())throw Error('Request belongs to a different vault.');
- if(c.action==='inspect')return {inspection:{state:Date.now()>=Date.parse(r.payment.expiresAt)?'expired':'ready',canSign:Date.now()<Date.parse(r.payment.expiresAt),review:husherDepositReview(r,false),message:'Husher standard exchange deposit. Read the provider commitments and custodial warning before approving.'}};
- if(c.consent!==true||c.fingerprint!==r.fingerprint)throw Error('Request changed since review.');
- const keys=await unlockMultiVault(v,c.password!);
- try{
-  const rawSignedTransaction=await keys.evm.signTransaction(Transaction.from(r.payment.unsignedTransaction));
-  const response=verifyHusherDepositResponse({version:8,requestId:r.payment.requestId,deviceId:r.payment.deviceId,fingerprint:r.fingerprint,signedAt:new Date().toISOString(),rawSignedTransaction,
-   approvalSignature:await keys.evm.signMessage(husherDepositApproval(r)),transactionHash:Transaction.from(rawSignedTransaction).hash},r,v.public);
-  await assertOfflineEnvironment();validateHusherDeposit(r);
-  if(validateHusherDeposit(await readJsonFile(directory,'unsigned-trade-request.json')).fingerprint!==r.fingerprint)throw Error('Request changed during signing.');
-  await writeJsonFile(directory,'signed-trade-response.json',response,true);
-  return {hash:response.transactionHash,message:'Provider-bound signed-trade-response.json saved and verified. No funds sent; payout not verified.'};
- }finally{keys.sol.secretKey.fill(0);}
+import {readBoundedExchangeBytes,writeBoundedExchangeBytes} from './exchange-bytes';
+import {parseEncryptedVaultBytes} from './savings-isolation';
+import {parseHusherRequestBytes,isolatedHusherResponse} from './husher-isolation';
+import {validateHusherDeposit,husherDepositReview,verifyHusherDepositResponse} from '../core/husher-deposit-protocol';
+const command=z.discriminatedUnion('action',[
+ z.object({scope:z.literal('trade').optional(),action:z.literal('inspect')}).strict(),
+ z.object({scope:z.literal('trade').optional(),action:z.literal('sign'),password:z.string().max(256),fingerprint:z.string().max(66),consent:z.literal(true)}).strict(),
+]);
+export async function husherOfflineAction(input:unknown,directory:string,initialRequestBytes?:Buffer){
+ const c=command.parse(input);await assertOfflineEnvironment();
+ const requestBytes=initialRequestBytes??await readBoundedExchangeBytes(directory,'unsigned-trade-request.json');
+ const vaultBytes=await readBoundedExchangeBytes(directory,'vault-multi-encrypted.json');
+ const r=validateHusherDeposit(await parseHusherRequestBytes(requestBytes),Date.now(),c.action==='sign'),p=r.payment;
+ const v=await parseEncryptedVaultBytes(vaultBytes);
+ if(v.public.deviceId!==p.deviceId||v.public.evmAddress.toLowerCase()!==p.from.toLowerCase())throw Error('Husher request belongs to a different vault.');
+ const unchanged=async()=>{
+  if(!requestBytes.equals(await readBoundedExchangeBytes(directory,'unsigned-trade-request.json'))||!vaultBytes.equals(await readBoundedExchangeBytes(directory,'vault-multi-encrypted.json')))throw Error('Request or encrypted vault changed during Husher approval.');
+  validateHusherDeposit(r,Date.now(),c.action==='sign');
+ };
+ await unchanged();
+ if(c.action==='inspect')return {inspection:{state:Date.now()>=Date.parse(p.expiresAt)?'expired':'ready',canSign:Date.now()<Date.parse(p.expiresAt),review:husherDepositReview(r,false),message:'Husher standard exchange deposit. Read the provider commitments and custodial warning before approving.'}};
+ if(c.fingerprint!==r.fingerprint)throw Error('Husher request changed since review.');
+ await assertOfflineEnvironment();const signed=await isolatedHusherResponse(r,v,c.fingerprint,c.password);
+ // The sandbox resolves only after the key process and descendants are reaped.
+ await assertOfflineEnvironment();await unchanged();
+ const response=verifyHusherDepositResponse(signed,r,v.public);
+ await writeBoundedExchangeBytes(directory,'signed-trade-response.json',Buffer.from(JSON.stringify(response,null,2)+'\n'));
+ return {hash:response.transactionHash,message:'Provider-bound signed-trade-response.json saved and verified. No funds sent; payout not verified.'};
 }

@@ -13,7 +13,7 @@ async function network(rpc:Rpc){if(num(await rpc('eth_chainId'))!==1n)throw Erro
 async function tokenValue(rpc:Rpc,token:string,method:string,args:unknown[]){const raw=await rpc('eth_call',[{to:token,data:TOKEN.encodeFunctionData(method,args)},'pending']);return TOKEN.decodeFunctionResult(method,String(raw))[0] as bigint;}
 export async function prepareTrade(input:unknown,rpc:Rpc,now=Date.now()) {
  const a=prepareTradeSchema.parse(input);await network(rpc);
- const amount=parseUnits(a.amount,a.tokenIn==='USDC'?6:18);if(amount<=0n)throw Error('Amount must be positive.');
+ const amount=parseUnits(a.amount,a.tokenIn==='USDC'?6:18);if(amount<=0n&&a.kind!=='approval')throw Error('Amount must be positive.');
  const expires=Math.floor((now+30*60_000)/1000)*1000;
  const r:TradeRequest & {version:7}={version:7,contractIdentities:[],network:'ethereum',chainId:1,kind:a.kind,requestId:crypto.randomUUID(),deviceId:a.wallet.deviceId,createdAt:new Date(now).toISOString(),expiresAt:new Date(expires).toISOString(),from:a.wallet.evmAddress,recipient:a.kind==='swap'?a.wallet.evmAddress:a.kind==='approval'?SWAP_ROUTER:a.recipient||'',tokenIn:a.tokenIn,tokenOut:null,amount:amount.toString(),minimumOutput:'0',quotedOutput:'0',slippageBps:0,poolFee:500,unsignedTransaction:'0x00',fingerprint:'0x'+'00'.repeat(32)};
  if(a.kind==='swap') {

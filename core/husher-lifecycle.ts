@@ -1,7 +1,8 @@
 import 'server-only';
 import {isDeepStrictEqual} from 'node:util';
 import {z} from 'zod';
-import {formatUnits,parseUnits,Transaction,getAddress} from 'ethers';
+import {formatUnits,parseUnits,Transaction,getAddress,sha256} from 'ethers';
+import type {WalletSubmissionClaim,WalletSubmissionStore} from './wallet-submission-ledger';
 import {HusherLedger} from './husher-ledger';
 import {husherOrderPlanSchema,husherOrderPlanFingerprint,createHusherStandardOrder} from './husher-create';
 import {createHusherOrderOnce} from './husher-order-intent';
@@ -12,7 +13,8 @@ import {validateHusherDeposit,verifyHusherDepositResponse} from './husher-deposi
 import {multiPublicSchema} from './multi-protocol';
 import type {Rpc} from './protocol';
 import {checkEthereumIdentities,ethereumIdentitiesFor} from './ethereum-contract-identity';
-type Dependencies={store:HusherLedger;rpc:Rpc;key:string|undefined;fetcher?:typeof fetch};
+import {husherOfflineWindowMs,HUSHER_MIN_OFFLINE_WINDOW_MS,HUSHER_MAX_REQUEST_WINDOW_MS} from './husher-timing';
+type Dependencies={store:HusherLedger;rpc:Rpc;key:string|undefined;fetcher?:typeof fetch;walletStore?:WalletSubmissionStore};
 const uuid=z.string().uuid();
 export async function createOwnedHusherOrder(input:unknown,d:Dependencies,accepted:boolean){
  if(!accepted)throw Error('Husher standard exchange has not passed acceptance.');
@@ -26,16 +28,17 @@ export async function createOwnedHusherOrder(input:unknown,d:Dependencies,accept
  return {...await createHusherOrderOnce(intent,d.store,()=>createHusherStandardOrder(p,d.key,d.fetcher),accepted),id:p.id};
 }
 export async function prepareOwnedHusherOrder(input:unknown,d:Dependencies){
- const a=z.object({id:uuid,wallet:multiPublicSchema}).strict().parse(input),saved=await d.store.read(a.id),p=saved?.plan;
+ const a=z.object({id:uuid,wallet:multiPublicSchema,measuredOfflineDurationMs:z.number().int().positive().optional()}).strict().parse(input),requiredWindowMs=husherOfflineWindowMs(a.measuredOfflineDurationMs),saved=await d.store.read(a.id),p=saved?.plan;
  if(!saved||!p||husherOrderPlanFingerprint(p)!==saved.fingerprint||getAddress(a.wallet.evmAddress)!==p.refundAddress)throw Error('No matching durable owner intent.');
- const prepared=await d.store.prepared(a.id);if(prepared){const request=validateHusherDeposit(prepared.request,Date.now(),false);if(prepared.wallet.deviceId!==a.wallet.deviceId)throw Error('Prepared request belongs to another wallet profile.');return {request,requiredIso:'RC19',privacyEnabled:false};}
+ const prepared=await d.store.prepared(a.id);if(prepared){const request=validateHusherDeposit(prepared.request,Date.now(),false);if(prepared.wallet.deviceId!==a.wallet.deviceId)throw Error('Prepared request belongs to another wallet profile.');const savedWindow=z.number().int().min(HUSHER_MIN_OFFLINE_WINDOW_MS).lt(HUSHER_MAX_REQUEST_WINDOW_MS).parse(prepared.offlineWindowMs??HUSHER_MIN_OFFLINE_WINDOW_MS);return {request,offlineWindowMs:Math.max(savedWindow,requiredWindowMs),requiredIso:'RC19',privacyEnabled:false};}
  if(!saved.orderId)throw Error('Creation outcome unresolved. Recover the correlation ID; do not recreate.');
  const raw=await readHusherOrder(saved.orderId,d.key,d.fetcher);
  const order=z.object({sendAddress:z.string(),sendAmount:z.string(),receiveAmount:z.string()}).parse(raw);
  if(parseUnits(order.sendAmount,18)>parseUnits(p.maximumSendAmount,18)||parseUnits(order.receiveAmount,6)!==parseUnits(p.exactReceiveAmount,6))throw Error('Provider amounts exceed the saved creation intent.');
- const result=await prepareHusherDeposit({route:'eth-usdc',orderId:saved.orderId,externalUserId:saved.externalUserId,wallet:a.wallet,depositAddress:order.sendAddress,recipient:p.payoutAddress,refundAddress:p.refundAddress,sendAmount:order.sendAmount,exactReceiveAmount:p.exactReceiveAmount,maximumProviderFees:p.maximumProviderFees,requiredWindowMs:60000},d);
- const persisted=await d.store.savePrepared(a.id,{request:result.request,wallet:a.wallet});
- return {...result,request:validateHusherDeposit(persisted.request)};
+ const result=await prepareHusherDeposit({route:'eth-usdc',orderId:saved.orderId,externalUserId:saved.externalUserId,wallet:a.wallet,depositAddress:order.sendAddress,recipient:p.payoutAddress,refundAddress:p.refundAddress,sendAmount:order.sendAmount,exactReceiveAmount:p.exactReceiveAmount,maximumProviderFees:p.maximumProviderFees,requiredWindowMs},d);
+ const persisted=await d.store.savePrepared(a.id,{request:result.request,wallet:a.wallet,offlineWindowMs:requiredWindowMs});
+ const savedWindow=z.number().int().min(HUSHER_MIN_OFFLINE_WINDOW_MS).lt(HUSHER_MAX_REQUEST_WINDOW_MS).parse(persisted.offlineWindowMs??HUSHER_MIN_OFFLINE_WINDOW_MS);
+ return {...result,request:validateHusherDeposit(persisted.request),offlineWindowMs:Math.max(savedWindow,requiredWindowMs)};
 }
 export async function recoverOwnedHusherCreation(id:string,d:Dependencies){
  uuid.parse(id);const saved=await d.store.read(id),p=saved?.plan;if(!saved||!p)throw Error('No durable creation intent.');
@@ -47,6 +50,28 @@ export async function recoverOwnedHusherCreation(id:string,d:Dependencies){
  await d.store.markCreated(id,saved.fingerprint,candidate.orderId);return {state:'created',orderId:candidate.orderId,canRetryCreate:false};
 }
 const signed=z.object({request:z.unknown(),response:z.unknown(),wallet:z.unknown()}).strict();
+// Authenticated route callers only. A signed envelope is an exact lookup proof,
+// never authority to reconstruct either journal or to resend a transaction.
+export async function recoverOwnedHusherSubmission(input:unknown,d:Dependencies){
+ const a=signed.parse(input),now=Date.now(),r=validateHusherDeposit(a.request,now,false),s=verifyHusherDepositResponse(a.response,r,a.wallet,now,false),wallet=multiPublicSchema.parse(a.wallet);
+ const id=uuid.parse(r.terms.externalUserId.slice(9)),saved=await d.store.read(id),p=saved?.plan;
+ if(!saved||!p||saved.state!=='created'||saved.externalUserId!==r.terms.externalUserId||saved.orderId!==r.terms.orderId||saved.fingerprint!==husherOrderPlanFingerprint(p)||p.refundAddress!==getAddress(r.payment.from)||p.payoutAddress!==getAddress(r.terms.payoutAddress)||parseUnits(p.exactReceiveAmount,6).toString()!==r.terms.exactReceiveBaseUnits||parseUnits(p.maximumProviderFees,6).toString()!==r.terms.maximumProviderFeeBaseUnits||BigInt(r.terms.sendBaseUnits)>parseUnits(p.maximumSendAmount,18))throw Error('Recovery approval does not match the durable creation intent.');
+ const prepared=await d.store.prepared(id);
+ if(!prepared||!isDeepStrictEqual(prepared.request,r)||!isDeepStrictEqual(prepared.wallet,wallet))throw Error('Recovery approval does not match the saved prepared request.');
+ if(!d.walletStore)throw Error('Shared wallet submission storage is required for recovery.');
+ const tx=Transaction.from(s.rawSignedTransaction);
+ const expected:WalletSubmissionClaim={version:1,kind:'evm',purpose:'transfer',protocolVersion:8,chainId:1,from:tx.from!.toLowerCase(),nonce:tx.nonce,hash:s.transactionHash,fingerprint:r.fingerprint,signedBytesDigest:sha256(s.rawSignedTransaction),expiresAt:r.payment.expiresAt};
+ const shared=await d.walletStore.read({family:'evm',chainId:1,hash:s.transactionHash});
+ if(shared&&!isDeepStrictEqual(shared,expected))throw Error('Shared submission journal identity differs.');
+ const provider=await d.store.submission(r.fingerprint);
+ if(provider&&(provider.hash!==s.transactionHash||provider.orderId!==r.terms.orderId||provider.nonceKey!=='1:'+tx.from!.toLowerCase()+':'+tx.nonce||!isDeepStrictEqual(provider.request,r)||!isDeepStrictEqual(provider.response,s)||!isDeepStrictEqual(provider.wallet,wallet)))throw Error('Provider submission journal identity differs.');
+ const journalState=shared?(provider?'both':'shared-only'):(provider?'provider-only':'not-claimed');
+ // Once durable identities are verified, a chain read failure must not hide the
+ // orphan diagnosis. No failed/unverified read is promoted into chain evidence.
+ const evidence=shared||provider?await husherDepositStatus({request:r,response:s,wallet},d.rpc).then(result=>({deposit:result.deposit,depositReadFailed:false})).catch(()=>({deposit:{state:'unknown' as const,hash:s.transactionHash,evidenceVerified:false},depositReadFailed:true})):{deposit:null,depositReadFailed:false};
+ return {state:'submission-recovery',journalState,hash:s.transactionHash,orderId:r.terms.orderId,...evidence,canResubmit:false,canRetryCreate:false,exchangeSettlementVerified:false,privacyEnabled:false,
+  notice:journalState==='shared-only'?'Shared intent exists without a provider submission record. Deposit evidence is read-only; no journal was repaired and no resend is permitted.':'Read-only journal and deposit evidence. Missing transaction evidence never permits a resend; payout requires separate verification.'};
+}
 export async function preflightOwnedHusherOrder(input:unknown,d:Dependencies){
  const a=signed.parse(input),r=validateHusherDeposit(a.request),s=verifyHusherDepositResponse(a.response,r,a.wallet),id=uuid.parse(r.terms.externalUserId.slice(9)),saved=await d.store.read(id),p=saved?.plan;
  if(!saved||!p||saved.state!=='created'||saved.orderId!==r.terms.orderId||saved.fingerprint!==husherOrderPlanFingerprint(p)||p.refundAddress!==getAddress(r.payment.from)||p.payoutAddress!==getAddress(r.terms.payoutAddress)||parseUnits(p.exactReceiveAmount,6).toString()!==r.terms.exactReceiveBaseUnits||parseUnits(p.maximumProviderFees,6).toString()!==r.terms.maximumProviderFeeBaseUnits||BigInt(r.terms.sendBaseUnits)>parseUnits(p.maximumSendAmount,18))throw Error('Approval does not match the durable creation intent.');
@@ -64,9 +89,19 @@ export async function submitOwnedHusherOrder(input:unknown,d:Dependencies,accept
  // Expired attempts still recover by exact hash; they can never be resubmitted.
  const r=validateHusherDeposit(a.request,Date.now(),false),verified=verifyHusherDepositResponse(a.response,r,a.wallet,Date.now(),false),previous=await d.store.submission(r.fingerprint);
  if(previous){if(previous.hash!==verified.transactionHash)throw Error('Durable submission differs.');return {state:'submission-uncertain',hash:previous.hash,canResubmit:false,notice:'A submission intent already exists. Reconcile the exact hash; never send again.'};}
+ if(!d.walletStore)throw Error('Shared wallet submission storage is required before broadcasting.');
+ const signedTx=Transaction.from(verified.rawSignedTransaction);
+ const shared:WalletSubmissionClaim={version:1,kind:'evm',purpose:'transfer',protocolVersion:8,chainId:1,from:signedTx.from!.toLowerCase(),nonce:signedTx.nonce,hash:verified.transactionHash,fingerprint:r.fingerprint,signedBytesDigest:sha256(verified.rawSignedTransaction),expiresAt:r.payment.expiresAt};
+ const identity={family:'evm' as const,chainId:1,hash:shared.hash};
+ const priorWalletClaim=await d.walletStore.read(identity);
+ if(priorWalletClaim){if(!isDeepStrictEqual(priorWalletClaim,shared))throw Error('Shared submission journal identity differs.');return {state:'submission-uncertain',hash:shared.hash,canResubmit:false};}
  const checked=await preflightOwnedHusherOrder(a,d),tx=Transaction.from(checked.s.rawSignedTransaction);
  const before=await husherDepositStatus({request:a.request,response:a.response,wallet:a.wallet},d.rpc);if(before.deposit.state!=='unknown')return {...before,state:'deposit-already-seen',canResubmit:false};
  const record={version:1 as const,fingerprint:r.fingerprint,orderId:r.terms.orderId,nonceKey:'1:'+r.payment.from.toLowerCase()+':'+tx.nonce,hash:checked.s.transactionHash,request:r,response:checked.s,wallet:multiPublicSchema.parse(a.wallet),state:'submission-uncertain' as const,createdAt:new Date().toISOString()};
+ // The common claim coordinates providers. Never release it if the separate
+ // provider journal fails or another process wins that provider claim.
+ if(!await d.walletStore.claim(shared))return {state:'submission-uncertain',hash:shared.hash,canResubmit:false};
+ if(!isDeepStrictEqual(await d.walletStore.read(identity),shared))throw Error('Shared submission intent failed durable verification. Do not resend.');
  const inserted=await d.store.claimSubmission(checked.id,record);
  if(!inserted)return {state:'submission-uncertain',hash:record.hash,canResubmit:false};
  const readBack=await d.store.submission(r.fingerprint);

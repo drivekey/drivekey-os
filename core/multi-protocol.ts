@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { Interface, Transaction as EvmTransaction, getAddress, keccak256, verifyMessage, ZeroAddress } from "ethers";
+import { Interface, Transaction as EvmTransaction, getAddress, keccak256, verifyMessage, ZeroAddress, formatUnits } from "ethers";
 import { PublicKey, SystemProgram, Transaction as SolTransaction } from "@solana/web3.js";
-import { TOKEN_PROGRAM_ID, createAssociatedTokenAccountIdempotentInstruction, createTransferCheckedInstruction, getAssociatedTokenAddressSync } from "@solana/spl-token";
+import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, createAssociatedTokenAccountIdempotentInstruction, createTransferCheckedInstruction, getAssociatedTokenAddressSync } from "@solana/spl-token";
 import nacl from "tweetnacl";
 import bs58 from "bs58";
 import { CHAIN_ID, MAX_FEE } from "./protocol";
@@ -100,12 +100,16 @@ export function verifyMultiResponse(input: unknown, request: unknown, publicInpu
 
 export function multiReview(input: unknown, checkExpiry = true): Record<string, string> {
   const r = validateMultiRequest(input, Date.now(), checkExpiry);
-  const review: Record<string, string> = { network: r.network === "robinhood" ? "Robinhood Chain / 4663" : "Solana / genesis " + r.genesisHash, from: r.from, recipient: r.recipient, asset: r.token, baseUnits: r.amount, decimals: String(r.decimals), expiryUTC: r.expiresAt, fingerprint: r.fingerprint, warning: "Token identity/decimals and chain state require independent verification. Application expiry cannot revoke signed bytes." };
+  const review: Record<string, string> = { network: r.network === "robinhood" ? "Robinhood Chain / 4663" : "Solana / genesis " + r.genesisHash, from: r.from, recipient: r.recipient, asset: r.token, amount: formatUnits(r.amount,r.decimals), baseUnits: r.amount, decimals: String(r.decimals), expiryUTC: r.expiresAt, fingerprint: r.fingerprint, warning: "Token identity/decimals and chain state require independent verification. Application expiry cannot revoke signed bytes." };
   if (r.network === "robinhood") {
     const tx = EvmTransaction.from(r.unsignedTransaction);
     if(r.version===6){review.signerRequirement=`${robinhoodTokenIdentity(r.token)!.signer} or later verified ISO for this token`;review.proxyCodeHash=r.codeHash;review.implementation=r.implementation;review.implementationCodeHash=r.implementationCodeHash;review.proxyWarning='Upgradeable token. Online preflight must recheck this exact implementation. Approval cannot prevent an upgrade after preflight.';}
+    review.tokenCodeHash = r.codeHash;
+    review.gasLimit = tx.gasLimit.toString();
+    review.maximumFeePerGasWei = tx.maxFeePerGas!.toString();
+    review.maximumPriorityFeePerGasWei = tx.maxPriorityFeePerGas!.toString();
     review.maximumFeeWei = (tx.gasLimit * tx.maxFeePerGas!).toString(); review.nonce = String(tx.nonce); review.calldata = tx.data;
     review.metadataTrust = "ERC-20 decimals are online-supplied; calldata proves recipient and base units, not token legitimacy.";
-  } else { review.maximumFeeLamports = r.maximumFee; review.accountRentLamports = r.accountRent; review.nonceAccount = r.nonceAccount; review.nonceValue = r.nonceValue; review.instructions = r.standard === "native" ? "Advance durable nonce; transfer SOL" : "Advance durable nonce; " + (r.createRecipientAccount ? "create recipient ATA; " : "") + "SPL TransferChecked"; }
+  } else { review.assetKind = r.standard === "native" ? "Native SOL" : "SPL token / exact mint shown above"; review.systemProgram = SystemProgram.programId.toBase58(); if(r.standard === "spl") { review.tokenProgram = TOKEN_PROGRAM_ID.toBase58(); if(r.createRecipientAccount)review.associatedTokenProgram = ASSOCIATED_TOKEN_PROGRAM_ID.toBase58(); } review.programWarning = "Program addresses describe the validated instructions; this offline review does not authenticate deployed executable bytes."; review.maximumFeeLamports = r.maximumFee; review.accountRentLamports = r.accountRent; review.nonceAccount = r.nonceAccount; review.nonceValue = r.nonceValue; review.instructions = r.standard === "native" ? "Advance durable nonce; transfer SOL" : "Advance durable nonce; " + (r.createRecipientAccount ? "create recipient ATA; " : "") + "SPL TransferChecked"; }
   return review;
 }

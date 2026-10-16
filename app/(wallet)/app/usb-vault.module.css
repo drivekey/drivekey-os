@@ -1,0 +1,55 @@
+.passwordGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.passwordGrid input,
+.unlock input {
+  width: 100%;
+  box-sizing: border-box;
+  background: #090a09;
+  border: 1px solid #30332f;
+  color: #fff;
+  padding: 13px;
+  font: 12px monospace;
+  outline: 0;
+}
+
+.passwordGrid input:focus,
+.unlock input:focus {
+  border-color: #c8ff37;
+}
+
+.unlock {
+  margin-top: 14px;
+  border: 1px solid #526326;
+  background: #10130e;
+  padding: 14px;
+}
+
+.unlock label > span {
+  display: block;
+  color: #c8ff37;
+  font: 9px monospace;
+  letter-spacing: .09em;
+  margin-bottom: 7px;
+}
+
+.unlock small {
+  display: block;
+  color: #858a82;
+  font: 10px monospace;
+  margin-top: 9px;
+}
+
+.progress {
+  display: block;
+  color: #c8ff37;
+  font: 9px monospace;
+  margin-top: 10px;
+}
+
+@media (max-width: 640px) {
+  .passwordGrid { grid-template-columns: 1fr; }
+}

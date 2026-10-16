@@ -1,12 +1,19 @@
 {
-  "name": "drivekey-os",
+  "name": "drivekey-dashboard",
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "dev": "next dev",
+    "build": "next build --webpack && node scripts/exclude-local-artifact-traces.mjs",
+    "start": "next start",
+    "sign-offline": "node outputs/tools-v2/drivekey-signer.cjs",
     "build:tools": "node scripts/build-tools.mjs",
-    "build:contracts": "node scripts/build-rules-v4.mjs",
-    "test": "vitest run",
-    "test:clock": "python3 scripts/test-rtc-clock.py"
+    "test:v2": "vitest run tests/protocol-v2.test.ts tests/companion-v2.test.ts tests/service-v2.test.ts tests/files-v2.test.ts",
+    "test:e2e:v2": "playwright test --config playwright.v2.config.ts",
+    "test:software": "vitest run tests/protocol-v2.test.ts tests/companion-v2.test.ts tests/service-v2.test.ts tests/files-v2.test.ts tests/gui-v3.test.ts tests/origin-policy.test.ts tests/drivekey.test.ts tests/hardware.test.ts tests/usb-vault.test.ts tests/offline-signer.test.mjs",
+    "test:release": "vitest run tests/protocol-v2.test.ts tests/companion-v2.test.ts tests/service-v2.test.ts tests/files-v2.test.ts tests/gui-v3.test.ts tests/origin-policy.test.ts tests/image-download.test.ts tests/drivekey.test.ts tests/hardware.test.ts tests/usb-vault.test.ts tests/offline-signer.test.mjs",
+    "test": "vitest run tests/drivekey.test.ts tests/offline-signer.test.mjs tests/hardware.test.ts tests/usb-vault.test.ts",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@ledgerhq/device-management-kit": "^1.8.0",

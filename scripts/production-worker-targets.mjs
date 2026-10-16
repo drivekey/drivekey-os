@@ -1,4 +1,6 @@
 export const targets=[
+ ['offline-signer/weth-conversion-public-parser-worker.ts','drivekey-weth-conversion-public-parser.cjs'],
+ ['offline-signer/weth-conversion-key-worker.ts','drivekey-weth-conversion-key-worker.cjs'],
  ['scripts/candidate-gui-worker.ts','drivekey-gui-worker.cjs'],
  ['offline-signer/savings-public-parser-worker.ts','drivekey-savings-public-parser.cjs'],
  ['offline-signer/savings-key-worker.ts','drivekey-savings-key-worker.cjs'],

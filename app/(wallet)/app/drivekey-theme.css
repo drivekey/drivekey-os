@@ -1,0 +1,136 @@
+/* DriveKey shared visual system.
+   Shared presentation only: no transaction, capability or signing changes. */
+:root {
+  --app-bg:#101114; --app-sidebar:#14151b; --app-panel:#18181f;
+  --app-raised:#22242d; --app-border:#30333f; --app-text:#f4f5f8;
+  --app-muted:#a1a4b5; --app-accent:#7892ff; --app-accent-bg:#22283e;
+  --app-green:#25d9a3; --app-warn:#e9bc77;
+}
+:root[data-theme=light] {
+  --app-bg:#f6f7fb; --app-sidebar:#fff; --app-panel:#fff;
+  --app-raised:#eef0f6; --app-border:#c9cfdd; --app-text:#202939;
+  --app-muted:#596277; --app-accent:#3854d6; --app-accent-bg:#e5eaff;
+  --app-green:#147453; --app-warn:#906017;
+}
+html body :is(.wallet-app,.terminal-app) h1 {font-size:1.43rem;letter-spacing:-.025em}
+html body :is(.wallet-app,.terminal-app,.wallet-dialog) h2 {font-size:1.2rem;letter-spacing:-.02em}
+html body :is(.wallet-app,.terminal-app,.wallet-dialog) h3 {font-size:1rem}
+html body :is(.wallet-app,.terminal-app) {line-height:1.55}
+html body :is(.wallet-app,.terminal-app)>main {font:400 1rem/1.55 var(--app-font);letter-spacing:normal}
+/* Shared page hierarchy: a title, optional context and the page's actions. */
+html body :is(.wallet-app,.terminal-app) .wallet-page-header {
+  display:flex;align-items:flex-start;justify-content:space-between;gap:16px;
+  margin:0 0 24px;padding:0;min-width:0;
+}
+.wallet-page-heading {min-width:0}
+html body :is(.wallet-app,.terminal-app) .wallet-page-header :is(h1,h2) {
+  display:flex;align-items:center;gap:10px;margin:0;
+  font:600 1.57rem/1.3 var(--app-font);letter-spacing:-.025em;color:var(--app-text);
+}
+html body :is(.wallet-app,.terminal-app) .wallet-page-header p {
+  margin:6px 0 0;font:400 .93rem/1.55 var(--app-font);color:var(--app-muted);
+}
+.wallet-page-icon {display:inline-flex;align-items:center;flex-shrink:0}
+.wallet-page-icon :is(img,svg) {width:24px;height:24px;object-fit:contain}
+.wallet-page-actions {display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.wallet-network-badge {border:1px solid var(--app-border);border-radius:5px;padding:5px 9px;color:var(--app-muted);font-size:.8rem}
+html body :is(.wallet-app,.terminal-app) .wallet-help {
+  margin:16px 0;color:var(--app-muted);font-size:.86rem;line-height:1.6;
+}
+.wallet-help summary {cursor:pointer;color:var(--app-text);font-weight:500}
+.wallet-help p {margin:10px 0}
+html body :is(.wallet-app,.terminal-app) :is(.payments-card,.assets-form,.agents-panel,.r21-setup article) {
+  border-radius:8px;padding:20px;
+}
+html body :is(.wallet-app,.terminal-app) :is(.payments-card,.assets-form,.agents-panel,.wallet-card,.r21-setup article) h2 {
+  font:600 1.14rem/1.4 var(--app-font);margin:0 0 16px!important;letter-spacing:-.02em;
+}
+html body :is(.wallet-app,.terminal-app) :is(.payments-card,.assets-form,.agents-panel,.r21-setup article) :is(p,ol,ul) {
+  font-size:.93rem;line-height:1.6;
+}
+html body :is(.wallet-app,.terminal-app) :is(.payments-card,.assets-form,.agents-panel,.r21-setup article) p:not(:empty) {margin:10px 0}
+html body :is(.wallet-app,.terminal-app) main label {letter-spacing:normal;text-transform:none}
+html body .terminal-app .payments-card label:has(>input[type=checkbox]) {flex-direction:row;align-items:flex-start;gap:10px}
+html body .terminal-app .payments-card input[type=checkbox] {width:17px;height:17px;min-height:17px;flex:0 0 17px;margin-top:3px}
+html body :is(.wallet-app,.terminal-app) main summary {cursor:pointer;font-family:var(--app-font);letter-spacing:normal}
+html body .terminal-app .payments-shell>p:empty {margin:0}
+.wallet-activity-details {margin-top:7px;font-size:.8rem;color:var(--app-muted)}
+.wallet-history-entry code {overflow-wrap:anywhere}
+.r21-setup {display:grid;gap:18px}
+.r21-setup article {min-width:0}
+.r21-setup :is(code,pre) {overflow-wrap:anywhere}
+.r21-setup li+li {margin-top:8px}
+.r21-legacy-guide {margin-top:24px}
+html body :is(.wallet-app,.terminal-app) .feature-status {
+  padding:10px 14px;margin-bottom:20px;border-radius:6px;align-items:center;
+}
+.feature-status .status-dot {margin-top:0}
+.wallet-balance-line {margin-bottom:20px}
+.wallet-balance-label {font-size:.85rem;color:var(--app-muted)}
+@media(max-width:600px){
+  html body :is(.wallet-app,.terminal-app) .wallet-page-header {flex-wrap:wrap;gap:12px}
+  .wallet-page-actions {max-width:100%}
+}
+.wallet-topbar {height:60px}
+/* Keep navigation metrics independent of the current page's inherited font. */
+.wallet-sidebar {padding-top:22px;font:400 1rem/1.55 var(--app-font);letter-spacing:normal}
+.wallet-sidebar .wallet-brand {font:650 18px/1.5 var(--app-font);padding-bottom:25px}
+.wallet-brand img {width:20px;height:27px}
+.wallet-sidebar :is(nav a,.sidebar-bottom>a,.sidebar-bottom>button) {
+  min-height:38px;padding:8px 12px;border-radius:5px;
+  font:500 .93rem/1.5 var(--app-font);letter-spacing:normal;text-transform:none;
+  justify-content:flex-start;white-space:normal;
+}
+.wallet-sidebar .sidebar-security {font:400 .86rem/1.55 var(--app-font)}
+.wallet-sidebar .sidebar-security small {font:400 .76rem/1.5 var(--app-font);color:inherit}
+.wallet-sidebar svg {width:16px;height:16px}
+.sidebar-label,.eyebrow {letter-spacing:.08em}
+html body :is(.wallet-app,.terminal-app)>main {padding-top:26px}
+.wallet-home-layout {gap:20px}
+.wallet-balance {border-radius:8px;padding:22px 24px;margin-bottom:20px}
+.wallet-balance:before {display:none}
+.wallet-balance h1 {font-size:1.43rem!important;margin-top:12px!important}
+.wallet-balance-line>strong {font-size:2.2rem}
+.wallet-assets,.wallet-market,.wallet-card,.feature-card {border-radius:6px;margin-bottom:18px}
+.wallet-card,.wallet-side-cards>.wallet-card {padding:20px;background:var(--app-panel)}
+.wallet-side-cards h2 {font-size:1.3rem!important}
+.wallet-assets>.wallet-section-heading,.wallet-market>.wallet-section-heading {padding:16px 20px}
+.wallet-assets td {padding:14px 20px}
+.wallet-assets tbody tr:nth-child(even) {background:color-mix(in srgb,var(--app-raised) 28%,var(--app-panel))}
+.wallet-coin {width:22px;height:22px}
+.wallet-market-card {padding:12px;border-radius:5px}
+.feature-card {padding:16px}
+.feature-card>svg:first-child {width:18px;height:18px}
+html body :is(.wallet-app,.terminal-app,.wallet-dialog) .wallet-pill {min-height:34px;padding:8px 12px;border-radius:5px}
+html body .terminal-app :is(.payments-card,.assets-form,.manual-card,.dk-card,.transfer-card,.setup-card) {border-radius:6px;padding:20px}
+html body .terminal-app :is(.payments-intro h1,.setup-intro h1,.transfer-heading h1) {font-size:1.43rem;letter-spacing:-.025em}
+html body .wallet-app.agents-workspace .agents-panel {border-radius:6px}
+.wallet-history-entry {padding:15px 0}
+.wallet-dialog {border-radius:10px;border:1px solid var(--app-border);box-shadow:0 24px 90px #0006}
+.wallet-dialog::backdrop {background:#08090dcc;backdrop-filter:blur(6px)}
+.wallet-dialog[aria-label=Settings] {width:min(760px,calc(100vw - 32px));max-width:760px;padding:0}
+.wallet-dialog[aria-label=Settings]>header {padding:18px 22px;margin:0;border-bottom:1px solid var(--app-border)}
+.appearance-layout {display:grid;grid-template-columns:155px minmax(0,1fr)}
+.appearance-caption {padding:24px 18px;border-right:1px solid var(--app-border);color:var(--app-muted);font-size:.85rem}
+.appearance-caption strong {display:block;color:var(--app-text);font-weight:500;margin-bottom:8px}
+.appearance-content {padding:22px;min-width:0}
+.appearance-presets {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0 24px}
+.appearance-preset {border:1px solid var(--app-border);border-radius:5px;background:var(--app-raised);color:var(--app-text);padding:5px;font:500 .85rem var(--app-font)}
+.appearance-preset[aria-pressed=true] {outline:2px solid var(--app-accent);outline-offset:2px}
+.appearance-swatch {display:block;height:62px;border-radius:3px;background:#101114;position:relative;margin-bottom:7px;border:1px solid #343640}
+.appearance-swatch:before {content:'';position:absolute;left:10px;top:16px;width:56%;height:4px;background:#f4f5f8;box-shadow:0 9px #9194a6,0 18px #616475;border-radius:2px}
+.appearance-swatch.light {background:#f6f7fb;border-color:#c9cfdd}
+.appearance-swatch.light:before {background:#202939;box-shadow:0 9px #596277,0 18px #9b9eaf}
+.appearance-swatch.system {background:linear-gradient(90deg,#101114 50%,#f6f7fb 50%)}
+.appearance-content .wallet-settings-row {padding:13px 0}
+.appearance-content input[type=checkbox] {accent-color:var(--app-accent);width:18px;height:18px;min-height:18px}
+.appearance-footer {padding:14px 22px;border-top:1px solid var(--app-border);display:flex;justify-content:flex-end}
+html body .wallet-dialog .appearance-footer .wallet-pill {background:var(--app-text);color:var(--app-bg);border-color:var(--app-text)}
+:root[data-theme=light] .wallet-dialog::backdrop {background:#24304766}
+:is(.wallet-pill,.appearance-preset,.wallet-sidebar a) {transition:background-color 150ms,border-color 150ms}
+@media(max-width:800px){.wallet-topbar{height:60px}.wallet-assets td{padding:14px}.appearance-layout{grid-template-columns:1fr}.appearance-caption{border-right:0;border-bottom:1px solid var(--app-border);padding:14px 20px}.appearance-caption p{margin:0}.appearance-content{padding:18px}.appearance-swatch{height:48px}}
+@media(prefers-reduced-motion:reduce){.wallet-dialog::backdrop{backdrop-filter:none}:is(.wallet-pill,.appearance-preset,.wallet-sidebar a){transition:none}}
+html[data-reduced=true] .wallet-dialog::backdrop {backdrop-filter:none}
+html body .wallet-dialog .appearance-preset {display:block;text-transform:none;letter-spacing:normal;padding:6px 6px 9px}
+html body .wallet-dialog .appearance-swatch {display:block;width:100%}
+html body :is(.wallet-app,.terminal-app,.wallet-dialog) button {text-transform:none;letter-spacing:normal}

@@ -119,7 +119,7 @@ class SimpleRulesMixin:
             if var.get() or recipient['recipient'] in self.draft['labels']:self.draft['labels'][recipient['recipient']]=var.get()
         addresses={r['recipient'] for r in self.draft['rules']['recipients']}
         self.draft['labels']={k:v for k,v in self.draft['labels'].items() if k in addresses}
-        self.review=None
+        self.invalidate_approval()
 
     def change_mode(self,simple):
         try:self.commit()
@@ -165,6 +165,7 @@ class SimpleRulesMixin:
         self.step=step;self.render()
 
     def render(self):
+        self.invalidate_approval()
         if not self.simple:
             super().render();self.mode_control();return
         a=self.app;a.mode='rules';a.passphrase.set('');self.bindings=[];self.label_bindings=[]
@@ -296,7 +297,8 @@ class SimpleRulesMixin:
 
     def reviewed(self,reply):
         if not reply.get('ok'):return
-        self.review=reply;a=self.app;a.clear('Review your rules','Draft · not signed or active')
+        self.invalidate_approval();self.review=copy.deepcopy(reply);a=self.app;a.clear('Review your rules','Draft · not signed or active')
+        self.review_generation=a.transition_id
         for line in reply['explanation']:a.text(a.body,line,11,theme.FG)
         for asset,value in reply.get('exposure',{}).items():a.text(a.body,'Maximum exposure: '+value['display']+' '+asset.upper()+'. '+value['label'],10)
         box=a.card('What changes','Highlighted changes need attention: new authority, role changes or removed restrictions.')
@@ -327,5 +329,5 @@ class SimpleRulesMixin:
         for key in ('contractVersion','ownerEpoch','revision','safetyEpoch','policyHash','accountCodeHash','registryCodeHash'):
             a.text(technical,key+': '+str(c[key]),10,mono=True)
         a.text(technical,'Authorization fingerprint: '+reply['fingerprint'],10,mono=True)
-        approval=a.button(a.body,'Approve these rules',self.approve,True);approval.pack(anchor='w',pady=8)
+        approval=a.button(a.body,'Approve these rules',a.screen_command(self.approve),True);approval.pack(anchor='w',pady=8)
         a.button(a.body,'Edit rules',self.render).pack(anchor='w')

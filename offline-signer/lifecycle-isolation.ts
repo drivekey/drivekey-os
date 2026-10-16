@@ -1,0 +1,5 @@
+import {runSandbox} from './sandbox-process';
+import {decodeLifecycleVault,encodeLifecycleCommand,decodeLifecycleResult,LIFECYCLE_MAX_VAULT,LIFECYCLE_MAX_COMMAND,LIFECYCLE_MAX_RESPONSE,type LifecycleProfile,type LifecycleOperation,type LifecycleVault} from './lifecycle-boundary-codec';
+const node='/opt/drivekey/node/bin/node',parser='/opt/drivekey/drivekey-lifecycle-public-parser.cjs',key='/opt/drivekey/drivekey-lifecycle-key-worker.cjs';
+export async function parseLifecycleVault(profile:LifecycleProfile,bytes:Buffer){return decodeLifecycleVault(profile,await runSandbox({node,program:parser,args:[profile==='v2'?'lifecycle-v2':'lifecycle-v3'],inputLimit:32768,outputLimit:LIFECYCLE_MAX_VAULT,timeoutMs:10000,heapMb:64},bytes));}
+export async function isolatedLifecycleOperation(op:LifecycleOperation,vault:LifecycleVault|null,password:string){const input=encodeLifecycleCommand(op,vault,password);try{return decodeLifecycleResult(await runSandbox({node,program:key,args:[],inputLimit:LIFECYCLE_MAX_COMMAND,outputLimit:LIFECYCLE_MAX_RESPONSE,timeoutMs:90000,heapMb:128},input),op,vault);}finally{input.fill(0);}}

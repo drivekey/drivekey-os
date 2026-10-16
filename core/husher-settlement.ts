@@ -1,6 +1,6 @@
 import 'server-only';
 import {z} from 'zod';
-import {Interface,Transaction,Signature,getAddress,toQuantity} from 'ethers';
+import {Interface,Transaction,Signature,getAddress,toQuantity,parseUnits} from 'ethers';
 import {validateHusherDeposit,verifyHusherDepositResponse} from './husher-deposit-protocol';
 import {husherInspectionIntent,husherDepositStatus} from './husher-deposit-online';
 import {inspectFixedOrderTerms} from './husher-fixed-terms';
@@ -55,18 +55,59 @@ export async function inspectHusherSettlement(input:{request:unknown;response:un
  const correlation=await inspectHusherCreateRecovery({route:'eth-usdc',amount:husherInspectionIntent(r).sendAmount,recipient:t.payoutAddress,externalUserId:t.externalUserId,orderType:'normal'},dependencies.key,dependencies.fetcher);
  if(correlation.state!=='candidate-found'||!('orderId' in correlation)||correlation.orderId!==t.orderId)throw Error('Provider order correlation did not match.');
  const read=()=>readHusherOrder(t.orderId,dependencies.key,dependencies.fetcher);
+ const raw=await read();
+ // Documented refund responses can omit fees and rate-lock terms. Preserve the
+ // correlated report without fabricating missing terms or accepting a refund
+ // receipt. This path cannot authorize deposits, payouts, retries or new terms.
+ const reported=z.object({id:z.literal(t.orderId),status:z.string()}).parse(raw);
+ if(reported.status==='refund'){
+  const refund=z.object({id:z.literal(t.orderId),status:z.literal('refund'),provider:z.literal('husher').optional(),hashIn:digest.nullish()}).parse(raw);
+  if(refund.hashIn&&!eq(refund.hashIn,s.transactionHash))throw Error('Provider deposit hash differs from the signed transaction.');
+  const {deposit}=await husherDepositStatus(input,dependencies.rpc);
+  return {deposit,providerStatus:'refund',state:'refund-unverified',privacyEnabled:false,canResubmit:false,exchangeSettlementVerified:false,refundVerified:false,providerTermsVerified:false,
+   notice:'Provider reports a refund. Refund transaction, amount and receipt are not verified. Do not resend.'};
+ }
+ // The official status contract explicitly allows null fees. Recovery may still
+ // report the independently observed signed deposit; it cannot verify exchange
+ // terms, payout, or authorize another submission with those fees unavailable.
+ const nullableFees=z.object({feeAmount:z.unknown().optional(),networkFee:z.unknown().optional()}).parse(raw);
+ if(nullableFees.feeAmount===null||nullableFees.networkFee===null){
+  const decimal=z.string().max(80).regex(/^(0|[1-9][0-9]*)(\.[0-9]+)?$/);
+  const incomplete=z.object({id:z.literal(t.orderId),provider:z.literal('husher'),fixedRate:z.literal(true),
+   status:z.enum(['pending','confirmed','exchanging','withdraw','completed','expired','failed']),
+   sendAddress:z.string(),receiveAddress:z.string(),refundAddress:z.string(),sendToken:z.literal('ETH'),receiveToken:z.literal('USDC'),sendNetwork:z.literal('ETH'),receiveNetwork:z.literal('ETH'),
+   sendAmount:decimal,receiveAmount:decimal,feeAmount:decimal.nullable(),networkFee:decimal.nullable(),
+   depositDeadline:z.string().datetime({offset:true}),rateLockExpiresAt:z.string().datetime({offset:true}),orderExpiresAt:z.string().datetime({offset:true}),
+   sendTag:z.string().nullish(),receiveTag:z.string().nullish(),refundTag:z.string().nullish(),hashIn:digest.nullish()}).parse(raw);
+  if(getAddress(incomplete.sendAddress)!==getAddress(t.depositAddress)||getAddress(incomplete.receiveAddress)!==getAddress(t.payoutAddress)||getAddress(incomplete.refundAddress)!==getAddress(t.refundAddress)||
+   parseUnits(incomplete.sendAmount,18)!==BigInt(t.sendBaseUnits)||parseUnits(incomplete.receiveAmount,6)!==BigInt(t.exactReceiveBaseUnits)||
+   [incomplete.sendTag,incomplete.receiveTag,incomplete.refundTag].some(tag=>tag!=null&&tag!=='')||
+   Date.parse(incomplete.depositDeadline)!==Date.parse(t.depositDeadline)||Date.parse(incomplete.rateLockExpiresAt)!==Date.parse(t.rateLockExpiresAt)||Date.parse(incomplete.orderExpiresAt)!==Date.parse(t.orderExpiresAt)||
+   incomplete.feeAmount!==null&&parseUnits(incomplete.feeAmount,6)!==BigInt(t.providerFeeBaseUnits)||
+   incomplete.networkFee!==null&&parseUnits(incomplete.networkFee,6)!==BigInt(t.withdrawalFeeBaseUnits))throw Error('Provider terms changed after approval.');
+  if(incomplete.hashIn&&!eq(incomplete.hashIn,s.transactionHash))throw Error('Provider deposit hash differs from the signed transaction.');
+  const {deposit}=await husherDepositStatus(input,dependencies.rpc);
+  return {deposit,providerStatus:incomplete.status,state:'provider-terms-unavailable',privacyEnabled:false,canResubmit:false,exchangeSettlementVerified:false,providerTermsVerified:false,
+   notice:'Provider fees are unavailable. Only the signed deposit was checked. Exchange settlement is unverified; do not resend.'};
+ }
  const verify=(raw:unknown)=>{const inspected=inspectFixedOrderTerms(husherInspectionIntent(r),raw,Date.now()),c=inspected.context;
   if(c.feeBaseUnits!==t.providerFeeBaseUnits||c.withdrawalFeeBaseUnits!==t.withdrawalFeeBaseUnits||Date.parse(c.depositDeadline)!==Date.parse(t.depositDeadline)||Date.parse(c.rateLockExpiresAt)!==Date.parse(t.rateLockExpiresAt)||Date.parse(c.orderExpiresAt)!==Date.parse(t.orderExpiresAt))throw Error('Provider terms changed after approval.');
   return {...statusSchema.parse(raw),status:inspected.providerStatus};};
- const provider=verify(await read());
+ const provider=verify(raw);
  if(provider.hashIn&&!eq(provider.hashIn,s.transactionHash))throw Error('Provider deposit hash differs from the signed transaction.');
  const {deposit}=await husherDepositStatus(input,dependencies.rpc);
  const base={deposit,providerStatus:provider.status,privacyEnabled:false,canResubmit:false,exchangeSettlementVerified:false};
- if(provider.status==='refund')return {...base,state:'refund-unverified',notice:'Provider reports refund. Its documented API does not bind a refund hash and exact net amount; do not mark refunded or resend.'};
  if(provider.status!=='completed'||!provider.hashOut||!provider.hashIn||deposit.state!=='confirmed'||deposit.finality!=='finalized')return {...base,state:'exchange-pending'};
  if(eq(provider.hashOut,s.transactionHash))throw Error('Payout cannot reuse deposit evidence.');
  const payout=await husherPayoutEvidence(r,provider.hashOut,dependencies.rpc);
  const after=verify(await read());if(after.hashIn!==provider.hashIn||after.hashOut!==provider.hashOut||after.status!==provider.status)throw Error('Provider settlement identity changed during verification.');
- if(payout.settlementVerified&&'logIndex' in payout)await dependencies.claimPayout(t.orderId,provider.hashOut,payout.logIndex!);
+ if(payout.settlementVerified&&'logIndex' in payout){
+  // Payout verification performs asynchronous reads. Do not claim the exchange
+  // using deposit evidence that disappeared or changed during those reads.
+  const latest=await husherDepositStatus(input,dependencies.rpc);
+  if(latest.deposit.state!=='confirmed'||latest.deposit.finality!=='finalized'||
+   latest.deposit.evidenceBlockHash!==deposit.evidenceBlockHash||latest.deposit.evidenceBlockNumber!==deposit.evidenceBlockNumber)throw Error('Deposit evidence changed during settlement verification.');
+  await dependencies.claimPayout(t.orderId,provider.hashOut,payout.logIndex!);
+ }
  return {...base,payout,state:payout.settlementVerified?'exchange-finalized':payout.state,exchangeSettlementVerified:payout.settlementVerified};
 }

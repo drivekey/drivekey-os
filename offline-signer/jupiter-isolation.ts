@@ -1,0 +1,6 @@
+import {runSandbox} from './sandbox-process';
+import {decodeJupiterRouteFrame,decodeJupiterRequestFrame,encodeJupiterSigningFrame,decodeJupiterResponseFrame,MAX_JUPITER_REQUEST_FRAME,MAX_JUPITER_SIGN_FRAME,MAX_JUPITER_RESPONSE_FRAME} from './jupiter-boundary-codec';
+const node='/opt/drivekey/node/bin/node',parser='/opt/drivekey/drivekey-jupiter-public-parser.cjs',signer='/opt/drivekey/drivekey-jupiter-key-worker.cjs';
+export async function isJupiterTradeBytes(bytes:Buffer){return decodeJupiterRouteFrame(await runSandbox({node,program:parser,args:['jupiter-route'],inputLimit:32768,outputLimit:9,timeoutMs:10000,heapMb:64},bytes));}
+export async function parseJupiterRequestBytes(bytes:Buffer){return decodeJupiterRequestFrame(await runSandbox({node,program:parser,args:['jupiter-request'],inputLimit:32768,outputLimit:MAX_JUPITER_REQUEST_FRAME,timeoutMs:10000,heapMb:64},bytes));}
+export async function isolatedJupiterResponse(request:unknown,vault:unknown,fingerprint:string,password:string){const frame=encodeJupiterSigningFrame(request,vault,fingerprint,password);try{return decodeJupiterResponseFrame(await runSandbox({node,program:signer,args:[],inputLimit:MAX_JUPITER_SIGN_FRAME,outputLimit:MAX_JUPITER_RESPONSE_FRAME,timeoutMs:90000,heapMb:128},frame));}finally{frame.fill(0);}}

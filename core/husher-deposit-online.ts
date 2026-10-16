@@ -8,18 +8,21 @@ import {multiPublicSchema} from './multi-protocol';
 import {ETH_TOKENS,tradeFingerprint} from './trade-protocol';
 import {preflightTradeTransaction,tradeStatus,prepareTrade} from './trade-online';
 import type {Rpc} from './protocol';
+import {HUSHER_MIN_OFFLINE_WINDOW_MS,HUSHER_SUBMISSION_BUFFER_MS,HUSHER_OFFLINE_WINDOW_ERROR,husherRequestDeadlines,requireHusherWindow} from './husher-timing';
 
 const preparation=husherFixedIntent.extend({route:z.literal('eth-usdc'),wallet:multiPublicSchema,externalUserId:z.string().regex(/^drivekey-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)}).strict();
 // Preparation of a previously correlated order only. Does not create an order,
 // reserve a monthly budget, export a file, or grant the public execution gate.
 export async function prepareHusherDeposit(input:unknown,dependencies:{rpc:Rpc;key:string|undefined;fetcher?:typeof fetch}){
  const a=preparation.parse(input);
+ // Direct callers cannot lower the Windows reboot/review floor.
+ a.requiredWindowMs=Math.max(HUSHER_MIN_OFFLINE_WINDOW_MS,a.requiredWindowMs);
  await inspectHusherAssetAccess(dependencies.key,dependencies.fetcher);
  const recovery=await inspectHusherCreateRecovery({route:a.route,amount:a.sendAmount,recipient:a.recipient,externalUserId:a.externalUserId,orderType:'normal'},dependencies.key,dependencies.fetcher);
  if(recovery.state!=='candidate-found'||!('orderId' in recovery)||recovery.orderId!==a.orderId)throw Error('Provider order does not match its saved creation intent. Do not recreate.');
  const intent=husherFixedIntent.parse(Object.fromEntries(Object.keys(husherFixedIntent.shape).map(k=>[k,a[k as keyof typeof a]])));
  const inspected=await inspectHusherFixedOrder(intent,dependencies.key,Date.now(),dependencies.fetcher);
- if(!inspected.reviewWindowAvailable)throw Error('Insufficient provider window for offline review.');
+ if(!inspected.reviewWindowAvailable)throw Error(HUSHER_OFFLINE_WINDOW_ERROR);
  const prepared=await prepareTrade({wallet:a.wallet,kind:'payment',tokenIn:'ETH',amount:a.sendAmount,recipient:a.depositAddress},dependencies.rpc);
  if(!prepared.request||prepared.request.version!==7)throw Error('No supported provider deposit was prepared.');
  const p=prepared.request,c=inspected.context;
@@ -29,20 +32,22 @@ export async function prepareHusherDeposit(input:unknown,dependencies:{rpc:Rpc;k
   depositAddress:c.depositAddress,payoutAddress:c.recipient,refundAddress:c.refundAddress,sendBaseUnits:c.sendBaseUnits,exactReceiveBaseUnits:c.receiveBaseUnits,providerFeeBaseUnits:c.feeBaseUnits,withdrawalFeeBaseUnits:c.withdrawalFeeBaseUnits,maximumProviderFeeBaseUnits:c.maximumProviderFeeBaseUnits,
   depositDeadline:new Date(c.depositDeadline).toISOString(),rateLockExpiresAt:new Date(c.rateLockExpiresAt).toISOString(),orderExpiresAt:new Date(c.orderExpiresAt).toISOString()},fingerprint:''};
  r.fingerprint=husherDepositFingerprint(r);validateHusherDeposit(r);
- if(Date.parse(p.expiresAt)-Date.now()<a.requiredWindowMs)throw Error('Provider window elapsed during preparation.');
+ requireHusherWindow(husherRequestDeadlines(r),Date.now(),a.requiredWindowMs,'offline');
  return {request:r,requiredIso:'RC19',ordersEnabled:false,submissionEnabled:false,privacyEnabled:false};
 }
 
-export function husherInspectionIntent(r:HusherDepositRequest,requiredWindowMs=30000){
+export function husherInspectionIntent(r:HusherDepositRequest,requiredWindowMs=HUSHER_SUBMISSION_BUFFER_MS){
  const t=r.terms;return {orderId:t.orderId,route:'eth-usdc' as const,depositAddress:t.depositAddress,recipient:t.payoutAddress,refundAddress:t.refundAddress,
   sendAmount:formatUnits(t.sendBaseUnits,18),exactReceiveAmount:formatUnits(t.exactReceiveBaseUnits,6),maximumProviderFees:formatUnits(t.maximumProviderFeeBaseUnits,6),requiredWindowMs};
 }
 export async function preflightHusherDeposit(input:{request:unknown;response:unknown;wallet:unknown},dependencies:{rpc:Rpc;key:string|undefined;fetcher?:typeof fetch}){
  const r=validateHusherDeposit(input.request),s=verifyHusherDepositResponse(input.response,r,input.wallet),t=r.terms;
+ requireHusherWindow(husherRequestDeadlines(r),Date.now(),HUSHER_SUBMISSION_BUFFER_MS,'submission');
  await inspectHusherAssetAccess(dependencies.key,dependencies.fetcher);
  const read=()=>inspectHusherFixedOrder(husherInspectionIntent(r),dependencies.key,Date.now(),dependencies.fetcher);
  const check=(inspection:Awaited<ReturnType<typeof read>>)=>{
   const c=inspection.context;
+  requireHusherWindow([...husherRequestDeadlines(r),c.depositDeadline,c.rateLockExpiresAt,c.orderExpiresAt],Date.now(),HUSHER_SUBMISSION_BUFFER_MS,'submission');
   if(!inspection.reviewWindowAvailable||c.feeBaseUnits!==t.providerFeeBaseUnits||c.withdrawalFeeBaseUnits!==t.withdrawalFeeBaseUnits||
    Date.parse(c.depositDeadline)!==Date.parse(t.depositDeadline)||Date.parse(c.rateLockExpiresAt)!==Date.parse(t.rateLockExpiresAt)||Date.parse(c.orderExpiresAt)!==Date.parse(t.orderExpiresAt))throw Error('Provider terms changed or insufficient deposit window. Obtain a fresh approval.');
  };

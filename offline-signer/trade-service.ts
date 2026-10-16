@@ -1,16 +1,23 @@
 // OFFLINE ONLY: shares the encrypted multichain vault, never its secret with the web app.
 import { z } from 'zod';
-import { Transaction } from 'ethers';
-import { VersionedMessage,VersionedTransaction } from '@solana/web3.js';
-import nacl from 'tweetnacl';
-import bs58 from 'bs58';
 import { assertOfflineEnvironment } from './environment';
-import { readJsonFile, safeDirectory, writeJsonFile } from '../core/files';
-import { multiVaultSchema, unlockMultiVault } from './multi-vault';
-import { tradeApproval, tradeReview, validateTrade, verifyTradeResponse } from '../core/trade-protocol';
-import { solSwapApproval,solSwapReview,validateSolSwap,verifySolSwapResponse } from '../core/sol-swap-protocol';
+import { safeDirectory } from '../core/files';
 import {offlineNonceSignAction} from './nonce-service';
 import {husherOfflineAction} from './husher-service';
+import {lifiOfflineAction} from './lifi-service';
+import {readBoundedExchangeBytes} from './exchange-bytes';
+import {isLifiTradeBytes} from './lifi-isolation';
+import {isHusherTradeBytes} from './husher-isolation';
+import {isEthNativeTradeBytes} from './eth-native-isolation';
+import {ethNativeOfflineAction} from './eth-native-service';
+import {isJupiterTradeBytes} from './jupiter-isolation';
+import {isExpiringJupiterBytes} from './jupiter-expiring-isolation';
+import {expiringJupiterOfflineAction} from './jupiter-expiring-service';
+import {isNonceControlBytes} from './nonce-control-isolation';
+import {nonceControlOfflineAction} from './nonce-control-service';
+import {isNonceTradeBytes} from './nonce-isolation';
+import {isEthTradeBytes} from './eth-trade-isolation';
+import {ethTradeOfflineAction} from './eth-trade-service';
 export const TRADE_FILES={request:'unsigned-trade-request.json',response:'signed-trade-response.json'};
 const command=z.discriminatedUnion('action',[
  z.object({scope:z.literal('trade'),action:z.literal('inspect')}).strict(),
@@ -18,30 +25,18 @@ const command=z.discriminatedUnion('action',[
 ]);
 export async function tradeOfflineAction(input:unknown,directory:string) {
  const c=command.parse(input);await assertOfflineEnvironment();await safeDirectory(directory);
- const raw=await readJsonFile(directory,TRADE_FILES.request);
- if(raw&&typeof raw==='object'&&'version' in raw&&raw.version===8)return husherOfflineAction(c,directory);
- if(raw&&typeof raw==='object'&&'version' in raw&&raw.version===5)return offlineNonceSignAction(c,directory);
- const sol=!!raw&&typeof raw==='object'&&'network' in raw&&raw.network==='solana';
- const r=sol?validateSolSwap(raw,Date.now(),c.action==='sign'):validateTrade(raw,Date.now(),c.action==='sign');
- const v=multiVaultSchema.parse(await readJsonFile(directory,'vault-multi-encrypted.json'));
- if(v.public.deviceId!==r.deviceId||(sol?v.public.solanaAddress!==r.from:v.public.evmAddress.toLowerCase()!==r.from.toLowerCase()))throw Error('Request belongs to a different vault.');
- if(c.action==='inspect')return {inspection:{state:Date.now()>=Date.parse(r.expiresAt)?'expired':'ready',canSign:Date.now()<Date.parse(r.expiresAt),review:sol?solSwapReview(r,false):tradeReview(r,false),message:(sol?'Solana':'Ethereum')+' release-candidate transaction. Review every field before signing.'}};
- if(c.fingerprint!==r.fingerprint)throw Error('Request changed since review.');
- const keys=await unlockMultiVault(v,c.password);
- try {
-  if(r.network==='solana'){
-   const tx=new VersionedTransaction(VersionedMessage.deserialize(Buffer.from(r.unsignedMessage,'base64')));tx.sign([keys.sol]);
-   const response=verifySolSwapResponse({version:4,network:'solana',requestId:r.requestId,deviceId:r.deviceId,fingerprint:r.fingerprint,signedAt:new Date().toISOString(),rawSignedTransaction:Buffer.from(tx.serialize()).toString('base64'),approvalSignature:bs58.encode(nacl.sign.detached(solSwapApproval(r),keys.sol.secretKey)),transactionHash:bs58.encode(tx.signatures[0])},r,v.public);
-   await assertOfflineEnvironment();validateSolSwap(r);
-   if(validateSolSwap(await readJsonFile(directory,TRADE_FILES.request)).fingerprint!==r.fingerprint)throw Error('Request changed during signing.');
-   await writeJsonFile(directory,TRADE_FILES.response,response,true);
-   return {hash:response.transactionHash,message:'signed-trade-response.json saved and verified. No funds sent.'};
-  }
-  const rawSignedTransaction=await keys.evm.signTransaction(Transaction.from(r.unsignedTransaction));
-  const response=verifyTradeResponse({version:r.version,requestId:r.requestId,deviceId:r.deviceId,fingerprint:r.fingerprint,signedAt:new Date().toISOString(),rawSignedTransaction,approvalSignature:await keys.evm.signMessage(tradeApproval(r)),transactionHash:Transaction.from(rawSignedTransaction).hash},r,v.public);
-  await assertOfflineEnvironment();validateTrade(r);
-  if(validateTrade(await readJsonFile(directory,TRADE_FILES.request)).fingerprint!==r.fingerprint)throw Error('Request changed during signing.');
-  await writeJsonFile(directory,TRADE_FILES.response,response,true);
-  return {hash:response.transactionHash,message:'signed-trade-response.json saved and verified. No funds sent.'};
- }finally{keys.sol.secretKey.fill(0);}
+ // Route before JSON/transaction parsing in this broker. Parser failure is fatal,
+ // never a fallback into a legacy in-process signer. LI.FI keeps these exact bytes.
+ const requestBytes=await readBoundedExchangeBytes(directory,TRADE_FILES.request);
+ if(await isExpiringJupiterBytes(requestBytes))return expiringJupiterOfflineAction(c,directory,requestBytes);
+ if(await isNonceControlBytes(requestBytes))return nonceControlOfflineAction(c,directory,requestBytes);
+ if(await isLifiTradeBytes(requestBytes))return lifiOfflineAction(c,directory,requestBytes);
+ if(await isHusherTradeBytes(requestBytes))return husherOfflineAction(c,directory,requestBytes);
+ if(await isEthNativeTradeBytes(requestBytes))return ethNativeOfflineAction(c,directory,requestBytes);
+ if(await isJupiterTradeBytes(requestBytes))throw Error('Historical Jupiter v4 approvals are recovery-only. Prepare a swap with on-chain expiry.');
+ if(await isNonceTradeBytes(requestBytes))return offlineNonceSignAction(c,directory,requestBytes);
+ if(await isEthTradeBytes(requestBytes))return ethTradeOfflineAction(c,directory,requestBytes);
+ // All current supported trade formats use a fixed parser/key boundary. A
+ // malformed, lying or unsupported route can never reach an in-process signer.
+ throw Error('Unsupported request in isolated trade routing.');
 }

@@ -18,6 +18,7 @@ from drivekey_appearance import preset
 from drivekey_settings import SettingsModal
 from drivekey_rules import RulesEditor, inspect_payment_approval
 from drivekey_character_field import CharacterField
+from drivekey_savings_action import SavingsActionState
 from drivekey_widgets import PillButton, Surface, Toggle, SlimScrollbar, rounded, icon
 from drivekey_theme import (ui_font, shared_font, set_large_text, set_font_family,
                            set_motion, motion_enabled, BG, PANEL, EDGE, FG, MUTED,
@@ -39,13 +40,76 @@ PURPOSES = {
     'signed-multi-response.json': 'OUTGOING / Approved multichain signature. Treat as payment authority.',
     'unsigned-trade-request.json': 'INCOMING / Transaction file — inspect to identify.',
     'signed-trade-response.json': 'OUTGOING / Exact reviewed signature. Not submitted.',
+    'unsigned-weth-conversion.json': 'INCOMING / Separate ETH / WETH self conversion.',
+    'signed-weth-conversion.json': 'OUTGOING / Conversion signature. Not submitted; not a swap.',
     'rules-account-context.json': 'OBSERVATION / Last reported online account and rules.',
     'rules-local-draft.json': 'DRAFT / Local rules; no spending authority changed.',
     'rules-signed-authorization.json': 'SIGNED / Awaiting explicit online application.',
     'rules-application-evidence.json': 'EVIDENCE / Reported application confirmation; finality separate.',
     'rules-payment-approval.json': 'INCOMING / Exact pending payment for the separate approver.',
     'rules-signed-payment-approval.json': 'SIGNED / Exact payment approval; not a payment receipt.',
+    'savings-setup-request.json': 'PUBLIC / Unfunded savings setup session. No transaction authority.',
+    'savings-setup-proof.json': 'PUBLIC / One setup proof. No vault deployed or funds authorized.',
+    'savings-review-expectation.json': 'UNTRUSTED / Compare vault and current policy independently.',
+    'savings-action-request.json': 'INCOMING / Exact savings action for offline review.',
+    'savings-signed-authorization.json': 'AUTHORIZATION / Transferable approval. Not queued or submitted.',
+    'savings-transaction-request.json': 'INCOMING / Exact savings deployment or network transaction.',
+    'savings-transaction-response.json': 'SIGNED / Savings network transaction. Not submitted.',
 }
+SAVINGS_PURPOSES = {'register':'Prove signer control', 'restore':'Rehearse encrypted backup recovery', 'quorum':'Approve shared unfunded rehearsal'}
+
+
+class SavingsSetupState:
+    """Public-only approval state, separate from transaction signing and vault operations."""
+    def __init__(self):
+        self.generation=0;self.clear()
+
+    def clear(self):
+        self.generation+=1;self.purpose=None;self.review=None;self.approved=False
+
+    def begin(self,purpose):
+        self.clear()
+        if purpose not in SAVINGS_PURPOSES:raise ValueError('Unknown savings proof purpose.')
+        self.purpose=purpose
+        return self.generation
+
+    @staticmethod
+    def validated(reply,purpose):
+        if not isinstance(reply,dict) or reply.get('ok') is not True:raise ValueError('Savings setup review unavailable.')
+        setup=reply.get('setup');signer=reply.get('signer')
+        expected={'kind','version','chainId','sessionId','createdAt','expiresAt','challenge','preset','spendingAccount','signers'}
+        if not isinstance(setup,dict) or set(setup)!=expected or setup.get('kind')!='drivekey-savings-setup' or type(setup.get('version')) is not int or setup['version']!=1 or type(setup.get('chainId')) is not int or setup['chainId']!=1:raise ValueError('Unexpected savings setup format.')
+        address=lambda value:isinstance(value,str) and re.fullmatch(r'0x[0-9a-fA-F]{40}',value) is not None and int(value[2:],16)!=0
+        members=setup.get('signers');preset=setup.get('preset')
+        if preset not in ('standard','strong') or not isinstance(members,list) or len(members)!=(1 if preset=='standard' else 3) or not all(address(v) for v in members) or len(set(v.lower() for v in members))!=len(members):raise ValueError('Invalid signer configuration.')
+        if not address(setup.get('spendingAccount')) or setup['spendingAccount'].lower() in [v.lower() for v in members] or not address(signer) or signer.lower() not in [v.lower() for v in members]:raise ValueError('Signer or spending identity mismatch.')
+        for key in ('sessionId','createdAt','expiresAt','challenge'):
+            if not isinstance(setup.get(key),str) or len(setup[key])>100:raise ValueError('Invalid setup metadata.')
+        if re.fullmatch(r'0x[0-9a-f]{64}',setup['challenge']) is None or re.fullmatch(r'[0-9a-fA-F-]{36}',setup['sessionId']) is None:raise ValueError('Invalid setup challenge.')
+        start=dt.datetime.fromisoformat(setup['createdAt'].replace('Z','+00:00'));end=dt.datetime.fromisoformat(setup['expiresAt'].replace('Z','+00:00'));now=dt.datetime.now(dt.timezone.utc)
+        if start.tzinfo is None or end.tzinfo is None or not 0<(end-start).total_seconds()<=86400 or start>now+dt.timedelta(seconds=60) or now>=end:raise ValueError('Setup expired or clock differs. Review a fresh request.')
+        if not isinstance(reply.get('fingerprint'),str) or re.fullmatch(r'0x[0-9a-f]{64}',reply['fingerprint']) is None:raise ValueError('Missing approval fingerprint.')
+        message=reply.get('message');warning=reply.get('warning')
+        if not isinstance(message,str) or len(message)>2048 or not isinstance(warning,str) or len(warning)>1024 or purpose not in SAVINGS_PURPOSES:raise ValueError('Invalid public review.')
+        lines=message.split('\n')
+        if len(lines)!=6 or lines[0]!='DriveKey savings setup proof v1 — NO TRANSACTION AUTHORITY' or lines[1]!='Purpose: '+purpose or lines[2]!='Signer: '+signer or lines[3]!='Ethereum chain: 1' or re.fullmatch(r'Setup fingerprint: 0x[0-9a-f]{64}',lines[4]) is None or lines[5]!='This proves key control for an unfunded setup exercise only. It cannot authorize a vault action.':raise ValueError('Review purpose or message mismatch.')
+        return json.loads(json.dumps({'ok':True,'setup':setup,'signer':signer,'fingerprint':reply['fingerprint'],'message':message,'warning':warning}))
+
+    def accept(self,reply,generation):
+        if generation!=self.generation:return False
+        try:self.review=self.validated(reply,self.purpose);self.approved=False;return True
+        except Exception:self.clear();raise
+
+    def approve(self):
+        if not self.review:raise ValueError('Review the exact setup before approving.')
+        try:self.review=self.validated(self.review,self.purpose);self.approved=True
+        except Exception:self.clear();raise
+
+    def proof_payload(self,password):
+        if not self.review or not self.approved:raise ValueError('Review and explicitly approve this proof first.')
+        try:self.review=self.validated(self.review,self.purpose)
+        except Exception:self.clear();raise
+        return {'scope':'savings-setup','action':'prove','purpose':self.purpose,'fingerprint':self.review['fingerprint'],'consent':True,'password':password}
 
 
 class DriveKeyDesktop:
@@ -54,14 +118,18 @@ class DriveKeyDesktop:
         self.results, self.inventory = queue.Queue(), {}
         self.section, self.profile, self.mode = 'Home', 'eth', 'section'
         self.trade_review = False
+        self.signing_scope = None
         self.settings_tab = 'Display'
         self.font_family = tk.StringVar(value='Inter')
         self.send_source = 'trade'
         self.expected_action = None
         self.can_approve = False
         self.review, self.approved, self.action = None, False, None
+        self.savings_setup=SavingsSetupState()
+        self.savings_action=SavingsActionState()
         self.buttons, self.images, self.wraps = [], [], []
         self.transition_id=0
+        self.operation_id=0;self.active_operation=None
         self.reveal_timer=None;self.reveal_frames=0
         self.fields=[]; self.content_width=1020
         self.passphrase, self.confirmation = tk.StringVar(), tk.StringVar()
@@ -73,7 +141,7 @@ class DriveKeyDesktop:
         self.location=tk.StringVar(value='Home')
         self.guard_status=tk.StringVar(value='Isolation unverified')
         self.guard_status.trace_add('write',self.update_guard_color)
-        root.title('DriveKey Wallet — RC20 UTC private preview · Offline')
+        root.title('DriveKey Wallet — RC21 LI.FI private preview · Offline')
         root.configure(bg=BG)
         root.geometry('1120x800'); root.minsize(640, 480)
         root.attributes('-fullscreen', True)
@@ -91,7 +159,7 @@ class DriveKeyDesktop:
         self.brand_header=brand
         self.logo(brand).pack(side='left',padx=(20,8))
         self.brand_word=self.label(brand,'DriveKey',12,FG,True);self.brand_word.pack(side='left')
-        self.desktop_caption=self.label(brand,'RC20 UTC',9,ACCENT);self.desktop_caption.pack(side='left',padx=6)
+        self.desktop_caption=self.label(brand,'RC21 LI.FI',9,ACCENT);self.desktop_caption.pack(side='left',padx=6)
         tk.Frame(header,bg=EDGE,width=1).pack(side='left',fill='y')
         self.location_label=self.label(header,variable=self.location,size=12,color=FG,bold=True)
         self.location_label.pack(side='left',padx=20)
@@ -361,7 +429,9 @@ class DriveKeyDesktop:
         if self.busy:return
         if section not in SECTIONS:raise ValueError('Unknown destination')
         self.section=section; self.mode='section'; self.review=None; self.approved=False; self.can_approve=False
-        self.trade_review=False; self.expected_action=None
+        self.trade_review=False; self.expected_action=None; self.signing_scope=None
+        self.savings_setup.clear()
+        self.savings_action.clear()
         self.passphrase.set(''); self.confirmation.set(''); self.action=None
         self.location.set(section)
         for s,b in self.nav.items():b.configure(bg=ACTIVE if s==section else BG,fg=FG if s==section else MUTED,icon_color=FG if s==section else MUTED,indicator=ACCENT if s==section else None)
@@ -388,7 +458,9 @@ class DriveKeyDesktop:
         self.stat_tile(summaries[1],'Incoming requests',str(incoming),'Awaiting inspection','Requests',SECTION_COLORS['Send'])
         self.stat_tile(summaries[2],'Saved responses',str(outgoing),'Saved locally · Not submitted','Review & sign',SECTION_COLORS['Receive'])
         panels=self.adaptive_columns(self.body,2,980,weights=[3,2])
-        files=[('unsigned-trade-request.json','Transaction file — inspect to identify',self.inspect_trade),
+        files=[('savings-transaction-request.json','Savings network transaction',self.inspect_savings_transaction),
+               ('unsigned-weth-conversion.json','ETH / WETH self conversion',self.inspect_weth_conversion),
+               ('unsigned-trade-request.json','Transaction file — inspect to identify',self.inspect_trade),
                ('unsigned-multi-request.json','Multichain payment',lambda:self.inspect_profile('multi')),
                ('unsigned-request.json','Robinhood native ETH payment',lambda:self.inspect_profile('eth'))]
         present=[item for item in files if self.file_state(item[0])=='present']
@@ -421,6 +493,15 @@ class DriveKeyDesktop:
         self.text(c,self.inventory.get('system',{}).get('isolation','Isolation observation unavailable.'),10)
 
     def page_wallet(self):
+        c=self.card('Savings action review','UNFUNDED SOFTWARE CANDIDATE',icon_name='Shield')
+        self.text(c,'Compare your vault identity, review the exact action, then approve locally. An exported signature can authorize this action; it is not a receipt.')
+        self.button(c,'Review savings action',self.inspect_savings_action,icon_name='Review & sign').pack(anchor='w',pady=8)
+        c=self.card('Unfunded savings setup','SOURCE CANDIDATE / NO TRANSACTION AUTHORITY',icon_name='Shield')
+        self.text(c,'Review a public savings setup from the website. Each proof is a rehearsal only: it cannot deploy a vault, authorize a withdrawal or move funds.')
+        self.text(c,'Uses the multichain Ethereum key. Backup rehearsal reads vault-multi-backup.json; other proofs read vault-multi-encrypted.json.',11)
+        self.text(c,'savings-setup-request.json: '+self.file_state('savings-setup-request.json'),10,mono=True)
+        for purpose,title in SAVINGS_PURPOSES.items():
+            self.button(c,title,lambda p=purpose:self.inspect_savings_setup(p),icon_name='Review & sign').pack(anchor='w',pady=6)
         rules_card=self.card('Agent rules','Offline authority · Robinhood ETH / USDG',icon_name='Key')
         self.text(rules_card,'Set limits, recipients and expiry for a separately funded policy account. New accounts start with no spending authority.')
         self.button(rules_card,'Open agent rules',lambda:RulesEditor(self),True,icon_name='Review & sign').pack(anchor='w',pady=8)
@@ -444,12 +525,17 @@ class DriveKeyDesktop:
         if v['state']=='missing':
             self.button(c,'Create new vault',lambda:self.open_action('create'),True).pack(fill='x',pady=8)
             self.button(c,'Restore encrypted backup',lambda:self.open_action('restore')).pack(fill='x',pady=8)
+            if self.profile=='multi' and self.inventory.get('eth',{}).get('wallet'):
+                self.button(c,'Upgrade Robinhood vault',lambda:self.open_action('upgrade')).pack(fill='x',pady=8)
         elif w:
             self.button(c,'Create encrypted backup',lambda:self.open_action('backup')).pack(fill='x',pady=8)
             self.button(c,'Verify encrypted backup',lambda:self.open_action('check-backup')).pack(fill='x',pady=8)
         else:self.text(c,'Inspect Files and preserve the existing vault before attempting recovery. An invalid vault cannot be replaced here.')
         self.text(c,'Keep a separate encrypted backup after shutdown. A copy on this USB alone cannot protect against losing it. There is no passphrase reset.')
         if self.profile=='multi':
+            c=self.card('Savings network transaction','Offline gas approval',columns[1],icon_name='Lock',accent=SECTION_COLORS['Wallet'])
+            self.text(c,'Review the exact vault operation and maximum network fee using your everyday gas wallet.')
+            self.request_action(c,'savings-transaction-request.json','Review savings transaction',self.inspect_savings_transaction,primary=False)
             c=self.card('Solana account setup','Durable nonce',columns[1],icon_name='SOL',accent=SECTION_COLORS['Receive'])
             self.text(c,'A nonce account holds a SOL deposit and authorizes offline signing. This is account setup, not a payment to a recipient.')
             self.request_action(c,'unsigned-trade-request.json','Inspect nonce setup',lambda:self.inspect_trade('nonce'),primary=False)
@@ -463,10 +549,10 @@ class DriveKeyDesktop:
     def begin_inspection(self,scope,expected=None):
         if self.busy:return
         self.show(self.section)
-        self.mode='inspect';self.expected_action=expected;self.trade_review=scope=='trade'
+        self.mode='inspect';self.expected_action=expected;self.trade_review=scope=='trade';self.signing_scope=scope
         self.clear('Inspect request','Reading the exact file through the offline signing guard.')
         payload={'action':'inspect'}
-        if scope in ('trade','multi'):payload['scope']=scope
+        if scope in ('trade','multi','savings-transaction','weth-conversion'):payload['scope']=scope
         self.call(payload,self.inspected)
 
     def inspect_trade(self,expected=None):
@@ -474,6 +560,16 @@ class DriveKeyDesktop:
         if expected is None:expected={'Send':'payment','Swap':'exchange','Wallet':'nonce'}.get(self.section)
         if self.profile!='multi':self.select_profile('multi')
         self.begin_inspection('trade',expected)
+
+    def inspect_savings_transaction(self):
+        if self.busy:return
+        if self.profile!='multi':self.select_profile('multi')
+        self.begin_inspection('savings-transaction','savings-transaction')
+
+    def inspect_weth_conversion(self):
+        if self.busy:return
+        if self.profile!='multi':self.select_profile('multi')
+        self.begin_inspection('weth-conversion','weth-conversion')
 
     def inspect_profile(self,profile):
         if self.busy:return
@@ -483,16 +579,20 @@ class DriveKeyDesktop:
     def page_swap(self):
         c=self.card('Supported pairs',icon_name='Swap')
         routes=self.adaptive_columns(c,2,600)
-        for parent,network,source,asset in [(routes[0],'Ethereum','WETH','ETH'),(routes[1],'Solana','SOL','SOL')]:
+        for parent,network,source,asset in [(routes[0],'Ethereum','ETH / WETH','ETH'),(routes[1],'Solana','SOL','SOL')]:
             row=tk.Frame(parent,bg=PANEL);row.pack(fill='x',pady=4)
             self.icon_tile(row,asset,MUTED).pack(side='left',padx=(0,6))
             self.label(row,source+'  ↔  USDC',11,FG,True).pack(side='left')
             self.icon_tile(row,'USDC',MUTED).pack(side='left',padx=6)
             self.text(parent,network+' · Validated routes only',9)
+        self.text(c,'Native ETH to USDC uses LI.FI / Sushi approval v9. WETH routes retain the existing format.',10)
         c=self.card('Exchange request',icon_name='Review & sign')
         self.text(c,'Check the exact input, minimum output, recipient, route, fees and expiry. A spending allowance requires its own approval.')
         self.request_action(c,'unsigned-trade-request.json','Inspect swap or allowance',self.inspect_trade)
         self.text(c,'The file’s action is established only after inspection. Memecoin routes are not enabled.',10)
+        c=self.card('ETH / WETH conversion',icon_name='Swap')
+        self.text(c,'Wrap ETH into WETH or unwrap WETH into ETH in your own account. This separate approval does not grant an allowance or swap to USDC. Gas is paid in ETH.')
+        self.request_action(c,'unsigned-weth-conversion.json','Inspect self conversion',self.inspect_weth_conversion)
         c=self.card('Husher',icon_name='Husher')
         self.badge(c,'Offline review ready · Online execution pending',ACCENT).pack(anchor='w',pady=(0,8))
         self.text(c,'RC19 can review provider-bound ETH → USDC deposits on Ethereum. Compare the payout, refund, fees and deadlines.',10)
@@ -543,7 +643,7 @@ class DriveKeyDesktop:
 
     def page_files(self):
         self.text(self.body,str(BASE),11,mono=True)
-        groups=[('Incoming requests','unsigned-','Requests','Send'),('Outgoing responses','signed-','Review & sign','Receive'),('Public identities','wallet-','User','Files'),('Private vaults & backups','vault-','Lock','Wallet'),('Agent rules','rules-','Key','Wallet')]
+        groups=[('Incoming requests','unsigned-','Requests','Send'),('Outgoing responses','signed-','Review & sign','Receive'),('Public identities','wallet-','User','Files'),('Private vaults & backups','vault-','Lock','Wallet'),('Agent rules','rules-','Key','Wallet'),('Unfunded savings setup','savings-','Shield','Wallet')]
         columns=self.adaptive_columns(self.body,2,960)
         for index,(title,prefix,glyph,section) in enumerate(groups):
             color=SECTION_COLORS[section]
@@ -611,9 +711,12 @@ class DriveKeyDesktop:
         self.message.set(item.get('message',''))
         review=item['review']
         kind=('nonce' if review.get('operation')=='Create durable nonce — new ISO required' else review.get('action')) if self.trade_review else 'payment'
-        labels={'provider-deposit':'Husher deposit','payment':'Payment','approval':'Spending allowance','swap':'Swap','nonce':'Nonce account setup'}
-        destination={'provider-deposit':'Swap','payment':'Send','approval':'Swap','swap':'Swap','nonce':'Wallet'}
-        matches=self.expected_action is None or kind==self.expected_action or (self.expected_action=='exchange' and kind in ('swap','approval','provider-deposit'))
+        if self.signing_scope=='savings-transaction':kind='savings-transaction'
+        if self.signing_scope=='weth-conversion':kind='weth-conversion'
+        labels={'provider-deposit':'Husher deposit','payment':'Payment','approval':'Spending allowance','swap':'Swap','nonce':'Nonce account setup','nonce-invalidate':'Cancel Solana approval','savings-transaction':'Savings network transaction'}
+        destination={'provider-deposit':'Swap','payment':'Send','approval':'Swap','swap':'Swap','nonce':'Wallet','nonce-invalidate':'Swap','savings-transaction':'Wallet'}
+        labels['weth-conversion']='ETH / WETH self conversion';destination['weth-conversion']='Swap'
+        matches=self.expected_action is None or kind==self.expected_action or (self.expected_action=='exchange' and kind in ('swap','approval','provider-deposit','nonce-invalidate'))
         if kind not in labels or not matches:
             self.mode='action-mismatch'
             self.clear('Different action detected','No approval has been retained.')
@@ -630,16 +733,183 @@ class DriveKeyDesktop:
         if kind=='approval':self.text(c,'This grants spending authority to the displayed contract. It is not a payment.',14,FG,True)
         if kind=='nonce':self.text(c,'This creates a nonce account and locks the displayed SOL deposit. It is not a recipient payment.',14,FG,True)
         for key,value in self.review.items():
+            if key=='rows' and self.signing_scope=='savings-transaction':
+                for row in value:
+                    self.text(c,str(row['label']),10,MUTED);self.text(c,str(row['value']),12,FG)
+                continue
             self.text(c,self.field_name(key),10,MUTED)
             mono=any(term in key.lower() for term in ('address','recipient','from','contract','hash','fingerprint','nonceaccount','mint','identit','router')) or bool(re.search(r'0x[0-9a-fA-F]{40,}|[1-9A-HJ-NP-Za-km-z]{40,}',str(value)))
             self.text(c,str(value),12,FG,mono=mono)
         self.text(c,'Compare recipient and token identity with an independently known source. Network execution is not established by an offline signature.')
-        if self.can_approve:self.button(c,'I approve this exact '+labels[kind].lower(),self.approve,True).pack(fill='x',pady=8)
+        if self.can_approve:self.button(c,'I approve this exact '+labels[kind].lower(),self.screen_command(self.approve),True).pack(fill='x',pady=8)
         self.button(c,'Cancel review',self.cancel).pack(fill='x',pady=8)
 
     def approve(self):
         if self.busy or not self.review or not self.can_approve:return
         self.approved=True; self.open_action('sign',preserve_review=True)
+
+    def savings_error(self,message):
+        self.savings_setup.clear();self.passphrase.set('');self.confirmation.set('')
+        self.mode='savings-error';self.action=None
+        self.clear('Savings setup stopped','No transaction was requested. Review again before any new proof.')
+        self.text(self.body,message)
+        self.button(self.body,'Back to Wallet',lambda:self.show('Wallet')).pack(fill='x',pady=8)
+
+    def inspect_savings_setup(self,purpose):
+        if self.busy or self.settings_modal:return
+        self.show('Wallet');generation=self.savings_setup.begin(purpose)
+        self.mode='savings-inspect'
+        self.clear('Review unfunded savings setup',SAVINGS_PURPOSES[purpose])
+        self.call({'scope':'savings-setup','action':'review','purpose':purpose},lambda reply:self.savings_inspected(reply,generation))
+
+    def savings_inspected(self,reply,generation):
+        if generation!=self.savings_setup.generation:return
+        source='vault-multi-backup.json' if self.savings_setup.purpose=='restore' else 'vault-multi-encrypted.json'
+        try:
+            if not self.savings_setup.accept(reply,generation):return
+        except Exception as error:self.savings_error(str(error)+' Check savings-setup-request.json and '+source+' in the DriveKey folder, and verify the current UTC clock.');return
+        self.mode='savings-review';review=self.savings_setup.review;setup=review['setup']
+        self.location.set('Wallet / Unfunded setup review')
+        self.clear('Review unfunded setup proof','01  Read all details  →  02  Approve this purpose  →  03  Unlock locally')
+        c=self.card(SAVINGS_PURPOSES[self.savings_setup.purpose],'NO TRANSACTION AUTHORITY')
+        rows=[('Purpose',self.savings_setup.purpose),('Ethereum chain','1'),('Preset',setup['preset']),('Everyday spending account',setup['spendingAccount']),('This offline signer',review['signer'])]
+        rows.extend(('Savings signer '+str(i+1),address) for i,address in enumerate(setup['signers']))
+        rows.extend([('Session',setup['sessionId']),('Created UTC',setup['createdAt']),('Expires UTC',setup['expiresAt']),('Challenge',setup['challenge']),('Approval fingerprint — this purpose and signer',review['fingerprint'])])
+        for title,value in rows:self.text(c,title,10,MUTED);self.text(c,value,12,FG,mono=True)
+        self.text(c,'Exact message to be signed',11,FG,True);self.text(c,review['message'],11,FG,mono=True)
+        self.text(c,review['warning']);self.text(c,'Independently compare every address with its device. A copied seed is not an independent signer. This device cannot prove separate backup locations or hardware integrity.')
+        if self.savings_setup.purpose=='restore':self.text(c,'This purpose unlocks vault-multi-backup.json. It does not overwrite or restore the active vault.')
+        self.button(c,'I approve this exact unfunded proof',self.screen_command(self.approve_savings_setup),True).pack(fill='x',pady=8)
+        self.button(c,'Cancel review',self.cancel).pack(fill='x',pady=8)
+
+    def approve_savings_setup(self):
+        if self.busy:return
+        try:self.savings_setup.approve()
+        except Exception as error:self.savings_error(str(error));return
+        self.passphrase.set('');self.confirmation.set('');self.action=None;self.mode='savings-form'
+        self.clear('Unlock for an unfunded setup proof',SAVINGS_PURPOSES[self.savings_setup.purpose])
+        c=self.card('Your passphrase stays here','Local secret input')
+        self.text(c,'The guarded worker receives it through its anonymous input pipe. No transaction is signed. The form is cleared immediately after submission.')
+        self.text(c,'Approved purpose: '+self.savings_setup.purpose,12,FG,True)
+        self.text(c,'Approved signer',11);self.text(c,self.savings_setup.review['signer'],11,FG,mono=True)
+        self.text(c,'Approved fingerprint',11);self.text(c,self.savings_setup.review['fingerprint'],11,FG,mono=True)
+        e=self.entry(c,'Encrypted backup passphrase' if self.savings_setup.purpose=='restore' else 'Vault passphrase',self.passphrase)
+        self.button(c,'Create and save setup proof',self.screen_command(self.submit_savings_setup),True).pack(fill='x',pady=8)
+        self.button(c,'Cancel',self.cancel).pack(fill='x',pady=8)
+        self.root.after_idle(e.focus_set)
+
+    def submit_savings_setup(self):
+        if self.busy:return
+        try:payload=self.savings_setup.proof_payload(self.passphrase.get())
+        except Exception as error:self.savings_error(str(error));return
+        generation=self.savings_setup.generation;expected={'purpose':self.savings_setup.purpose,'signer':self.savings_setup.review['signer'],'fingerprint':self.savings_setup.review['message'].split('\n')[4].removeprefix('Setup fingerprint: ')}
+        self.savings_setup.approved=False;self.passphrase.set('');self.confirmation.set('')
+        self.call(payload,lambda reply:self.savings_result(reply,generation,expected))
+
+    def savings_result(self,reply,generation,expected):
+        if generation!=self.savings_setup.generation:return
+        self.savings_setup.clear();self.passphrase.set('');self.confirmation.set('');self.action=None
+        proof=reply.get('proof') if isinstance(reply,dict) else None
+        if not isinstance(reply,dict) or reply.get('ok') is not True or not isinstance(proof,dict) or proof.get('kind')!='drivekey-savings-setup-proof' or proof.get('version')!=1 or proof.get('fingerprint')!=expected['fingerprint'] or proof.get('purpose')!=expected['purpose'] or proof.get('signer')!=expected['signer'] or not isinstance(proof.get('signature'),str) or re.fullmatch(r'0x[0-9a-fA-F]{130}',proof['signature']) is None:
+            self.savings_error('The proof was not verified as saved. Inspect Files before retrying; an interrupted write may have completed. Nothing was automatically retried.');return
+        self.mode='savings-result'
+        self.clear('Unfunded setup proof saved','No account deployed. No transaction signed or submitted.')
+        c=self.card('Return the public proof after safe shutdown','PUBLIC SETUP PROOF')
+        self.text(c,str(BASE/'savings-setup-proof.json'),12,FG,mono=True)
+        self.text(c,'Purpose: '+expected['purpose']);self.text(c,'Signer: '+expected['signer'],11,FG,mono=True)
+        self.text(c,'Import this public proof into the same website setup session. Import it before creating another proof: each successful operation replaces the fixed proof file. Never upload either encrypted vault or backup.')
+        self.button(c,'Back to Wallet',lambda:self.show('Wallet')).pack(fill='x',pady=8)
+        self.button(c,'Safe shutdown',self.shutdown).pack(fill='x',pady=8)
+        self.refresh(render=False)
+
+    def savings_action_error(self,message):
+        self.savings_action.clear();self.passphrase.set('');self.confirmation.set('');self.action=None
+        self.mode='savings-action-error'
+        self.clear('Savings review stopped','Review again before any new authorization.')
+        self.text(self.body,message)
+        self.button(self.body,'Back to Wallet',lambda:self.show('Wallet')).pack(fill='x',pady=8)
+
+    def inspect_savings_action(self):
+        if self.busy or self.settings_modal:return
+        self.show('Wallet');generation=self.savings_action.begin();self.mode='savings-action-inspect'
+        self.clear('Read savings request','Unfunded candidate · No network submission')
+        self.call({'scope':'savings-action','action':'review'},lambda reply:self.savings_action_inspected(reply,generation))
+
+    def savings_action_inspected(self,reply,generation):
+        if generation!=self.savings_action.generation:return
+        try:
+            if not self.savings_action.accept(reply,generation):return
+        except Exception:self.savings_action_error('Review unavailable. Check savings-review-expectation.json, savings-action-request.json and vault-multi-encrypted.json, then verify the UTC clock.');return
+        self.mode='savings-action-identity';r=self.savings_action.review
+        self.clear('01 / Compare your vault','Use your independently verified enrollment and current policy.')
+        c=self.card('Files cannot prove identity','INDEPENDENT COMPARISON REQUIRED')
+        self.text(c,'Compare this vault and every current signer with your independent record. Imported files and restored checkpoints cannot establish current chain state. Stop if you cannot verify them.')
+        identity={'Ethereum chain ID','Savings vault','Contract version','Expected runtime code hash','This offline signer','Current preset','Current approval threshold','Current policy epoch','Current configuration hash','Current paused state'}
+        for row in r['rows']:
+            if row['label'] in identity or row['label'].startswith('Current signer '):self.text(c,row['label'],10,MUTED);self.text(c,row['value'],12,FG,mono=True)
+        self.text(c,'Identity fingerprint',10,MUTED);self.text(c,r['expectationFingerprint'],11,FG,mono=True)
+        self.button(c,'I compared identity and current policy independently',self.screen_command(self.confirm_savings_identity),True).pack(fill='x',pady=8)
+        self.button(c,'Cancel',self.cancel).pack(fill='x',pady=8)
+
+    def confirm_savings_identity(self):
+        if self.busy:return
+        try:self.savings_action.confirm_identity()
+        except Exception as error:self.savings_action_error(str(error));return
+        self.mode='savings-action-review';r=self.savings_action.review
+        self.clear('02 / Review exact action',r['purpose'])
+        c=self.card(r['purpose'],'CLASSICAL AUTHORIZATION / UNFUNDED TESTING')
+        for row in r['rows']:self.text(c,row['label'],10,MUTED);self.text(c,row['value'],12,FG,mono=True)
+        self.text(c,'Exact review fingerprint',10,MUTED);self.text(c,r['fingerprint'],11,FG,mono=True)
+        self.text(c,'A signature can be submitted by anyone holding it. It does not start the waiting period or prove a completed transaction. Contract checks still apply.')
+        if r['authorizationDigest'] is not None:
+            self.button(c,'I approve: '+r['purpose'],self.screen_command(self.approve_savings_action),True).pack(fill='x',pady=8)
+        else:self.text(c,'This execution review needs no new owner signature. No unlock or signing is available here.')
+        self.button(c,'Cancel review',self.cancel).pack(fill='x',pady=8)
+
+    def approve_savings_action(self):
+        if self.busy:return
+        try:self.savings_action.approve()
+        except Exception as error:self.savings_action_error(str(error));return
+        self.passphrase.set('');self.confirmation.set('');self.action=None;self.mode='savings-action-form'
+        self.clear('03 / Unlock to sign',self.savings_action.review['purpose'])
+        c=self.card('Your passphrase stays here','EXACT APPROVED ACTION')
+        self.text(c,'The isolated signing worker rechecks the exact action before signing. This prototype does not establish independent hardware or quantum protection.')
+        self.text(c,self.savings_action.review['signer'],11,FG,mono=True)
+        self.text(c,self.savings_action.review['fingerprint'],11,FG,mono=True)
+        e=self.entry(c,'Vault passphrase',self.passphrase)
+        self.button(c,'Sign and save authorization',self.screen_command(self.submit_savings_action),True).pack(fill='x',pady=8)
+        self.button(c,'Cancel',self.cancel).pack(fill='x',pady=8)
+        self.root.after_idle(e.focus_set)
+
+    def submit_savings_action(self):
+        if self.busy:return
+        try:
+            payload=self.savings_action.signing_payload(self.passphrase.get())
+            generation=self.savings_action.generation;r=self.savings_action.review
+            expected={key:r[key] for key in ('fingerprint','expectationFingerprint','authorizationDigest','signer')}
+            expected['vault']=next(row['value'] for row in r['rows'] if row['label']=='Savings vault')
+        except Exception as error:self.savings_action_error(str(error));return
+        self.passphrase.set('');self.confirmation.set('')
+        self.call(payload,lambda reply:self.savings_action_result(reply,generation,expected))
+
+    def savings_action_result(self,reply,generation,expected):
+        if generation!=self.savings_action.generation:return
+        self.savings_action.clear();self.passphrase.set('');self.confirmation.set('');self.action=None
+        auth=reply.get('authorization') if isinstance(reply,dict) else None
+        keys={'kind','version','chainId','contractVersion','vault','signer','fingerprint','expectationFingerprint','authorizationDigest','signature','submitted','chainAuthenticated','fundingReady','productionReady'}
+        valid=isinstance(reply,dict) and reply.get('ok') is True and isinstance(auth,dict) and set(auth)==keys
+        valid=valid and auth['kind']=='drivekey-savings-authorization' and all(type(auth[k]) is int and auth[k]==1 for k in ('version','chainId','contractVersion'))
+        valid=valid and all(auth.get(k)==v for k,v in expected.items()) and all(auth[k] is False for k in ('submitted','chainAuthenticated','fundingReady','productionReady'))
+        valid=valid and isinstance(auth['signature'],str) and re.fullmatch(r'0x[0-9a-fA-F]{128}(1b|1c)',auth['signature']) is not None
+        if not valid:
+            self.savings_action_error('Authorization was not verified as saved. An interrupted write may have completed: inspect the public output before any retry. Nothing was automatically retried.');return
+        self.mode='savings-action-result';self.clear('Authorization saved','Not queued, executed or submitted.')
+        c=self.card('Return the public authorization','TRANSFERABLE CLASSICAL APPROVAL')
+        self.text(c,str(BASE/'savings-signed-authorization.json'),12,FG,mono=True)
+        self.text(c,'This file authorizes only the reviewed action. Keep it with the exact request and independently checked vault identity. Each new successful export replaces this fixed output file. Never upload your encrypted vault or backup.')
+        self.button(c,'Back to Wallet',lambda:self.show('Wallet')).pack(fill='x',pady=8)
+        self.button(c,'Safe shutdown',self.shutdown).pack(fill='x',pady=8)
+        self.refresh(render=False)
 
     def entry(self,parent,title,variable,secret=True):
         self.text(parent,title,11,FG)
@@ -650,18 +920,23 @@ class DriveKeyDesktop:
 
     def open_action(self, action, preserve_review=False):
         if self.busy:return
+        if action=='upgrade' and self.profile!='multi':return
+        self.savings_setup.clear()
+        self.savings_action.clear()
+        self.passphrase.set('');self.confirmation.set('')
         if action=='sign' and (not self.review or not self.approved or not self.can_approve):return
         if not preserve_review:self.review=None;self.approved=False;self.can_approve=False
         self.mode='form';self.action=action;self.passphrase.set('');self.confirmation.set('')
-        titles={'create':'Create a new vault','check':'Verify your passphrase','backup':'Create an encrypted backup','check-backup':'Verify your encrypted backup','restore':'Restore to an empty target','sign':'Sign your approved transaction'}
+        titles={'create':'Create a new vault','check':'Verify your passphrase','backup':'Create an encrypted backup','check-backup':'Verify your encrypted backup','restore':'Restore to an empty target','upgrade':'Upgrade Robinhood vault','sign':'Sign your approved transaction'}
         self.clear(titles[action], '03 / Enter passphrase locally' if action=='sign' else self.profile_label.get())
         c=self.card('Your passphrase stays here','Local secret input')
         self.text(c,'It is hidden, sent through an anonymous pipe to the guarded worker, and cleared from the form after submission. It is not stored or logged.')
         if action=='sign':self.text(c,'You approved fingerprint:',11);self.text(c,self.review['fingerprint'],11,FG,mono=True)
         if action=='restore':self.text(c,'Place the expected encrypted backup in the exchange folder before booting. Both vault and public-wallet target files must be absent. Existing keys are never replaced.')
+        if action=='upgrade':self.text(c,'Use your existing Robinhood vault passphrase. This creates a multichain vault, backup and public export only when all three targets are absent. Your original vault stays in place. No funds move; verify the new addresses and backup before use.')
         e=self.entry(c,'Passphrase',self.passphrase)
         if action=='create':self.entry(c,'Repeat passphrase',self.confirmation)
-        self.button(c,'Sign and save' if action=='sign' else titles[action],self.submit_secret,True).pack(fill='x',pady=8)
+        self.button(c,'Sign and save' if action=='sign' else titles[action],self.screen_command(self.submit_secret),True).pack(fill='x',pady=8)
         self.button(c,'Cancel',self.cancel).pack(fill='x',pady=8)
         self.root.after_idle(e.focus_set)
 
@@ -669,12 +944,13 @@ class DriveKeyDesktop:
         if self.busy or not self.action:return
         action=self.action
         if action=='sign' and (not self.review or not self.approved or not self.can_approve):return
-        payload={'scope':'trade','action':action,'password':self.passphrase.get()} if action=='sign' and self.trade_review else self.scoped(action,password=self.passphrase.get())
+        payload={'scope':self.signing_scope,'action':action,'password':self.passphrase.get()} if action=='sign' and self.signing_scope in ('trade','savings-transaction','weth-conversion') else self.scoped(action,password=self.passphrase.get())
         if action=='create':payload.update(confirmation=self.confirmation.get(),consent=True)
-        if action=='restore':payload['consent']=True
+        if action in ('restore','upgrade'):payload['consent']=True
         if action=='sign':payload.update(fingerprint=self.review['fingerprint'],consent=True)
-        if action in ('create','restore') and not messagebox.askyesno('Confirm '+action,'Proceed on the selected profile? Existing vaults will not be overwritten.',parent=self.root):
+        if action in ('create','restore','upgrade') and not messagebox.askyesno('Confirm '+action,'Proceed on the selected profile? Existing vaults will not be overwritten.',parent=self.root):
             payload.clear();self.passphrase.set('');self.confirmation.set('');return
+        if action=='sign':self.review=None;self.approved=False;self.can_approve=False
         self.call(payload,self.operation_result)
 
     def operation_result(self, reply):
@@ -690,10 +966,11 @@ class DriveKeyDesktop:
         self.clear('Signed response saved — not sent.' if reply.get('hash') else 'Operation complete',reply.get('message',''))
         c=self.card('Return online only after shutdown' if reply.get('hash') else 'Next step','Local result')
         if reply.get('hash'):
-            filename='signed-trade-response.json' if self.trade_review else 'signed-multi-response.json' if self.profile=='multi' else 'signed-response.json'
+            filename='savings-transaction-response.json' if self.signing_scope=='savings-transaction' else 'signed-trade-response.json' if self.trade_review else 'signed-multi-response.json' if self.profile=='multi' else 'signed-response.json'
+            if self.signing_scope=='weth-conversion':filename='signed-weth-conversion.json'
             self.text(c,str(BASE/filename),12,FG,mono=True);self.text(c,'Transaction identifier',11);self.text(c,reply['hash'],12,FG,mono=True)
-            self.text(c,'Import this response into the same saved online request. Verify it and explicitly submit. Signing is neither broadcasting nor confirmation.')
-        elif action=='create':
+            self.text(c,'Import into the same saved conversion request for verification and reconciliation only. Conversion submission is unavailable.' if self.signing_scope=='weth-conversion' else 'Import this response into the same saved online request. Verify it and explicitly submit. Signing is neither broadcasting nor confirmation.')
+        elif action in ('create','upgrade'):
             self.text(c,'Verify the new passphrase before shutting down, then create and verify an encrypted backup.')
             self.button(c,'Verify new passphrase',lambda:self.open_action('check'),True).pack(anchor='w',pady=6)
         elif action=='backup':
@@ -730,8 +1007,28 @@ class DriveKeyDesktop:
         self.text(c,'The connected companion checks expiry again before submission. Native ETH transaction signatures do not carry an on-chain expiry.')
         self.button(c,'Back',self.cancel).pack(anchor='w',pady=8)
 
+    def screen_command(self,command):
+        generation=self.transition_id;profile=self.profile
+        def invoke():
+            if not self.busy and generation==self.transition_id and profile==self.profile:return command()
+        return invoke
+
+    def guard_callback(self,callback):
+        # A reply belongs to one rendered screen and may be consumed only once.
+        generation=self.transition_id;profile=self.profile;used=False
+        def current():return not used and generation==self.transition_id and profile==self.profile
+        def guarded(reply):
+            nonlocal used
+            valid=current();used=True
+            if not valid:return False
+            callback(reply);return True
+        guarded.current=current
+        return guarded
+
     def call(self,payload,callback,quiet=False):
-        if self.busy:return
+        if self.busy:payload.clear();return False
+        self.operation_id+=1;operation=self.operation_id;self.active_operation=operation
+        callback=self.guard_callback(callback)
         self.busy=True;self.passphrase.set('');self.confirmation.set('')
         self.sync_background()
         for b in self.buttons:
@@ -745,33 +1042,62 @@ class DriveKeyDesktop:
                 if not isinstance(reply,dict):raise ValueError('Invalid worker result')
             except Exception:reply={'ok':False,'error':'Operation stopped or timed out. Inspect Files before retrying: a write may have completed. No automatic retry was attempted.'}
             finally:payload.clear()
-            self.results.put((reply,callback,quiet))
+            self.results.put((operation,reply,callback,quiet))
         threading.Thread(target=work,daemon=True).start()
+        return True
 
     def poll(self):
         try:
-            reply,callback,quiet=self.results.get_nowait();self.busy=False
-            for b in self.buttons:
-                if b.winfo_exists():b.configure(state='normal')
-            if not reply.get('ok'):
-                self.message.set(reply.get('error','Operation stopped.'));self.guard_status.set('Isolation unverified')
-            elif not quiet:self.message.set(reply.get('message','Local operation finished.'))
-            callback(reply)
-            self.sync_background()
+            operation,reply,callback,quiet=self.results.get_nowait()
+            if operation==self.active_operation:
+                self.active_operation=None;self.busy=False
+                # Leave a usable interval after a potentially slow status/worker call.
+                # Each explicit operation still performs its own launch checks.
+                self.next_auto_refresh=time.monotonic()+30
+                for b in self.buttons:
+                    if b.winfo_exists():b.configure(state='normal')
+                if callback.current():
+                    if not reply.get('ok'):
+                        if not quiet:self.message.set(reply.get('error','Operation stopped.'))
+                        self.guard_status.set('Isolation unverified')
+                    elif not quiet:self.message.set(reply.get('message','Local operation finished.'))
+                callback(reply)
+                self.sync_background()
         except queue.Empty:pass
-        self.root.after(60,self.poll)
+        except Exception:
+            # A malformed result must neither leave an approval live nor stop polling.
+            self.review=None;self.approved=False;self.can_approve=False;self.action=None
+            self.savings_setup.clear();self.savings_action.clear();self.passphrase.set('');self.confirmation.set('')
+            self.mode='callback-error';self.clear('Local review stopped','Inspect Files before retrying. A write may have completed.')
+            self.message.set('The worker result could not be displayed safely. No automatic retry was attempted.')
+            self.button(self.body,'Open Files',lambda:self.show('Files')).pack(fill='x',pady=8)
+        finally:self.root.after(60,self.poll)
 
     def refresh(self,render=True):
+        waiting='Reading local storage and isolation status…'
+        failed='Local storage inspection failed. Isolation is unverified; this status check did not process a transaction.'
+        passed='Local storage inspected. Network isolation guard passed; vault passphrases are not verified.'
+        diagnostic_messages={key:failed+' Startup check: '+label+'.' for key,label in (
+            ('timeout','timed out'),('output-limit','output limit exceeded'),
+            ('unavailable','checker unavailable'),('rejected','check rejected'))}
+        status_messages=(waiting,failed,passed,*diagnostic_messages.values())
         def done(reply):
+            if reply.get('ok') is not True or not isinstance(reply.get('dashboard'),dict) or not reply['dashboard']:
+                self.guard_status.set('Isolation unverified')
+                detail=reply.get('diagnostic');failure=failed
+                if isinstance(detail,dict) and detail.get('stage')=='candidate-launch-policy' and detail.get('passed') is False and detail.get('inputRead') is False:
+                    failure=diagnostic_messages.get(detail.get('failure'),failed) if isinstance(detail.get('failure'),str) else failed
+                if self.message.get() in status_messages:self.message.set(failure)
+                return
             if reply.get('dashboard'):
                 changed={k:v for k,v in self.inventory.items() if k!='utc'}!={k:v for k,v in reply['dashboard'].items() if k!='utc'};self.inventory=reply['dashboard']
                 self.guard_status.set('Guard checked '+str(self.inventory.get('utc',''))[11:16]+' UTC')
                 if render and self.mode=='section' and changed:self.show(self.section)
-                if self.message.get().startswith('Reading local storage'):self.message.set('Local storage inspected. Network isolation guard passed; vault passphrases are not verified.')
+                if self.message.get() in status_messages:self.message.set(passed)
         self.call({'action':'dashboard'},done,quiet=True)
 
     def auto_refresh(self):
-        if not self.busy and self.mode=='section' and not self.settings_modal:self.refresh()
+        if not self.busy and self.mode=='section' and not self.settings_modal and not getattr(self,'exit_dialog_active',False) and time.monotonic()>=getattr(self,'next_auto_refresh',0):self.refresh()
         self.root.after(5000,self.auto_refresh)
 
     def tick(self):
@@ -783,14 +1109,20 @@ class DriveKeyDesktop:
         if not self.busy:self.show(self.section);self.message.set('Cancelled. No signing operation requested.')
 
     def recovery(self):
-        if self.busy:return
-        if messagebox.askyesno('Terminal recovery','Close the desktop and open the existing terminal recovery interface?',parent=self.root):
-            self.passphrase.set('');self.confirmation.set('');self.exit_code=43;self.root.destroy()
+        if self.busy or getattr(self,'exit_dialog_active',False):return
+        self.exit_dialog_active=True
+        try:confirmed=messagebox.askyesno('Terminal recovery','Close the desktop and open the existing terminal recovery interface?',parent=self.root)
+        finally:self.exit_dialog_active=False
+        if confirmed:
+            self.savings_setup.clear();self.savings_action.clear();self.passphrase.set('');self.confirmation.set('');self.exit_code=43;self.root.destroy()
 
     def shutdown(self):
-        if self.busy:return
-        if messagebox.askyesno('Safe shutdown','Flush the exchange drive and power off? Keep the USB connected until the machine is fully off.',parent=self.root):
-            self.passphrase.set('');self.confirmation.set('');self.exit_code=42;self.root.destroy()
+        if self.busy or getattr(self,'exit_dialog_active',False):return
+        self.exit_dialog_active=True
+        try:confirmed=messagebox.askyesno('Safe shutdown','Flush the exchange drive and power off? Keep the USB connected until the machine is fully off.',parent=self.root)
+        finally:self.exit_dialog_active=False
+        if confirmed:
+            self.savings_setup.clear();self.savings_action.clear();self.passphrase.set('');self.confirmation.set('');self.exit_code=42;self.root.destroy()
 
 
 if __name__=='__main__':

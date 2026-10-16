@@ -1,11 +1,14 @@
 // Read-only inspection. No unlocking, signing, network, or writes.
 import { formatEther } from "ethers";
-import { FILES, validateRequest, type TransferRequest } from "../core/protocol";
-import { readJsonFile, safeDirectory } from "../core/files";
+import { type TransferRequest } from "../core/protocol";
+import { safeDirectory } from "../core/files";
 import { multiReview, validateMultiRequest } from "../core/multi-protocol";
-import { validateVault } from "./vault";
-import { multiVaultSchema } from "./multi-vault";
 import { assertOfflineEnvironment } from "./environment";
+import {readBoundedExchangeBytes} from './exchange-bytes';
+import {parseMultiRequestBytes} from './multi-isolation';
+import {parseEncryptedVaultBytes} from './savings-isolation';
+import {robinhoodOfflineAction} from './robinhood-service';
+import {MULTI_FILES} from './multi-files';
 
 export function nativeReview(r: TransferRequest): Record<string, string> {
   return {network:"Robinhood Chain / chain ID 4663", asset:"Native ETH", from:r.from, recipient:r.to,
@@ -19,19 +22,28 @@ export function nativeReview(r: TransferRequest): Record<string, string> {
 }
 
 export async function inspectRequest(directory:string, multi:boolean) {
+  if(!multi){
+    const result=await robinhoodOfflineAction({action:'inspect'},directory);
+    if(!('inspection' in result))throw Error('Invalid inspection response.');
+    return result.inspection;
+  }
   await assertOfflineEnvironment(); await safeDirectory(directory);
   try {
-    const raw=await readJsonFile(directory,multi?"unsigned-multi-request.json":FILES.request);
-    const r=multi?validateMultiRequest(raw,Date.now(),false):validateRequest(raw,Date.now(),false);
-    const review=multi?multiReview(r,false):nativeReview(r as TransferRequest);
+    const requestBytes=await readBoundedExchangeBytes(directory,MULTI_FILES.request);
+    const r=validateMultiRequest(await parseMultiRequestBytes(requestBytes),Date.now(),false);
+    const review=multiReview(r,false);
     let binding="No readable vault for this profile. Inspection only.";
     let matched=false;
+    let vaultBytes:Buffer|undefined;
     try {
-      if(multi){const w=multiVaultSchema.parse(await readJsonFile(directory,"vault-multi-encrypted.json")).public;
-        const mr=validateMultiRequest(r,Date.now(),false); matched=mr.deviceId===w.deviceId&&(mr.network==="solana"?mr.from===w.solanaAddress:mr.from.toLowerCase()===w.evmAddress.toLowerCase());}
-      else {const w=validateVault(await readJsonFile(directory,FILES.vault)).public;matched=r.deviceId===w.deviceId&&r.from.toLowerCase()===w.address.toLowerCase();}
+      vaultBytes=await readBoundedExchangeBytes(directory,MULTI_FILES.vault);
+      const w=(await parseEncryptedVaultBytes(vaultBytes)).public;
+      matched=r.deviceId===w.deviceId&&(r.network==='solana'?r.from===w.solanaAddress:r.from.toLowerCase()===w.evmAddress.toLowerCase());
       binding=matched?"Matches vault public metadata; passphrase not verified.":"Request belongs to a different vault. Signing blocked.";
     }catch{/* Missing or malformed vault is not an authenticated identity. */}
+    if(!requestBytes.equals(await readBoundedExchangeBytes(directory,MULTI_FILES.request))||(vaultBytes&&!vaultBytes.equals(await readBoundedExchangeBytes(directory,MULTI_FILES.vault))))throw Error('Request or encrypted vault changed during inspection.');
+    validateMultiRequest(r,Date.now(),false);
+    await assertOfflineEnvironment();
     const expired=Date.now()>=Date.parse(r.expiresAt);
     return {state:expired?"expired":matched?"ready":"unbound",canSign:matched&&!expired,review:{...review,requestId:r.requestId,createdUTC:r.createdAt,deadlineUTC:r.expiresAt,binding},
       message:expired?"Request expired. Prepare a fresh request online. Never move the clock to match a request.":binding};

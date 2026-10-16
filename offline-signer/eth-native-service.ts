@@ -1,0 +1,30 @@
+// Existing Ethereum native-payment broker. Never decrypts an encrypted vault.
+import {z} from 'zod';
+import {getAddress} from 'ethers';
+import {assertOfflineEnvironment} from './environment';
+import {readBoundedExchangeBytes,writeBoundedExchangeBytes} from './exchange-bytes';
+import {parseEncryptedVaultBytes} from './savings-isolation';
+import {parseEthNativeRequestBytes,isolatedEthNativeResponse} from './eth-native-isolation';
+import {validateTrade,tradeReview,verifyTradeResponse} from '../core/trade-protocol';
+const command=z.discriminatedUnion('action',[
+ z.object({scope:z.literal('trade').optional(),action:z.literal('inspect')}).strict(),
+ z.object({scope:z.literal('trade').optional(),action:z.literal('sign'),password:z.string().max(256),fingerprint:z.string().regex(/^0x[0-9a-f]{64}$/),consent:z.literal(true)}).strict(),
+]);
+export async function ethNativeOfflineAction(input:unknown,directory:string,initialRequestBytes?:Buffer){
+ const c=command.parse(input);await assertOfflineEnvironment();
+ const requestBytes=initialRequestBytes?Buffer.from(initialRequestBytes):await readBoundedExchangeBytes(directory,'unsigned-trade-request.json'),vaultBytes=await readBoundedExchangeBytes(directory,'vault-multi-encrypted.json');
+ const r=validateTrade(await parseEthNativeRequestBytes(requestBytes),Date.now(),c.action==='sign'),v=await parseEncryptedVaultBytes(vaultBytes);
+ if(v.public.deviceId!==r.deviceId||getAddress(v.public.evmAddress)!==getAddress(r.from))throw Error('Native payment belongs to a different vault.');
+ const unchanged=async()=>{
+  if(!requestBytes.equals(await readBoundedExchangeBytes(directory,'unsigned-trade-request.json'))||!vaultBytes.equals(await readBoundedExchangeBytes(directory,'vault-multi-encrypted.json')))throw Error('Request or encrypted vault changed during native payment approval.');
+  validateTrade(r,Date.now(),c.action==='sign');
+ };
+ await unchanged();
+ if(c.action==='inspect')return {inspection:{state:Date.now()>=Date.parse(r.expiresAt)?'expired':'ready',canSign:Date.now()<Date.parse(r.expiresAt),review:{...tradeReview(r,false),warning:'Application expiry cannot revoke signed ETH bytes. Verify the complete recipient independently.'},message:'Native ETH payment on Ethereum. Review recipient, amount and maximum fee; nothing has been signed.'}};
+ if(c.fingerprint!==r.fingerprint)throw Error('Native payment changed since review.');
+ await assertOfflineEnvironment();const signed=await isolatedEthNativeResponse(r,v,c.fingerprint,c.password);
+ // The launcher resolves only after the key worker and descendants have exited.
+ await assertOfflineEnvironment();await unchanged();const response=verifyTradeResponse(signed,r,v.public);
+ await writeBoundedExchangeBytes(directory,'signed-trade-response.json',Buffer.from(JSON.stringify(response,null,2)+'\n'));
+ return {hash:response.transactionHash,message:'Native ETH signed-trade-response.json saved and verified. No funds sent.'};
+}

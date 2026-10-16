@@ -1,6 +1,7 @@
 import 'server-only';
 import {z} from 'zod';
 import {getAddress,parseUnits,formatUnits,keccak256,toUtf8Bytes} from 'ethers';
+import {HUSHER_MIN_OFFLINE_WINDOW_MS,requireHusherWindow} from './husher-timing';
 const decimal=z.string().max(40).regex(/^(0|[1-9][0-9]*)(\.[0-9]+)?$/);
 const address=z.string().transform(v=>getAddress(v)).refine(v=>v!=='0x0000000000000000000000000000000000000000');
 export const husherOrderPlanSchema=z.object({
@@ -23,11 +24,12 @@ export async function createHusherStandardOrder(input:unknown,key:string|undefin
  const body={send:'ETH',sendNetwork:'ETH',receive:'USDC',receiveNetwork:'ETH',receiveAddress:p.payoutAddress,refundAddress:p.refundAddress,amount,amountType:'receive',fixedRate:true,externalUserId:'drivekey-'+p.id};
  try{
   const response=await fetcher('https://api.husher.net/api/v1/husher/create',{method:'POST',headers:{'x-api-key':key,'Content-Type':'application/json',accept:'application/json'},body:JSON.stringify(body),redirect:'error',cache:'no-store',signal:AbortSignal.timeout(15000)});
-  if(!response.ok)throw Error();const reader=response.body?.getReader();if(!reader)throw Error();let text='',size=0;const decoder=new TextDecoder();
+  if(!response.ok)throw Error();const reader=response.body?.getReader();if(!reader)throw Error();let text='',size=0;const decoder=new TextDecoder('utf-8',{fatal:true});
   for(;;){const {done,value}=await reader.read();if(done)break;size+=value.length;if(size>65536){await reader.cancel();throw Error();}text+=decoder.decode(value,{stream:true});}text+=decoder.decode();if(text.includes(key))throw Error();
   const result=z.object({success:z.literal(true),data:z.object({id:z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),sendAddress:address,sendNetwork:z.literal('ETH'),sendToken:z.literal('ETH'),sendAmount:decimal,receiveAmount:decimal,fixedRate:z.literal(true),status:z.literal('pending'),depositDeadline:z.string().datetime({offset:true}),rateLockExpiresAt:z.string().datetime({offset:true}),orderExpiresAt:z.string().datetime({offset:true})})}).parse(JSON.parse(text));
   const t=result.data;
-  if(parseUnits(t.sendAmount,18)<=0n||parseUnits(t.sendAmount,18)>parseUnits(p.maximumSendAmount,18)||parseUnits(t.receiveAmount,6)!==parseUnits(p.exactReceiveAmount,6)||[p.payoutAddress,p.refundAddress].includes(t.sendAddress)||Math.min(Date.parse(t.depositDeadline),Date.parse(t.rateLockExpiresAt),Date.parse(t.orderExpiresAt))<Date.now()+60000)throw Error();
+  if(parseUnits(t.sendAmount,18)<=0n||parseUnits(t.sendAmount,18)>parseUnits(p.maximumSendAmount,18)||parseUnits(t.receiveAmount,6)!==parseUnits(p.exactReceiveAmount,6)||[p.payoutAddress,p.refundAddress].includes(t.sendAddress))throw Error();
+  requireHusherWindow([t.depositDeadline,t.rateLockExpiresAt,t.orderExpiresAt],Date.now(),HUSHER_MIN_OFFLINE_WINDOW_MS,'offline');
   return {success:true as const,data:{id:t.id}};
  }catch{throw Error('Husher creation outcome needs reconciliation. Never repeat this creation automatically.');}
 }
