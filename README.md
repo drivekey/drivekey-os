@@ -1,3 +1,5 @@
+> **16 October 2026 — USB boot and Settings checkpoint:** [Read the update and verification notes](docs/windows-usb-settings-checkpoint-2026-10-16.md). The owner reports the tested image works on hardware. This is an unsigned test candidate; full transaction acceptance and funds readiness remain incomplete. Existing download links below refer to earlier builds.
+
 # DriveKey OS
 
 ### Your keys. Your rules. Your approval.
@@ -59,3 +61,4 @@ This repository contains DriveKey OS source code and release downloads. See [Sou
 **Python · TypeScript · Shell · Solidity · C# · JavaScript**
 
 Explore [desktop source](packaging), [offline signer](offline-signer), [protocols](core), [contracts](contracts), and the [source and build guide](docs/BUILD.md).
+
