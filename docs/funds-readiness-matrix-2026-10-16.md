@@ -11,26 +11,40 @@ SHA256 `d49477fb686f56762bca824f235bb0e04ecb2c0cf23b0cd2c79b061cc904fc72`.
 
 ## Current packaging candidate
 
-The published wallet-acceptance image below remains distinct from the fresh
-source-built OS candidate r1792170000004. That new candidate uses 216 authenticated
-Debian archives and rebuilt application artifacts, without historical runtime
-image input. Its boot campaign and assembly-confinement review are in progress;
-none of the transaction passes below transfers to it. See
-[fresh OS continuation](production-source-os-continuation-2026-10-16.md).
+The latest diagnostic image is `interactive-20261016-r1792174000007`,
+IMG SHA256 `c05d31c41a9db6e743c531536fdac0766ded87dd76cd30470adbfe88d35dc74d`,
+ISO SHA256 `0a6d026c69c9a5c1a6240998e4d724d492848468650d9b31e472981cbbc99abd`.
+It combines the signed r9 build base with the r7 application payload. Its BIOS
+campaign completed with recorded Settings and clean-shutdown checks passing,
+QEMU exit 0, and unchanged source image and host policy. Initial Home displays
+`Startup check: timed out.` with isolation unverified; later Files and shutdown
+frames display `Guard checked`. This is bounded boot/Settings/shutdown and
+diagnostic evidence, not reliable startup isolation or full GUI acceptance.
+No wallet was created and no signature was produced. The terminal report is
+`outputs/interactive-boot-single-usb-bios-1792171519078/result.json`.
+No older transaction acceptance
+transfers to this image. See [r7 payload](funds-production-payload-r7-2026-10-16.md)
+and [startup diagnostics](funds-startup-diagnostics-2026-10-16.md).
+
+The r6 image passed its BIOS Settings/shutdown campaign but suffered recurring
+isolation failures. The earlier r4 image's no-serial shutdown failed. Preserve
+those results separately; neither provides final-release acceptance.
 
 Current source additionally exposes separate EVM gas caps and generic ERC-20
-code hashes in offline review. Its 73 protocol and 87 broker tests pass, but it
-is not yet included in either image. See
+code hashes in offline review. Its recorded 73 protocol and 87 broker tests pass.
+Those review fields are included in the newer source-built payloads; source tests do not establish
+exact-image transaction acceptance. See
 [review field evidence](funds-review-fields-2026-10-16.md).
 
-New image: `interactive-20261016-r1792160000002-single-usb.img`, SHA256
+Published wallet-acceptance image: `interactive-20261016-r1792160000002-single-usb.img`, SHA256
 `48a0e09fc01a59ad9d4d864a90a1e3fc8d6c887a12d36abd32fedec38aab5c5e`.
 It removes six manifest-bound research entrypoints, preserves all 1,711 retained
 inherited entries, and adds runtime package notices. The 74 focused checks pass.
 External helper checks add 10 Settings retry/audit tests and five source-handoff
 selection tests, plus four multichain observation-semantics tests; these are separate from guest transaction acceptance.
 
-The table below distinguishes the starting public beta from the new candidate.
+In the table below, “New candidate” denotes the published wallet-acceptance
+image r1792160000002 above, not the later r4, r6 or r7 source-built images.
 New exact-image lifecycle and boot evidence is recorded separately in the linked
 acceptance documents; an older beta result is not evidence for the new image.
 The owner's earlier physical success report applies to the starting beta only.
@@ -59,7 +73,9 @@ pass is transferred merely because some source files remain unchanged.
 | Guarded Jupiter SOL to USDC | Local LiteSVM and Agave execution with captured provider code | Successful accepted guarded signing blocked | Accepted executable provenance, reviewed immutable guard identity, exact-image approval and public settlement |
 | Guarded Jupiter USDC to SOL | Same local execution scope, reverse route tested | Successful accepted guarded signing blocked | Same provenance/guard gates, token rent and wrapped-SOL closure checks |
 | LI.FI / Sushi native ETH to USDC | Approval v9 and local-fork/browser evidence | Not accepted on new candidate | Current supported route/deadline, exact-image approval/signing, independent release and final receipt |
-| WETH/USDC Uniswap and allowances | Separate allowance and swap approval; local-fork evidence | Not accepted on new candidate | Both advertised directions, exact allowance limits/revocation, finalized output and fees |
+| ETH/WETH conversion | Separate approval/key core; retained pinned runtime wrap/unwrap local EVM checks passed. Shared journal engine passed 10 PostgreSQL tests. [Current submission wiring](funds-weth-submit-wiring-r2-2026-10-16.md) adds a distinct release path, explicit ephemeral consent, hash-based recovery lock and shared durable claims; 64 focused source tests passed | Actual Chromium → production POST HTTP adapter → disposable PostgreSQL recovery/restart passed. Current production policy remains false/submit503. A separate test-only compiled policy permits one synthetic lost-ack send; recovered/same-signature retries are blocked and a fresh distinct request requires new consent. Source-key signatures and synthetic RPC; no full Next runtime or new-image guest acceptance | Full Next/deployment boundary, runtime/source provenance, exact-image signing, physical/public settlement and authenticated release. Mounted-session UI memory is not durable duplicate authority; server claims remain authoritative |
+| WETH/USDC Uniswap and allowances | Canonical retained pinned runtimes in local Anvil passed wrap, bounded approvals, swaps both ways and explicit zero revocation: seven source-signed transactions, exact debit/gas/nonce, minimum output, PostgreSQL duplicate prevention and four router deadline/minimum rejection calls. Revocation source suite: 101 tests | Source signing with synthetic storage/liquidity and local finality only; no new-image guest acceptance or public settlement. Current hashes and evidence independently checked by root, not an external audit | Exact-image signing; full browser/API/database journey; current deployment/source provenance; physical acceptance and public settlement |
+| LI.FI cross-chain routes | Separate bounded observation parser checks source/destination identities and distinguishes completed, partial and refunded observations; 28 source tests. Proposed Ethereum USDC → Base USDC Across route remains an investigation | No cross-chain signable route accepted. Observation does not verify destination delivery or refund and never authorizes resend | Accepted bridge/facet/deployment identities, enforceable offline signing window, complete source/destination settlement and recovery acceptance |
 | Husher ETH to USDC deposit | Provider-bound offline review and isolated journal/monitor tests | Not accepted on new candidate | Supported access, enforceable offline window, late deposit/refund correlation and payout settlement |
 | Standard Savings setup/action/gas | Rehearsal proofs; local contract deployment and confined signing | Not accepted on new candidate | Trusted enrollment, independent freshness/rollback, deployment identity and physical recovery |
 | Strong Savings / signer rotation | Local independent-key simulation and quorum tests | Not accepted on new candidate | Actual independently controlled signers plus Standard gates; same-machine keys do not prove independence |
@@ -87,7 +103,7 @@ unchanged funded-release gate blocks direct submission. A seeded uncertain
 browser record survives reload without allowing resend. This is safe refusal
 evidence, not full-app preparation, durable server storage or settlement.
 
-Fresh supported source checks total 239 distinct cases: 181 protocol/lifecycle
+The earlier supported-source test cohort totals 239 distinct cases: 181 protocol/lifecycle
 cases, 54 recovery/ledger/enrollment cases, and four storage cases subsequently
 run with the packaged Linux runtime. The initial platform failures remain in
 the evidence. The storage suite retains its existing environment-check mock;
@@ -97,7 +113,7 @@ blocked when restored submission history is incomplete.
 
 ## Source and distribution reconciliation
 
-The public branch is an older source baseline plus the incremental interactive
+At the recorded reconciliation checkpoint, the public branch was an older source baseline plus the incremental interactive
 layer. It is not the complete source closure of the tested runtime. Comparison of
 261 public Git objects with local files found 189 byte matches and 204 matches
 after separately normalizing CRLF. Remaining differences include older signing
@@ -116,12 +132,15 @@ See [release provenance](funds-release-provenance-2026-10-16.md) for actual buil
 results and remaining build/source prerequisites.
 
 A separate [production application bootstrap](production-payload-bootstrap-2026-10-16.md)
-now rebuilds 33 workers and GUI/assets as 112 locked artifacts from the supplied
-application source kit. A fresh extracted-kit rebuild matched. Registry checks
+initially rebuilt 33 workers and GUI/assets as 112 locked artifacts from its supplied
+application source kit. That earlier fresh extracted-kit rebuild matched. Registry checks
 matched 61 pinned npm tarballs and 553 consumed dependency files. This closes an
 application rebuild layer, not a full Linux OS build, upstream publisher
 authentication or correspondence of a newly assembled boot image. The published
-image and its previous evidence remain unchanged.
+image and its previous evidence remain unchanged. The current r7 application
+payload instead contains 35 workers and 114 artifacts from 796 inputs; its
+workspace locked build matched, but no fresh extracted-r7-kit rebuild is claimed.
+The earlier rebuild does not prove reproduction of r7.
 
 [Debian provenance](production-debian-provenance-2026-10-16.md) additionally
 authenticates 103 binary archives and matches 1,630 selected file records through
@@ -131,6 +150,14 @@ versions and the generated hardware database remain explicit gaps; no silent
 upgrades or full OS rebuild are claimed.
 
 ## Evidence and decision
+
+- [Canonical Uniswap journey](funds-ethereum-revocation-canonical-journey-2026-10-16.md):
+  seven local signed transactions and explicit test/provenance limits. Root's
+  source/report hash and harness review is recorded in
+  `outputs/funds-ethereum-canonical-journey-root-review-20261016.json`.
+- [Signed build base](production-signed-toolchain-base-2026-10-16.md): newer
+  signed package/source closure and remaining host/toolchain trust limits;
+  the historical Debian recovery counts above are not the current build base.
 
 - [Wallet acceptance](funds-wallet-acceptance-2026-10-16.md): fresh isolated checks
   and exact-image lifecycle scope, with failures and limits retained.
