@@ -1,6 +1,6 @@
 # Independent review brief
 
-This is a prepared request, not a sent message, engagement or audit claim. No reviewer has accepted the work and no cost or timetable is known.
+This is a reusable review brief, not an engagement or audit claim. No reviewer has accepted the work and no cost or timetable is known.
 
 ## Request to send to a reviewer
 
@@ -23,4 +23,4 @@ An independent security firm can quote this work directly. Two relevant starting
 
 For the exact Jupiter and Raydium deployments in the provider handoff, request the source commit/archive, lockfiles, reproducible build/container/flags, full-allocation and trimmed executable hashes, deployment correspondence, and audit version. Request an explanation of the Raydium documented 24-hour delay versus the retained zero-delay configuration observation, including any independently enforced external control. Keep observed and accepted pins separate until review resolves the correspondence.
 
-No request has been sent to maintainers or auditors. Sending one requires the owner's instruction; commissioning paid work requires agreed scope and budget. Completing that external review is a real dependency and cannot be replaced by relabeling internal checks.
+Sending a request requires the owner's instruction; commissioning paid work requires agreed scope and budget. Completing that external review is a real dependency and cannot be replaced by relabeling internal checks.
