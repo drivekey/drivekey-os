@@ -1,3 +1,4 @@
+import {OperationalError} from './service-events';
 import {getAddress,keccak256} from 'ethers';
 import {z} from 'zod';
 import type {Rpc} from './protocol';
@@ -39,11 +40,11 @@ export async function checkEthereumIdentities(rpc:Rpc,a:Action,approved:unknown)
  const block=await rpc('eth_getBlockByNumber',['latest',false]) as {number?:unknown;hash?:unknown}|null;
  if(!block||typeof block.number!=='string'||!/^0x[0-9a-fA-F]+$/.test(block.number)||!isHash(block.hash))throw Error('Missing Ethereum identity block.');
  await Promise.all(identities.map(async pin=>{
-  if(hashCode(await rpc('eth_getCode',[pin.address,block.number]))!==pin.codeHash)throw Error('Ethereum contract code changed. Submission blocked pending review.');
+  if(hashCode(await rpc('eth_getCode',[pin.address,block.number]))!==pin.codeHash)throw new OperationalError('Ethereum contract code changed. Submission blocked pending review.','identity-pin-mismatch');
   if(pin.implementation){
    const word=await rpc('eth_getStorageAt',[pin.address,pin.implementationSlot,block.number]);
-   if(!isHash(word)||!/^0x0{24}[0-9a-fA-F]{40}$/.test(word)||'0x'+word.slice(-40).toLowerCase()!==pin.implementation.toLowerCase())throw Error('USDC implementation changed. Submission blocked pending review.');
-   if(hashCode(await rpc('eth_getCode',[pin.implementation,block.number]))!==pin.implementationCodeHash)throw Error('USDC implementation code changed. Submission blocked pending review.');
+   if(!isHash(word)||!/^0x0{24}[0-9a-fA-F]{40}$/.test(word)||'0x'+word.slice(-40).toLowerCase()!==pin.implementation.toLowerCase())throw new OperationalError('USDC implementation changed. Submission blocked pending review.','identity-pin-mismatch');
+   if(hashCode(await rpc('eth_getCode',[pin.implementation,block.number]))!==pin.implementationCodeHash)throw new OperationalError('USDC implementation code changed. Submission blocked pending review.','identity-pin-mismatch');
   }
  }));
  const canonical=await rpc('eth_getBlockByNumber',[block.number,false]) as {hash?:unknown}|null;

@@ -1,0 +1,42 @@
+/* Compact terminal instrument; expansion grows toward the left in normal flow. */
+.assets-main .portfolio-panel{box-sizing:border-box;width:336px;max-width:100%;margin:32px 0 32px auto;padding:0;border-radius:0;border-color:#414139;background:#090a08;color:#c6c6b6;transition:width .48s cubic-bezier(.22,1,.36,1)}
+.portfolio-panel.expanded{width:100%}
+.portfolio-panel .terminal-bar{height:43px;border-bottom:1px solid #34342e;background:#141512;font-size:11px}
+.portfolio-panel .portfolio-title{display:block;padding:26px 20px 14px}
+.portfolio-panel .portfolio-title h2{font-size:24px;color:#eee;letter-spacing:-1px}
+.portfolio-panel .portfolio-title p{font-size:10px;line-height:1.7;color:#969687}
+.portfolio-panel .portfolio-title>button{padding:7px 0;border:0;border-radius:0;background:transparent;font-size:10px;color:#b8b8a7}
+.portfolio-panel .portfolio-grid{grid-template-columns:minmax(0,1fr);gap:0;padding:0 20px 20px}
+.portfolio-panel .pizza-stage{position:relative;width:100%;max-width:none;margin:10px 0 0;padding:18px 0 22px;border-top:1px solid #34342b;border-bottom:1px solid #34342b;box-sizing:border-box}
+.multi-character-chart{position:absolute;inset:18px 0 22px;margin:0;display:flex;align-items:center;justify-content:center;font-family:Consolas,'Courier New',monospace;font-size:clamp(5px,.46vw,9px);line-height:1.06;white-space:pre;color:#acac91;pointer-events:none;mask-image:linear-gradient(135deg,#000 15%,#0008 75%,#000)}
+.portfolio-panel:not(.expanded) .multi-character-chart{font-size:6.5px}
+.portfolio-panel .pizza-stage svg{position:relative;display:block;width:100%;aspect-ratio:1;opacity:1}
+.portfolio-panel .pizza-stage svg ellipse,.portfolio-panel .pizza-stage svg>circle{display:none}
+.portfolio-panel .pizza-stage svg path{fill:transparent;stroke:transparent}
+.portfolio-panel .pizza-stage svg path[aria-pressed=true]{stroke:#c6c6b655;stroke-dasharray:1 5;stroke-linecap:round}
+.portfolio-panel .multi-character-chart{display:block;text-align:center;align-content:center;color:#e0e0ce;mask-image:none}
+.portfolio-panel .pizza-stage svg text{display:none}
+.portfolio-panel .pizza-stage svg:focus-within{opacity:1}
+.portfolio-panel .pizza-slice:has([aria-pressed=true]){opacity:1;filter:brightness(1.8)}
+.portfolio-panel .chart-open-target{position:absolute;inset:0;width:100%;height:100%;background:transparent;border:0;border-radius:0}
+.portfolio-panel .pizza-caption{font-size:9px;letter-spacing:1px;color:#91917d}
+.portfolio-panel .portfolio-list{margin:10px 0 16px}
+.holdings-label{display:flex;justify-content:space-between;align-items:center;gap:24px;padding-top:16px;font-size:clamp(18px,2vw,26px);letter-spacing:1px;color:#dddcc9}
+.holdings-label>span:last-child{font-size:14px;white-space:nowrap;color:#aaa995}
+.holdings-empty{font-size:clamp(16px,1.4vw,20px);line-height:1.8;color:#b8b8a7;margin:24px 0;max-width:55ch}
+.portfolio-panel:not(.expanded) .holdings-column{grid-row:1}
+.portfolio-panel:not(.expanded) .pizza-stage{max-width:170px;margin:0 auto}
+.portfolio-panel:not(.expanded) .multi-character-chart{font-size:4px}
+.portfolio-panel .portfolio-list button{padding:13px 0;border-radius:0;color:#c6c6b6;font-size:11px}
+.portfolio-panel .portfolio-list strong:before{content:'■';margin-right:9px;color:#c6c6b6}
+.portfolio-panel .portfolio-list small,.portfolio-panel .portfolio-list code{font-size:10px;color:#909080}
+.portfolio-panel .asset-detail{border-color:#34342b;background:#11120e;padding:18px}
+.portfolio-panel .asset-detail h3{font-size:20px}
+.portfolio-panel .asset-detail dd{color:#deded0}
+.portfolio-panel.expanded .portfolio-grid{grid-template-columns:minmax(0, min(33vw,480px)) minmax(0,1fr);gap:36px}
+.portfolio-panel.expanded .portfolio-title{display:flex}
+.portfolio-panel.expanded .multi-character-chart{font-size:clamp(6px,.72vw,11px)}
+.portfolio-panel.expanded .pizza-stage{animation:chart-arrive .48s cubic-bezier(.22,1,.36,1)}
+@keyframes chart-arrive{from{transform:translateX(45px);opacity:.55}to{transform:translateX(0);opacity:1}}
+@media(max-width:700px){.assets-main .portfolio-panel{width:100%}.portfolio-panel.expanded .portfolio-grid{grid-template-columns:minmax(0,1fr);gap:12px}.portfolio-panel.expanded .portfolio-title{display:block}.portfolio-panel .multi-character-chart,.portfolio-panel.expanded .multi-character-chart{font-size:clamp(5px,1.6vw,9px)}.portfolio-panel .portfolio-grid{padding:0 16px 16px}.portfolio-panel .pizza-stage{max-width:380px;margin-inline:auto}}
+@media(prefers-reduced-motion:reduce){.assets-main .portfolio-panel{transition:none}.portfolio-panel.expanded .pizza-stage{animation:none}}

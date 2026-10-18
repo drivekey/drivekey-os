@@ -1,6 +1,6 @@
 import {getAddress,parseUnits} from 'ethers';
 import {validateTrade,SWAP_ROUTER} from './trade-protocol';
-import {validateSolSwap} from './sol-swap-protocol';
+import {validateExpiringJupiter} from './jupiter-expiring-protocol';
 import {validateMultiRequest,type MultiPublic} from './multi-protocol';
 import {SOL_USDC} from './payment-request';
 
@@ -21,7 +21,7 @@ export function checkPreparedIntent(input:unknown,intent:{wallet:MultiPublic;net
   return r;
  }
  if(a.kind==='swap'){
-  const r=validateSolSwap(input);
+  const r=validateExpiringJupiter(input);
   if(r.deviceId!==a.wallet.deviceId||r.from!==a.wallet.solanaAddress||r.nonceAccount!==a.nonce||r.build.inputMint!==(a.asset==='SOL'?'So11111111111111111111111111111111111111112':SOL_USDC)||r.build.inAmount!==units||r.build.slippageBps!==a.slippage)fail();
   return r;
  }

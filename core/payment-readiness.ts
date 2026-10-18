@@ -1,4 +1,5 @@
-// Per-path acceptance. Publishing the website and executing an agent payment are separate approvals.
+// Protocol implementation support, not live release approval. Public APIs and UI
+// use live-release-policy; local test harnesses may exercise supported paths.
 import {ROBINHOOD_WETH_IDENTITY,ROBINHOOD_USDG_IDENTITY} from './robinhood-proxy-identity';
 export const PAYMENT_PATHS = {
  'robinhood-native': {enabled:true,dependency:'Exact fresh preflight and explicit offline-approved submission required'},
@@ -9,8 +10,9 @@ export const PAYMENT_PATHS = {
  'ethereum-swap': {enabled:true,dependency:'RC12 v7 required; pinned WETH/USDC single pools at 500 or 3000, exact allowance, minimum output, expiry and fresh preflight'},
  'solana-native': {enabled:true,dependency:'An initialized funded nonce owned by the offline wallet is required'},
  'solana-spl': {enabled:true,dependency:'Classic SPL only; an initialized funded nonce and exact token/account checks required'},
- 'solana-swap-sol-usdc': {enabled:true,dependency:'Only pinned direct Raydium CLMM routes; exact fresh preflight, initialized nonce and explicit offline-approved submission required'},
- 'solana-swap-usdc-sol': {enabled:true,dependency:'Only pinned direct Raydium CLMM routes; exact fresh preflight, initialized nonce and explicit offline-approved submission required'},
+ 'solana-swap-sol-usdc': {enabled:true,dependency:'Current guarded Jupiter v1 only; accepted immutable guard, pinned direct Raydium CLMM route, durable nonce journal, exact fresh preflight and explicit offline approval required'},
+ 'solana-swap-usdc-sol': {enabled:true,dependency:'Current guarded Jupiter v1 only; accepted immutable guard, pinned direct Raydium CLMM route, durable nonce journal, exact fresh preflight and explicit offline approval required'},
+ 'solana-nonce-invalidate': {enabled:true,dependency:'Separate nonce-only approval bound to the original request and unchanged nonce; exact fresh preflight and finalized reconciliation of both cancellation and original transaction required'},
  'solana-nonce-setup': {enabled:false,dependency:'Retired online-sponsor route; use the verified offline nonce setup with RC9'},
  'solana-offline-nonce': {enabled:true,dependency:'RC9 ISO required; funded offline wallet, valid original blockhash, exact preflight and explicit submission'},
  'husher': {enabled:false,dependency:'Authenticated key permissions, canonical route checks and a new provider-bound offline approval format'},
@@ -26,7 +28,10 @@ export function pathForRequest(input:unknown):PaymentPath|null{
  if(r.version===3&&r.network==='solana')return r.standard==='native'?'solana-native':r.standard==='spl'?'solana-spl':null;
  // Legacy v4 remains readable for recovery; it cannot inherit v7 execution acceptance.
  if(r.version===7&&r.network==='ethereum')return r.kind==='payment'?'ethereum-payment':r.kind==='swap'||r.kind==='approval'?'ethereum-swap':null;
- if(r.version===4&&r.network==='solana'&&r.kind==='swap'){
+ // Historical unguarded v4 swaps remain readable for reconciliation only.
+ // Path classification is not protocol validation or funded release approval.
+ if(r.version===1&&r.network==='solana'&&r.kind==='solana-nonce-invalidate')return 'solana-nonce-invalidate';
+ if(r.version===1&&r.network==='solana'&&r.kind==='jupiter-expiring-swap'){
   const build=r.build as Record<string,unknown>|undefined;
   if(build?.inputMint==='So11111111111111111111111111111111111111112'&&build.outputMint==='EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v')return 'solana-swap-sol-usdc';
   if(build?.inputMint==='EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'&&build.outputMint==='So11111111111111111111111111111111111111112')return 'solana-swap-usdc-sol';

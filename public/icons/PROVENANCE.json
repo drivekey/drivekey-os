@@ -1,0 +1,226 @@
+{
+  "lucide": "0.468.0",
+  "cryptocurrencyIcons": "1a63530be6e374711a8554f31b17e4cb92c25fa5",
+  "files": [
+    {
+      "file": "crypto/aave.svg",
+      "url": "https://raw.githubusercontent.com/spothq/cryptocurrency-icons/1a63530be6e374711a8554f31b17e4cb92c25fa5/svg/color/aave.svg",
+      "sha256": "0884e64b1b44256a2c1dd4e2a195e7c929bf5b516c09d3f847f334b25ef6f878"
+    },
+    {
+      "file": "crypto/btc.svg",
+      "url": "https://raw.githubusercontent.com/spothq/cryptocurrency-icons/1a63530be6e374711a8554f31b17e4cb92c25fa5/svg/color/btc.svg",
+      "sha256": "5a8131ecdf855b12cb56080aeeeefea266976529c45b2d58c284a13b7519f4ca"
+    },
+    {
+      "file": "crypto/dai.svg",
+      "url": "https://raw.githubusercontent.com/spothq/cryptocurrency-icons/1a63530be6e374711a8554f31b17e4cb92c25fa5/svg/color/dai.svg",
+      "sha256": "030fdb32f1563c8d0997ff87940587a65af3a41171bba668f55b361d5ce6b561"
+    },
+    {
+      "file": "crypto/eth.svg",
+      "url": "https://raw.githubusercontent.com/spothq/cryptocurrency-icons/1a63530be6e374711a8554f31b17e4cb92c25fa5/svg/color/eth.svg",
+      "sha256": "1f94df8533f61806f7b17eaf9cd28678cdba66e1d82a9ca8f9fb38d35a907e9c"
+    },
+    {
+      "file": "crypto/LICENSE.md",
+      "url": "https://raw.githubusercontent.com/spothq/cryptocurrency-icons/1a63530be6e374711a8554f31b17e4cb92c25fa5/LICENSE.md",
+      "sha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499"
+    },
+    {
+      "file": "crypto/link.svg",
+      "url": "https://raw.githubusercontent.com/spothq/cryptocurrency-icons/1a63530be6e374711a8554f31b17e4cb92c25fa5/svg/color/link.svg",
+      "sha256": "2457990f68e333130633497d20456de38af8421aba8fdb4149900e4e051f10fa"
+    },
+    {
+      "file": "crypto/sol.svg",
+      "url": "https://raw.githubusercontent.com/spothq/cryptocurrency-icons/1a63530be6e374711a8554f31b17e4cb92c25fa5/svg/color/sol.svg",
+      "sha256": "94e47e7c108a338cc4a79b82673d66cfbadfcf4c934ccb9c2ca8f13e8ea7dbb2"
+    },
+    {
+      "file": "crypto/uni.svg",
+      "url": "https://raw.githubusercontent.com/spothq/cryptocurrency-icons/1a63530be6e374711a8554f31b17e4cb92c25fa5/svg/color/uni.svg",
+      "sha256": "2a3192f07ade04f86a45b30de0b006400803b84488b2d4266a4dd33cda192773"
+    },
+    {
+      "file": "crypto/usdc.svg",
+      "url": "https://raw.githubusercontent.com/spothq/cryptocurrency-icons/1a63530be6e374711a8554f31b17e4cb92c25fa5/svg/color/usdc.svg",
+      "sha256": "7281e8cadfe9abc14e98b15b05cdc24cc24d68533a51e746141d4d98f2ca2bc8"
+    },
+    {
+      "file": "lucide/arrow-down-left.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/0.468.0/icons/arrow-down-left.svg",
+      "sha256": "a0e72a3f47e9a8803ddfce675e3caf9119ef041b38c103065ec707af15d90202"
+    },
+    {
+      "file": "lucide/arrow-left-right.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/0.468.0/icons/arrow-left-right.svg",
+      "sha256": "2d64da427cbb3f14e522658459903829575b09ec15162c1a69ea6ad341a4359a"
+    },
+    {
+      "file": "lucide/arrow-up-right.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/0.468.0/icons/arrow-up-right.svg",
+      "sha256": "50b2503b9d11881142255466b7e3461d022b919735841c321d72003ac9959fe1"
+    },
+    {
+      "file": "lucide/check.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/0.468.0/icons/check.svg",
+      "sha256": "7f33acc9a77a61659531044525fc008edebe215bf4dcf1c789c8674ad3277db0"
+    },
+    {
+      "file": "lucide/chevron-down.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/0.468.0/icons/chevron-down.svg",
+      "sha256": "66ea878e72ed3488bb3b464c39dfdccee8d1f78e560dccea40e5e12da0e87e87"
+    },
+    {
+      "file": "lucide/chevron-right.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/0.468.0/icons/chevron-right.svg",
+      "sha256": "2758143d7b2434e4aa7307dfd34405c87909ff4052f21b5f3f40d45224b4f19b"
+    },
+    {
+      "file": "lucide/copy.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/0.468.0/icons/copy.svg",
+      "sha256": "ea80e566c7a12628a447cb53179b19aea4f60b9143e2becd0d0f20bf260e5718"
+    },
+    {
+      "file": "lucide/download.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/0.468.0/icons/download.svg",
+      "sha256": "21ee20839a201a74e612aafe7eaaf56f6ddc095c74aa5fcbb252c51f74a7535c"
+    },
+    {
+      "file": "lucide/external-link.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/0.468.0/icons/external-link.svg",
+      "sha256": "3891241b8c3bfc3a8a930078f26ffc5a7e9763da6d0162ace2050b28d4c1d1fe"
+    },
+    {
+      "file": "lucide/eye-off.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/0.468.0/icons/eye-off.svg",
+      "sha256": "774bcd975c5de781a4ee778c76e5591bcdeb409955f7054847e7e6003da0a520"
+    },
+    {
+      "file": "lucide/eye.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/0.468.0/icons/eye.svg",
+      "sha256": "5bf90197dd7629cad64a2e48d1186a71559deb6121207d10e3dc5b19ebaffdcf"
+    },
+    {
+      "file": "lucide/file-check-2.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/0.468.0/icons/file-check-2.svg",
+      "sha256": "da162e219b48e0701f41bc9af0935d40abfcdeec3b8bd4f5a8be2fcfe9b4b379"
+    },
+    {
+      "file": "lucide/file-pen-line.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/0.468.0/icons/file-pen-line.svg",
+      "sha256": "9ef17e4fa10b82aa760b1ff40f04257288be508bb10ad343a9d932578819a7b4"
+    },
+    {
+      "file": "lucide/folder-open.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/0.468.0/icons/folder-open.svg",
+      "sha256": "ee57452b40e71df310214091dd9da1941a397c83197b8ff8d7ae66dd4242578b"
+    },
+    {
+      "file": "lucide/history.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/0.468.0/icons/history.svg",
+      "sha256": "a98ff758157910b9fc9d42d5d5dc80c2f4e037afa5f8ea4dee5f5649f03d438d"
+    },
+    {
+      "file": "lucide/house.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/0.468.0/icons/house.svg",
+      "sha256": "1d3bb0587b8ffbe5e59de3436f880785c3eec7911bd06aabd7932195448b120b"
+    },
+    {
+      "file": "lucide/inbox.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/0.468.0/icons/inbox.svg",
+      "sha256": "1838482c53d0846badef9be96fdcf7a167064241bd4891efa995c77ebec5f187"
+    },
+    {
+      "file": "lucide/key-round.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/0.468.0/icons/key-round.svg",
+      "sha256": "f8cdea843754ed360e36b04bf6aa2c2b3610935dd39ffc685a36c4d0a05be248"
+    },
+    {
+      "file": "lucide/LICENSE",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/0.468.0/LICENSE",
+      "sha256": "1e7290b35280a048667bbf0ebabac1c7fd52a75300e8b2946ac165715997f2bc"
+    },
+    {
+      "file": "lucide/lock-keyhole.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/0.468.0/icons/lock-keyhole.svg",
+      "sha256": "fc0b8b7590d1d9e9bb0112c5c2e15a78ade0bfeca6d6f8c79fbbe149236d74be"
+    },
+    {
+      "file": "lucide/minus.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/0.468.0/icons/minus.svg",
+      "sha256": "a0c743ab6dbf545d8a6e19ef3874f48ede686ce68d25e231bd81f540d97b1f19"
+    },
+    {
+      "file": "lucide/plus.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/0.468.0/icons/plus.svg",
+      "sha256": "7f6af73bf1ff6c4bca3f18351c8d1bdec6749c0c2530c4de5da85d520c21df17"
+    },
+    {
+      "file": "lucide/qr-code.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/0.468.0/icons/qr-code.svg",
+      "sha256": "920cb79ab4b2fd23c36a16de3ca533c4896cb989adb823eb7dec97fd840d30f5"
+    },
+    {
+      "file": "lucide/refresh-cw.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/0.468.0/icons/refresh-cw.svg",
+      "sha256": "2e10dd403c85a24f163d59fc6151aa21147fe9402e1305dfc8979208caee8944"
+    },
+    {
+      "file": "lucide/scan-line.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/0.468.0/icons/scan-line.svg",
+      "sha256": "d17ec0ebae568a92e18e18968bb85658fec088bc3d97b92b729df6f7f9c4848e"
+    },
+    {
+      "file": "lucide/search.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/0.468.0/icons/search.svg",
+      "sha256": "9322d964b61cf729b3a81210568d5a97eaf4a1f3239f25a056fda3013bf35611"
+    },
+    {
+      "file": "lucide/settings-2.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/0.468.0/icons/settings-2.svg",
+      "sha256": "461a8c978685f762e024c23647230f59f00bcae599a025645829435cadb6f3a4"
+    },
+    {
+      "file": "lucide/shield-check.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/0.468.0/icons/shield-check.svg",
+      "sha256": "8d4fcdbde5bba4abb1a2f6fe53e37ceb6343a1d5449a9d88f6f97c1971d26c4e"
+    },
+    {
+      "file": "lucide/triangle-alert.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/0.468.0/icons/triangle-alert.svg",
+      "sha256": "4866f38b8560d410f21e3226413e0b77997b6dfbb6931fadfe0a0d5aef9ffeb4"
+    },
+    {
+      "file": "lucide/upload.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/0.468.0/icons/upload.svg",
+      "sha256": "04b9443355c959b3477b7856ee40dffa79438e5bfdb4e9dbf5159341ace26408"
+    },
+    {
+      "file": "lucide/usb.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/0.468.0/icons/usb.svg",
+      "sha256": "6d3feae2abc694973d7dc8000a7016688306b82530426288c163257ac90d3e21"
+    },
+    {
+      "file": "lucide/user-round.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/0.468.0/icons/user-round.svg",
+      "sha256": "84870f26f3faf8da45da84174517519e81b9e8f00319c78954fcbb74f50038a1"
+    },
+    {
+      "file": "lucide/vault.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/0.468.0/icons/vault.svg",
+      "sha256": "8cd0b1faa0251b6f2db020976254ef263432e4bbd468d0d051745edbcf327e91"
+    },
+    {
+      "file": "lucide/wallet.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/0.468.0/icons/wallet.svg",
+      "sha256": "76c9596f629a2abf9cfabb573452f3113ed7e9502c699aa811e630f156eb7556"
+    },
+    {
+      "file": "lucide/x.svg",
+      "url": "https://raw.githubusercontent.com/lucide-icons/lucide/0.468.0/icons/x.svg",
+      "sha256": "4a9cdab38fbb96162e7dace28e33f4ca0e49d8963a6162abc3d4691b7d675117"
+    }
+  ]
+}

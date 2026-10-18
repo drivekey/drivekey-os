@@ -1,0 +1,6 @@
+import {runSandbox} from './sandbox-process';
+import {decodeEthNativeRouteFrame,decodeEthNativeRequestFrame,encodeEthNativeSigningFrame,decodeEthNativeResponseFrame,MAX_ETH_NATIVE_REQUEST_FRAME,MAX_ETH_NATIVE_SIGN_FRAME,MAX_ETH_NATIVE_RESPONSE_FRAME} from './eth-native-boundary-codec';
+const node='/opt/drivekey/node/bin/node',parser='/opt/drivekey/drivekey-eth-native-public-parser.cjs',signer='/opt/drivekey/drivekey-eth-native-key-worker.cjs';
+export async function isEthNativeTradeBytes(bytes:Buffer){return decodeEthNativeRouteFrame(await runSandbox({node,program:parser,args:['eth-native-route'],inputLimit:32768,outputLimit:9,timeoutMs:10000,heapMb:64},bytes));}
+export async function parseEthNativeRequestBytes(bytes:Buffer){return decodeEthNativeRequestFrame(await runSandbox({node,program:parser,args:['eth-native-request'],inputLimit:32768,outputLimit:MAX_ETH_NATIVE_REQUEST_FRAME,timeoutMs:10000,heapMb:64},bytes));}
+export async function isolatedEthNativeResponse(request:unknown,vault:unknown,fingerprint:string,password:string){const frame=encodeEthNativeSigningFrame(request,vault,fingerprint,password);try{return decodeEthNativeResponseFrame(await runSandbox({node,program:signer,args:[],inputLimit:MAX_ETH_NATIVE_SIGN_FRAME,outputLimit:MAX_ETH_NATIVE_RESPONSE_FRAME,timeoutMs:90000,heapMb:128},frame));}finally{frame.fill(0);}}

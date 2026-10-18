@@ -1,3 +1,4 @@
+import {OperationalError} from './service-events';
 // Server-only: refuse program upgrades until the new bytecode has passed acceptance.
 import {createHash} from 'node:crypto';
 import {Connection,PublicKey,type AccountInfo} from '@solana/web3.js';
@@ -8,9 +9,9 @@ export const SOL_SWAP_PROGRAM_PINS=Object.freeze([
 ]);
 // Exported for isolated parser tests; online callers always use the fixed pins above.
 export function verifyProgramBytes(program:AccountInfo<Buffer>|null,data:AccountInfo<Buffer>|null,pin:{programData:string;sha256:string}){
- if(!program||!program.executable||!program.owner.equals(LOADER)||program.data.length!==36||program.data.readUInt32LE(0)!==2||new PublicKey(program.data.subarray(4,36)).toBase58()!==pin.programData)throw Error('Swap program identity or loader changed.');
+ if(!program||!program.executable||!program.owner.equals(LOADER)||program.data.length!==36||program.data.readUInt32LE(0)!==2||new PublicKey(program.data.subarray(4,36)).toBase58()!==pin.programData)throw new OperationalError('Swap program identity or loader changed.','identity-pin-mismatch');
  if(!data||data.executable||!data.owner.equals(LOADER)||data.data.length<=45||data.data.length>10000000||data.data.readUInt32LE(0)!==3||data.data[12]>1)throw Error('Unsupported swap program data.');
- if(createHash('sha256').update(data.data.subarray(45)).digest('hex')!==pin.sha256)throw Error('Swap program bytecode changed. Execution requires renewed acceptance.');
+ if(createHash('sha256').update(data.data.subarray(45)).digest('hex')!==pin.sha256)throw new OperationalError('Swap program bytecode changed. Execution requires renewed acceptance.','identity-pin-mismatch');
 }
 export async function verifySolSwapPrograms(c:Connection,minContextSlot=0){
  if(!Number.isSafeInteger(minContextSlot)||minContextSlot<0)throw Error('Invalid program context.');

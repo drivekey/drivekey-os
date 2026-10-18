@@ -3,6 +3,7 @@ import { lstat, open, realpath, rename, unlink } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import { MAX_JSON_BYTES, parseJson } from "./protocol";
+import {parseStrictPublicJson} from './strict-public-json';
 type JsonLimit = typeof MAX_JSON_BYTES | 131072;
 function boundedJson(text:string,maxBytes:JsonLimit){
   if(![MAX_JSON_BYTES,131072].includes(maxBytes)||Buffer.byteLength(text,'utf8')>maxBytes)throw new Error('JSON exceeds its bounded file limit.');
@@ -17,7 +18,7 @@ export async function safeDirectory(directory: string): Promise<string> {
   return path;
 }
 
-export async function readJsonFile(directory: string, filename: string, maxBytes:JsonLimit=MAX_JSON_BYTES): Promise<unknown> {
+export async function readJsonFile(directory: string, filename: string, maxBytes:JsonLimit=MAX_JSON_BYTES, strictPublic = false): Promise<unknown> {
   if (!/^[a-z0-9-]+\.json$/.test(filename)) throw new Error("Invalid exchange filename.");
   const path = join(await safeDirectory(directory), filename);
   const before = await lstat(path);
@@ -29,7 +30,8 @@ export async function readJsonFile(directory: string, filename: string, maxBytes
     const buffer = Buffer.alloc(maxBytes + 1);
     const { bytesRead } = await file.read(buffer, 0, buffer.length, 0);
     if (bytesRead > maxBytes) throw new Error("Exchange file is too large.");
-    return boundedJson(buffer.subarray(0, bytesRead).toString("utf8"),maxBytes);
+    const text = buffer.subarray(0, bytesRead).toString("utf8");
+    return strictPublic ? parseStrictPublicJson(text,maxBytes) : boundedJson(text,maxBytes);
   } finally { await file.close(); }
 }
 

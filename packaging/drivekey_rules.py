@@ -11,28 +11,39 @@ from drivekey_theme import shared_font
 FIELDS = [('perPayment','Maximum per payment'),('rolling','Any-24-hour allowance'),('sevenDay','Seven-day budget'),('thirtyDay','30-day budget'),('approvalAbove','Ask for offline approval above…'),('count','Payment count within any 24 hours')]
 
 def inspect_payment_approval(app):
+    if app.busy:return
     profile=app.profile
     def reviewed(reply):
         if not reply.get('ok'):return
+        reply=copy.deepcopy(reply)
         app.mode='rules-approval';app.clear('Review agent payment','Separate offline approver · exact payment only')
+        state={'generation':app.transition_id,'approved':False,'consumed':False}
         request=reply['approval'];p=request['payment'];c=request['context']
         app.text(app.body,'Last reported online '+c['reportedAt']+'. Imported observation.')
         native=p['asset']=='0x'+'0'*40
         for title,value in [('Network','Robinhood Chain 4663'),('Policy account',c['account']),('Recipient',p['recipient']),('Asset',p['asset']),('Amount',decimal_text(p['amount'],18 if native else 6)+(' ETH' if native else ' USDG')),('Category',p['category']),('Policy revision',p['revision']),('Safety epoch',p['safetyEpoch']),('Payment ID',p['paymentId']),('Expiry UTC',dt.datetime.fromtimestamp(p['expiry'],dt.timezone.utc).isoformat())]:
             app.text(app.body,title,11);app.text(app.body,str(value),12,theme.FG,mono=True)
         def approve():
+            if app.busy or state['consumed'] or state['approved'] or state['generation']!=app.transition_id or app.profile!=profile or app.mode!='rules-approval':return
+            if p['expiry']<=int(dt.datetime.now(dt.timezone.utc).timestamp()):
+                state['consumed']=True;app.message.set('Payment approval expired. Inspect a fresh request.');return
             app.clear('Sign approved agent payment','Passphrase signing is a separate step');app.passphrase.set('')
+            state.update(generation=app.transition_id,approved=True)
             box=app.card('Separate approver vault',icon_name='Lock');app.entry(box,'Vault passphrase',app.passphrase).focus_set()
             def sign():
-                if app.profile!=profile or app.mode!='rules-approval':return
-                app.call(dict(scope='rules',profile=profile,action='sign-approval',consent=True,fingerprint=reply['fingerprint'],password=app.passphrase.get()),done)
+                if app.busy or state['consumed'] or not state['approved'] or state['generation']!=app.transition_id or app.profile!=profile or app.mode!='rules-approval':return
+                state.update(approved=False,consumed=True)
+                if p['expiry']<=int(dt.datetime.now(dt.timezone.utc).timestamp()):
+                    app.passphrase.set('');app.message.set('Payment approval expired. Inspect a fresh request.');return
+                payload=dict(scope='rules',profile=profile,action='sign-approval',consent=True,fingerprint=reply['fingerprint'],password=app.passphrase.get())
+                app.passphrase.set('');app.call(payload,done)
             def done(result):
                 app.passphrase.set('');app.clear('Approval signed—awaiting application' if result.get('ok') else 'Signing stopped',result.get('message',result.get('error','Inspect Files.')))
                 app.text(app.body,'rules-signed-payment-approval.json. Hard caps, schedule and current policy are checked again at execution.')
                 app.button(app.body,'Back to Wallet',lambda:app.show('Wallet')).pack(anchor='w')
-            app.button(box,'Sign payment approval',sign,True).pack(anchor='w')
+            app.button(box,'Sign payment approval',app.screen_command(sign),True).pack(anchor='w')
             app.button(box,'Cancel',lambda:app.show('Wallet')).pack(anchor='w')
-        app.button(app.body,'Approve exact payment',approve,True).pack(anchor='w')
+        app.button(app.body,'Approve exact payment',app.screen_command(approve),True).pack(anchor='w')
         app.button(app.body,'Cancel',lambda:app.show('Wallet')).pack(anchor='w')
     app.call(dict(scope='rules',profile=profile,action='inspect-approval'),reviewed)
 
@@ -53,8 +64,11 @@ def decimal_text(value, decimals):
 
 class AdvancedRulesEditor:
     def __init__(self,app):
-        self.app=app;self.profile=app.profile;self.tab='Limits';self.draft=None;self.bindings=[];self.review=None
+        self.app=app;self.profile=app.profile;self.tab='Limits';self.draft=None;self.bindings=[];self.invalidate_approval()
         app.call({'scope':'rules','profile':self.profile,'action':'context'},self.loaded)
+
+    def invalidate_approval(self):
+        self.review=None;self.review_generation=None;self.approved_generation=None
 
     def loaded(self,reply):
         if not reply.get('ok'):return
@@ -72,7 +86,7 @@ class AdvancedRulesEditor:
         for recipient,var in self.label_bindings:self.draft['labels'][recipient['recipient']]=var.get()
         addresses={r['recipient'] for r in self.draft['rules']['recipients']}
         self.draft['labels']={k:v for k,v in self.draft['labels'].items() if k in addresses}
-        self.review=None
+        self.invalidate_approval()
 
     def switch(self,tab):
         try:self.commit()
@@ -101,6 +115,7 @@ class AdvancedRulesEditor:
         self.app.tooltip(scale,'Arrow keys change the amount. Exact input supports every base unit; displaying the slider never rounds it.')
 
     def render(self):
+        self.invalidate_approval()
         a=self.app;a.mode='rules';a.passphrase.set('');self.bindings=[];self.label_bindings=[]
         a.clear('Agent rules','Draft · Robinhood Chain 4663 · separately funded policy account')
         c=self.draft['context'];r=self.draft['rules']
@@ -186,7 +201,8 @@ class AdvancedRulesEditor:
         self.app.call(dict(scope='rules',profile=self.profile,action='save',draft=self.draft),lambda reply:self.app.call(dict(scope='rules',profile=self.profile,action='review'),self.reviewed) if reply.get('ok') else None)
     def reviewed(self,reply):
         if not reply.get('ok'):return
-        self.review=reply;a=self.app;a.clear('Review complete authority','Draft · not signed or active')
+        self.invalidate_approval();self.review=copy.deepcopy(reply);a=self.app;a.clear('Review complete authority','Draft · not signed or active')
+        self.review_generation=a.transition_id
         for line in reply['explanation']:a.text(a.body,line,12,theme.FG)
         for asset,value in reply.get('exposure',{}).items():a.text(a.body,'Maximum exposure: '+value['display']+' '+asset.upper()+'. '+value['label'],11,theme.FG)
         a.text(a.body,'Fixed seven-day and 30-day periods may reset before expiry. Gas is paid separately; the policy account never reimburses it.')
@@ -210,20 +226,27 @@ class AdvancedRulesEditor:
             a.text(box,'Recipient: '+recipient['recipient'],11,theme.FG,mono=True);a.text(box,'Category '+str(recipient['category']));limits(box,recipient)
         a.text(box,'Names are local labels only. Amounts above either global or recipient approval threshold require the separate approver; hard caps always apply.')
         a.text(box,'Authorization fingerprint: '+reply['fingerprint'],10,theme.FG,mono=True)
-        a.button(a.body,'Approve these rules',self.approve,True).pack(anchor='w',pady=8)
+        a.button(a.body,'Approve these rules',a.screen_command(self.approve),True).pack(anchor='w',pady=8)
         a.button(a.body,'Edit rules',self.render).pack(anchor='w')
     def approve(self):
-        if not self.review:return
+        a=self.app
+        if a.busy or not self.review or self.review_generation!=a.transition_id or a.profile!=self.profile or a.mode!='rules':return
+        if self.review['draft']['authorizationExpiry']<=int(dt.datetime.now(dt.timezone.utc).timestamp()):
+            self.invalidate_approval();a.message.set('Rules approval expired. Review again.');return
         a=self.app;a.clear('Sign approved rules','Passphrase signing is a separate step');a.passphrase.set('')
+        self.approved_generation=a.transition_id
         box=a.card('Offline owner signature',icon_name='Lock');a.entry(box,'Vault passphrase',a.passphrase).focus_set()
-        a.button(box,'Sign rules',self.sign,True).pack(anchor='w',pady=8)
+        a.button(box,'Sign rules',a.screen_command(self.sign),True).pack(anchor='w',pady=8)
         a.button(box,'Cancel',lambda:a.show('Wallet')).pack(anchor='w')
     def sign(self):
         a=self.app
-        if not self.review or a.profile!=self.profile or a.mode!='rules':return
-        a.call(dict(scope='rules',profile=self.profile,action='sign',fingerprint=self.review['fingerprint'],consent=True,password=a.passphrase.get()),self.signed)
+        if a.busy or not self.review or self.approved_generation!=a.transition_id or a.profile!=self.profile or a.mode!='rules':return
+        if self.review['draft']['authorizationExpiry']<=int(dt.datetime.now(dt.timezone.utc).timestamp()):
+            self.invalidate_approval();a.passphrase.set('');a.message.set('Rules approval expired. Review again.');return
+        payload=dict(scope='rules',profile=self.profile,action='sign',fingerprint=self.review['fingerprint'],consent=True,password=a.passphrase.get())
+        self.invalidate_approval();a.passphrase.set('');a.call(payload,self.signed)
     def signed(self,reply):
-        self.review=None;self.app.passphrase.set('')
+        self.invalidate_approval();self.app.passphrase.set('')
         self.app.clear('Signed—awaiting application' if reply.get('ok') else 'Signing stopped',reply.get('message',reply.get('error','Inspect Files before retrying.')))
         self.app.text(self.app.body,'rules-signed-authorization.json · Import online, verify and explicitly Apply. No funds have been sent.')
         self.app.button(self.app.body,'Return to Wallet',lambda:self.app.show('Wallet')).pack(anchor='w')

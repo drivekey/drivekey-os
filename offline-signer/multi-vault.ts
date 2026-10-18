@@ -4,13 +4,11 @@ import { Wallet, Transaction, decryptKeystoreJson } from "ethers";
 import { Keypair } from "@solana/web3.js";
 import nacl from "tweetnacl";
 import bs58 from "bs58";
-import { z } from "zod";
 import { canonicalSolTransaction, multiApproval, multiPublicSchema, validateMultiRequest, verifyMultiResponse, type MultiPublic, type MultiResponse } from "../core/multi-protocol";
 import { checkPassword, validateVault } from "./vault";
 
-const hex = (n: number) => z.string().regex(new RegExp(`^[0-9a-f]{${n}}$`));
-export const multiVaultSchema = z.object({ version: z.literal(3), kind: z.literal("drivekey-multi-vault"), public: multiPublicSchema, kdf: z.literal("scrypt-131072-8-1"), salt: hex(64), iv: hex(24), ciphertext: hex(128), tag: hex(32) }).strict();
-export type MultiVault = z.infer<typeof multiVaultSchema>;
+import {multiVaultSchema,type MultiVault} from './multi-vault-format';
+export {multiVaultSchema,type MultiVault} from './multi-vault-format';
 function derive(password: string, salt: Buffer): Promise<Buffer> {
   checkPassword(password);
   return new Promise((resolve, reject) => scrypt(password, salt, 32, { N: 131072, r: 8, p: 1, maxmem: 192 * 1024 * 1024 }, (error, key) => error ? reject(error) : resolve(key)));

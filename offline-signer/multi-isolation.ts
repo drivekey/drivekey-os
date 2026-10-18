@@ -1,0 +1,5 @@
+import {runSandbox} from './sandbox-process';
+import {decodeMultiRequestFrame,encodeMultiSigningFrame,decodeMultiResponseFrame,MAX_MULTI_REQUEST_FRAME,MAX_MULTI_SIGN_FRAME,MAX_MULTI_RESPONSE_FRAME} from './multi-boundary-codec';
+const node='/opt/drivekey/node/bin/node',parser='/opt/drivekey/drivekey-multi-public-parser.cjs',signer='/opt/drivekey/drivekey-multi-key-worker.cjs';
+export async function parseMultiRequestBytes(bytes:Buffer){return decodeMultiRequestFrame(await runSandbox({node,program:parser,args:['multi-request'],inputLimit:32768,outputLimit:MAX_MULTI_REQUEST_FRAME,timeoutMs:10000,heapMb:64},bytes));}
+export async function isolatedMultiResponse(request:unknown,vault:unknown,fingerprint:string,password:string){const frame=encodeMultiSigningFrame(request,vault,fingerprint,password);try{return decodeMultiResponseFrame(await runSandbox({node,program:signer,args:[],inputLimit:MAX_MULTI_SIGN_FRAME,outputLimit:MAX_MULTI_RESPONSE_FRAME,timeoutMs:90000,heapMb:128},frame));}finally{frame.fill(0);}}

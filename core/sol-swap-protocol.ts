@@ -4,8 +4,8 @@ import { keccak256,formatUnits } from 'ethers';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
 import { multiPublicSchema,SOLANA_GENESIS } from './multi-protocol';
-import { buildJupiterLegacyMessage,validateJupiterAncillary } from './jupiter-account-policy';
-import { inspectDirectJupiterRoute } from './jupiter-route-inspection';
+import { buildJupiterLegacyMessage,RAYDIUM_CLMM,validateJupiterAncillary } from './jupiter-account-policy';
+import { JUPITER_PROGRAM,inspectDirectJupiterRoute } from './jupiter-route-inspection';
 const SOL='So11111111111111111111111111111111111111112',USDC='EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 const pub=z.string().max(44).refine(s=>{try{return new PublicKey(s).toBase58()===s;}catch{return false;}});
 const units=z.string().regex(/^(0|[1-9][0-9]{0,19})$/).refine(s=>BigInt(s)<2n**64n);
@@ -42,5 +42,5 @@ export function verifySolSwapResponse(input:unknown,request:unknown,wallet:unkno
 }
 export function solSwapReview(input:unknown,checkExpiry=true){
  const r=validateSolSwap(input,Date.now(),checkExpiry),expected=solSwapExpected(r),decoded=inspectDirectJupiterRoute(r.build,expected),fees=validateJupiterAncillary(r.build,expected),solInput=r.build.inputMint===SOL;
- return {action:'swap',network:'Solana mainnet',from:r.from,recipient:r.from,inputMint:r.build.inputMint,outputMint:r.build.outputMint,amount:formatUnits(r.build.inAmount,solInput?9:6)+' '+(solInput?'SOL':'USDC'),minimumReceived:formatUnits(decoded.minimumOutput,solInput?6:9)+' '+(solInput?'USDC':'SOL'),slippage:r.build.slippageBps/100+'%',route:'Jupiter route_v2 / Raydium CLMM / '+decoded.pool,maximumFee:formatUnits(BigInt(r.nonceFee)+BigInt(fees.maximumPriorityFee),9)+' SOL',maximumAccountRent:formatUnits(BigInt(r.tokenAccountRent)*BigInt(fees.createdAccounts),9)+' SOL',nonceAccount:r.nonceAccount,nonceValue:r.nonceValue,deadlineUTC:r.expiresAt,fingerprint:r.fingerprint,warning:'Application expiry does not revoke signed durable-nonce bytes. Output and wrapped-SOL cleanup return only to this wallet. Any failed submission must be reconciled before preparing another swap.'};
+ return {action:'swap',network:'Solana mainnet',from:r.from,recipient:r.from,jupiterProgram:JUPITER_PROGRAM,raydiumProgram:RAYDIUM_CLMM,programWarning:'Program addresses match the validated route; deployed executable bytes still require online pin verification.',inputBaseUnits:r.build.inAmount,minimumOutputBaseUnits:decoded.minimumOutput,inputIdentity:solInput?'Native SOL via wrapped-SOL mint':'USDC / exact mint',outputIdentity:solInput?'USDC / exact mint':'Native SOL via wrapped-SOL mint and cleanup',inputMint:r.build.inputMint,outputMint:r.build.outputMint,amount:formatUnits(r.build.inAmount,solInput?9:6)+' '+(solInput?'SOL':'USDC'),minimumReceived:formatUnits(decoded.minimumOutput,solInput?6:9)+' '+(solInput?'USDC':'SOL'),slippage:r.build.slippageBps/100+'%',route:'Jupiter route_v2 / Raydium CLMM / '+decoded.pool,maximumFee:formatUnits(BigInt(r.nonceFee)+BigInt(fees.maximumPriorityFee),9)+' SOL',maximumAccountRent:formatUnits(BigInt(r.tokenAccountRent)*BigInt(fees.createdAccounts),9)+' SOL',nonceAccount:r.nonceAccount,nonceValue:r.nonceValue,deadlineUTC:r.expiresAt,fingerprint:r.fingerprint,warning:'Application expiry does not revoke signed durable-nonce bytes. Output and wrapped-SOL cleanup return only to this wallet. Any failed submission must be reconciled before preparing another swap.'};
 }

@@ -1,10 +1,12 @@
 import {solanaEvidence,evmEvidence} from './transaction-evidence';
 import { z } from "zod";
-import { Connection, PublicKey, VersionedTransaction } from "@solana/web3.js";
+import { Connection, PublicKey, VersionedTransaction, Transaction as SolTransaction, SystemInstruction } from "@solana/web3.js";
+import bs58 from 'bs58';
+import type {WalletSubmissionClaim,WalletSubmissionIdentity,WalletSubmissionStore} from './wallet-submission-ledger';
 import { ERC20, multiPublicSchema, multiRequestSchema, multiResponseSchema, verifyMultiResponse, type MultiRequest } from "./multi-protocol";
 import { inspectErc20, inspectSpl, prepareErc20, prepareSol, preflightMulti, checkSolanaCluster } from "./multi-online";
 import { assetIdentity } from "./asset-identity";
-import { Transaction } from "ethers";
+import { Transaction,sha256 } from "ethers";
 import type { Rpc } from "./protocol";
 import {robinhoodTokenIdentity} from './robinhood-proxy-identity';
 const wallet = multiPublicSchema;
@@ -35,7 +37,7 @@ export async function multiStatus(r: MultiRequest, hash: string, rpc: Rpc, sol: 
   const matches=(receipt.logs??[]).filter(log=>{try{if(log.address.toLowerCase()!==r.token.toLowerCase())return false;const event=ERC20.parseLog(log);return event?.name==="Transfer"&&event.args[0].toLowerCase()===r.from.toLowerCase()&&event.args[1].toLowerCase()===r.recipient.toLowerCase()&&event.args[2].toString()===r.amount;}catch{return false;}});
   return { finality:'finalized', state: matches.length===1 ? "confirmed" : "unknown", hash, deliveryEvidence: matches.length===1 ? "Matching transaction, receipt and Transfer event. Events alone do not prove actual balance delivery for arbitrary tokens." : "No unique matching Transfer event. Exact token delivery is uncertain; do not resend." };
 }
-export async function multiAction(input: unknown, rpc: Rpc, sol: Connection, broadcastEnabled=false) {
+export async function multiAction(input: unknown, rpc: Rpc, sol: Connection, broadcastEnabled=false,store?:WalletSubmissionStore) {
   const a = schema.parse(input);
   if (a.action === "inspect") {
     const address = a.network === "robinhood" ? a.wallet.evmAddress : a.wallet.solanaAddress;
@@ -62,10 +64,25 @@ export async function multiAction(input: unknown, rpc: Rpc, sol: Connection, bro
   }
   const response = verifyMultiResponse(a.response, a.request, a.wallet, Date.now(), false);
   if (a.action === "status") return multiStatus(a.request, response.transactionHash, rpc, sol, response.rawSignedTransaction);
+  let record:WalletSubmissionClaim|undefined,identity:WalletSubmissionIdentity|undefined;
+  const matches=(candidate:WalletSubmissionClaim)=>!!record&&Object.keys(candidate).length===Object.keys(record).length&&Object.entries(record).every(([key,value])=>value===(candidate as Record<string,unknown>)[key]);
   if(a.action==="broadcast"){
     const existing=await multiStatus(a.request,response.transactionHash,rpc,sol,response.rawSignedTransaction);
     if(existing.state!=="not-seen")return {...existing,broadcastEnabled};
     if(!broadcastEnabled)return {state:"verified-only",hash:response.transactionHash,broadcastEnabled:false,message:"Multi-asset submission is locked. No funds sent."};
+    if(!store)throw Error('Durable wallet submission storage is required before broadcasting.');
+    const common={version:1 as const,purpose:'transfer' as const,protocolVersion:a.request.version,fingerprint:a.request.fingerprint.toLowerCase(),expiresAt:a.request.expiresAt};
+    if(a.request.network==='robinhood'){
+      const tx=Transaction.from(response.rawSignedTransaction);
+      record={...common,kind:'evm',chainId:Number(tx.chainId),from:tx.from!.toLowerCase(),nonce:tx.nonce,hash:tx.hash!.toLowerCase(),signedBytesDigest:sha256(response.rawSignedTransaction)};
+      identity={family:'evm',chainId:record.chainId,hash:record.hash};
+    }else{
+      const bytes=Buffer.from(response.rawSignedTransaction,'base64'),tx=SolTransaction.from(bytes),advance=SystemInstruction.decodeNonceAdvance(tx.instructions[0]);
+      record={...common,kind:'solana-durable',genesis:a.request.genesisHash,from:tx.feePayer!.toBase58(),signature:bs58.encode(tx.signature!),nonceAccount:advance.noncePubkey.toBase58(),nonceValue:tx.recentBlockhash!,authority:advance.authorizedPubkey.toBase58(),signedBytesDigest:sha256(bytes)};
+      identity={family:'solana',genesis:record.genesis,signature:record.signature};
+    }
+    const previous=await store.read(identity);
+    if(previous){if(!matches(previous))throw Error('Submission journal identity differs. Reconcile before continuing.');return {state:'unknown',hash:response.transactionHash,canResubmit:false,message:'Submission was already claimed. Reconcile this exact hash; no automatic resend.'};}
   }
   await preflightMulti(a.request, rpc, sol);
   if(a.request.network==="solana"){
@@ -75,9 +92,14 @@ export async function multiAction(input: unknown, rpc: Rpc, sol: Connection, bro
   // Fee/account RPCs and simulation may finish after approval expires.
   verifyMultiResponse(a.response,a.request,a.wallet);
   if(a.action==="preflight")return {state:"ready",hash:response.transactionHash,broadcastEnabled,message:broadcastEnabled?"Preflight passed. Separate explicit submission consent required.":"Exact response and preflight verified. Submission remains locked pending acceptance; no funds sent."};
+  if(!store||!record||!identity)throw Error('Durable wallet submission storage is required before broadcasting.');
+  if(!await store.claim(record))return {state:'unknown',hash:response.transactionHash,canResubmit:false,message:'This transaction or nonce was already claimed. Reconcile saved transactions; do not resend.'};
+  const persisted=await store.read(identity);
+  if(!persisted||!matches(persisted))throw Error('Submission intent could not be verified in durable storage.');
+  verifyMultiResponse(a.response,a.request,a.wallet);
   try{
     const hash=a.request.network==="robinhood"?await rpc("eth_sendRawTransaction",[response.rawSignedTransaction]):await sol.sendRawTransaction(Buffer.from(response.rawSignedTransaction,"base64"),{skipPreflight:false,maxRetries:0,preflightCommitment:"confirmed"});
     if(hash!==response.transactionHash)throw Error("Unexpected submission hash.");
     return {state:"submitted",hash:response.transactionHash,broadcastEnabled};
-  }catch{return {state:"unknown",hash:response.transactionHash,broadcastEnabled,message:"Submission outcome unknown. Reconcile this exact hash; do not retry or create a replacement."};}
+  }catch{return {state:"unknown",hash:response.transactionHash,broadcastEnabled,canResubmit:false,message:"Submission outcome unknown. Reconcile this exact hash; do not retry or create a replacement."};}
 }

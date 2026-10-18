@@ -9,7 +9,7 @@ export const noncePublicKey = z.string().max(44).refine(v => {
   try { return new PublicKey(v).toBase58() === v; } catch { return false; }
 }, "Enter a complete Solana public address.");
 const lamports = z.number().int().positive().safe();
-export const nonceQuoteSchema = z.object({
+const legacyNonceQuoteSchema = z.object({
   version: z.literal(1), kind: z.literal("drivekey-nonce-setup"),
   genesisHash: z.literal(SOLANA_GENESIS), deviceId: z.string().uuid(),
   authority: noncePublicKey, sponsor: noncePublicKey, nonceAccount: noncePublicKey,
@@ -18,6 +18,10 @@ export const nonceQuoteSchema = z.object({
   blockhash: noncePublicKey, lastValidBlockHeight: z.number().int().nonnegative().safe(),
   unsignedTransaction: z.string().max(2400),
 }).strict();
+export const NONCE_SETUP_QUOTE_MS=90_000;
+export const activeNonceQuoteSchema=legacyNonceQuoteSchema.extend({version:z.literal(2),requestId:z.string().uuid(),createdAt:z.string().datetime(),expiresAt:z.string().datetime()}).strict();
+// Historical v1 records remain readable, but may never authorize a new submission.
+export const nonceQuoteSchema=z.union([activeNonceQuoteSchema,legacyNonceQuoteSchema]);
 export type NonceQuote = z.infer<typeof nonceQuoteSchema>;
 export function nonceSeed(authority: string) {
   return keccak256(new TextEncoder().encode("DriveKey nonce setup v1:" + authority)).slice(2,34);
@@ -38,8 +42,10 @@ export function nonceCreationTransaction(q: NonceQuote) {
 export function unsignedNonceBytes(tx: Transaction) {
   return tx.serialize({requireAllSignatures:false,verifySignatures:false}).toString("base64");
 }
-export async function validateNonceQuote(input: unknown, publicInput: unknown): Promise<NonceQuote> {
+export async function validateNonceQuote(input: unknown, publicInput: unknown, fresh=false, now=Date.now()): Promise<NonceQuote> {
   const q = nonceQuoteSchema.parse(input), w = multiPublicSchema.parse(publicInput);
+  if(q.version===2){const created=Date.parse(q.createdAt),expires=Date.parse(q.expiresAt);if(!Number.isSafeInteger(now)||created>now+10_000||expires<=created||expires-created>NONCE_SETUP_QUOTE_MS||fresh&&now>=expires)throw Error('Setup quote expired or has invalid timing. Refresh and review it again.');}
+  else if(fresh)throw Error('Historical setup is recovery-only. Request a new setup quote.');
   if(q.deviceId !== w.deviceId || q.authority !== w.solanaAddress) throw Error("Nonce authority does not match your offline wallet.");
   if(q.sponsor === q.authority || !PublicKey.isOnCurve(new PublicKey(q.sponsor).toBytes())) throw Error("Use a separate funding wallet, never import your USB key.");
   if(q.seed !== nonceSeed(q.authority) || q.nonceAccount !== await nonceAddress(q.sponsor,q.authority)) throw Error("Nonce destination mismatch.");

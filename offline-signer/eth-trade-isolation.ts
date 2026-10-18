@@ -1,0 +1,6 @@
+import {runSandbox} from './sandbox-process';
+import {decodeEthTradeRouteFrame,decodeEthTradeRequestFrame,encodeEthTradeSigningFrame,decodeEthTradeResponseFrame,MAX_ETH_TRADE_REQUEST_FRAME,MAX_ETH_TRADE_SIGN_FRAME,MAX_ETH_TRADE_RESPONSE_FRAME} from './eth-trade-boundary-codec';
+const node='/opt/drivekey/node/bin/node',parser='/opt/drivekey/drivekey-eth-trade-public-parser.cjs',signer='/opt/drivekey/drivekey-eth-trade-key-worker.cjs';
+export async function isEthTradeBytes(bytes:Buffer){return decodeEthTradeRouteFrame(await runSandbox({node,program:parser,args:['eth-trade-route'],inputLimit:32768,outputLimit:9,timeoutMs:10000,heapMb:64},bytes));}
+export async function parseEthTradeRequestBytes(bytes:Buffer){return decodeEthTradeRequestFrame(await runSandbox({node,program:parser,args:['eth-trade-request'],inputLimit:32768,outputLimit:MAX_ETH_TRADE_REQUEST_FRAME,timeoutMs:10000,heapMb:64},bytes));}
+export async function isolatedEthTradeResponse(request:unknown,vault:unknown,fingerprint:string,password:string){const frame=encodeEthTradeSigningFrame(request,vault,fingerprint,password);try{return decodeEthTradeResponseFrame(await runSandbox({node,program:signer,args:[],inputLimit:MAX_ETH_TRADE_SIGN_FRAME,outputLimit:MAX_ETH_TRADE_RESPONSE_FRAME,timeoutMs:90000,heapMb:128},frame));}finally{frame.fill(0);}}

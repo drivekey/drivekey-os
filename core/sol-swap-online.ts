@@ -6,10 +6,13 @@ import {SOLANA_GENESIS} from './multi-protocol';
 import {validateSolSwap,verifySolSwapResponse,solSwapExpected,type SolSwapRequest} from './sol-swap-protocol';
 import {validateJupiterAncillary} from './jupiter-account-policy';
 import {verifySolSwapPrograms} from './sol-swap-programs';
+import {validateExpiringJupiter,type ExpiringJupiterRequest} from './jupiter-expiring-protocol';
+import {verifyDeadlineGuardProgram} from './solana-deadline-guard-online';
+import type {DeadlineGuardIdentity} from './solana-deadline-guard';
 const SOL='So11111111111111111111111111111111111111112',USDC='EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 function integer(v:number){if(!Number.isSafeInteger(v)||v<0)throw Error('Invalid Solana RPC quantity.');return BigInt(v);}
 async function cluster(c:Connection){if(await c.getGenesisHash()!==SOLANA_GENESIS)throw Error('Wrong Solana network.');}
-function nonceMatches(info:Awaited<ReturnType<Connection['getAccountInfo']>>,r:SolSwapRequest){
+function nonceMatches(info:Awaited<ReturnType<Connection['getAccountInfo']>>,r:SolSwapRequest|ExpiringJupiterRequest){
  if(!info||info.executable||!info.owner.equals(SystemProgram.programId)||info.data.length!==80||info.data.readUInt32LE(0)!==1||info.data.readUInt32LE(4)!==1)throw Error('Initialized current-version durable nonce required.');
  const nonce=NonceAccount.fromAccountData(info.data);
  if(nonce.authorizedPubkey.toBase58()!==r.from||nonce.nonce!==r.nonceValue||integer(nonce.feeCalculator.lamportsPerSignature)!==BigInt(r.nonceFee))throw Error('Nonce authority, value or fee changed. Obtain fresh offline approval.');
@@ -24,12 +27,13 @@ export async function checkPreparedSolSwap(request:unknown,c:Connection){
  const r=validateSolSwap(request),tx=new VersionedTransaction(VersionedMessage.deserialize(Buffer.from(r.unsignedMessage,'base64')));
  return checkSolSwapState(r,tx,c,false);
 }
-async function checkSolSwapState(r:SolSwapRequest,tx:VersionedTransaction,c:Connection,sigVerify:boolean){
+export async function checkSolSwapState(r:SolSwapRequest|ExpiringJupiterRequest,tx:VersionedTransaction,c:Connection,sigVerify:boolean,acceptedGuard?:DeadlineGuardIdentity){
  await cluster(c);
  const programs=await verifySolSwapPrograms(c);
+ const programSlot=r.kind==='jupiter-expiring-swap'?await verifyDeadlineGuardProgram(c,r.guard,programs.slot):programs.slot;
  const owner=new PublicKey(r.from),nonce=new PublicKey(r.nonceAccount),mints=[new PublicKey(SOL),new PublicKey(USDC)],atas=mints.map(m=>getAssociatedTokenAddressSync(m,owner));
- const snapshot=await c.getMultipleAccountsInfoAndContext([owner,nonce,...mints,...atas],{commitment:'confirmed',minContextSlot:programs.slot});
- if(integer(snapshot.context.slot)<BigInt(programs.slot)||snapshot.value.length!==6)throw Error('Stale or incomplete Solana account snapshot.');
+ const snapshot=await c.getMultipleAccountsInfoAndContext([owner,nonce,...mints,...atas],{commitment:'confirmed',minContextSlot:programSlot});
+ if(integer(snapshot.context.slot)<BigInt(programSlot)||snapshot.value.length!==6)throw Error('Stale or incomplete Solana account snapshot.');
  const [payer,nonceInfo,...rest]=snapshot.value;nonceMatches(nonceInfo,r);
  if(!payer||payer.executable||!payer.owner.equals(SystemProgram.programId)||payer.data.length)throw Error('Unsupported fee payer account.');
  const ancillary=validateJupiterAncillary(r.build,solSwapExpected(r));
@@ -62,7 +66,8 @@ async function checkSolSwapState(r:SolSwapRequest,tx:VersionedTransaction,c:Conn
  if(simulation.value.unitsConsumed===undefined||integer(simulation.value.unitsConsumed)>BigInt(ancillary.maximumComputeUnits))throw Error('Swap simulation exceeded compute policy.');
  const finalNonce=await c.getAccountInfo(nonce,{commitment:'confirmed',minContextSlot:simulation.context.slot});nonceMatches(finalNonce,r);
  await verifySolSwapPrograms(c,simulation.context.slot);
- validateSolSwap(r); // Asynchronous network work cannot extend approval lifetime.
+ if(r.kind==='jupiter-expiring-swap'){await verifyDeadlineGuardProgram(c,r.guard,simulation.context.slot);validateExpiringJupiter(r,Date.now(),true,acceptedGuard);}
+ else validateSolSwap(r); // Asynchronous network work cannot extend approval lifetime.
  return {simulationSlot:simulation.context.slot};
 }
 export async function solSwapStatus(request:unknown,response:unknown,wallet:unknown,c:Connection){

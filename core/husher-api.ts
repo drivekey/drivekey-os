@@ -1,6 +1,7 @@
 import 'server-only';
 import {z} from 'zod';
-import {parseUnits} from 'ethers';
+import {parseStrictPublicJson} from './strict-public-json';
+import {formatUnits,parseUnits} from 'ethers';
 import {husherFixedIntent, inspectFixedOrderTerms} from './husher-fixed-terms';
 import {inspectHusherAssets} from './husher-assets';
 // Only documented GET operations. No order/deposit/withdrawal operation is exposed.
@@ -10,12 +11,12 @@ async function readHusher(path:'/api/v1/husher/currencies'|'/api/v1/husher/rate'
  if(!key||key.length>4096||/[\r\n]/.test(key))throw new HusherReadError('HUSHER_API_KEY is not configured in private server configuration.');
  try{
   const response=await fetcher(API+path+(query?'?'+query:''),{method:'GET',headers:{'x-api-key':key,accept:'application/json'},redirect:'error',cache:'no-store',signal:AbortSignal.timeout(15000)});
-  if(!response.ok)throw new HusherReadError(response.status===401||response.status===403?'Husher rejected read access. Check the key and API permissions.':'Husher read service unavailable. No order was created.');
+  if(!response.ok)throw new HusherReadError(response.status===401||response.status===403?'Husher rejected read access. Check the key and API permissions.':`Husher could not provide this result (HTTP ${response.status}). Check the amount against provider minimums or try again later. No order was created.`);
   const reader=response.body?.getReader();if(!reader)throw new HusherReadError('Missing Husher response.');
-  let text='',size=0;const decoder=new TextDecoder();
+  let text='',size=0;const decoder=new TextDecoder('utf-8',{fatal:true});
   for(;;){const {done,value}=await reader.read();if(done)break;size+=value.length;if(size>1000000){await reader.cancel();throw new HusherReadError('Husher response exceeds limits.');}text+=decoder.decode(value,{stream:true});}text+=decoder.decode();
   if(text.includes(key))throw new HusherReadError('Husher returned an unsafe response. No order was created.');
-  const body:unknown=JSON.parse(text);
+  const body:unknown=parseStrictPublicJson(text,1000000);
   if(!body||typeof body!=='object'||!('success' in body)||body.success!==true||!('data' in body))throw new HusherReadError('Husher did not acknowledge read access.');
   return body.data;
  }catch(error){if(error instanceof HusherReadError)throw error;throw new HusherReadError('Husher read check failed. No order was created.');}
@@ -47,6 +48,31 @@ const routes={
 export const husherRateInput=z.object({route:z.enum(['sol-usdc','usdc-sol','eth-usdc']),amount:decimal}).strict();
 const rateSchema=z.object({sendToken:z.string(),receiveToken:z.string(),sendAmount:decimal,receiveAmount:decimal,minimumSendAmount:decimal,feeAmount:decimal,networkFee:decimal,estimatedTimeSeconds:z.number().int().nonnegative().max(86400),withdrawLimits:z.object({sendToken:z.object({coin:z.string(),network:z.string()}).nullable().optional(),receiveToken:z.object({coin:z.string(),network:z.string()}).nullable().optional()}).optional()});
 function units(value:string,decimals:number){const clean=value.includes('.')?value.replace(/0+$/,'').replace(/\.$/,''):value;return parseUnits(clean,decimals);}
+// Standard fixed quotes use exact NET receive mode. This GET never creates an order.
+export const husherStandardQuoteInput=z.object({receiveAmount:decimal.refine(value=>{
+ try{const amount=units(value,6);return amount>0n&&amount<=1000000000n;}catch{return false;}
+},'Enter a positive USDC amount up to 1,000, with at most six decimal places.')}).strict();
+const quoteLimit=z.object({coin:z.string(),network:z.string(),withdrawMin:decimal.nullable().optional(),withdrawMax:decimal.nullable().optional()});
+const standardRateSchema=rateSchema.extend({withdrawLimits:z.object({sendToken:quoteLimit.nullable().optional(),receiveToken:quoteLimit.nullable().optional()}).optional()});
+export async function inspectHusherStandardQuote(input:unknown,key:string|undefined,fetcher:typeof fetch=fetch){
+ const a=husherStandardQuoteInput.parse(input);
+ const raw=await readHusher('/api/v1/husher/rate',key,new URLSearchParams({sendToken:'ETH',receiveToken:'USDC',sendNetwork:'ETH',receiveNetwork:'ETH',amountType:'receive',receiveAmount:a.receiveAmount,provider:'fixed'}),fetcher);
+ try{
+  const data=standardRateSchema.parse(raw),send=units(data.sendAmount,18),receive=units(data.receiveAmount,6),minimum=units(data.minimumSendAmount,18);
+  if(data.sendToken!=='ETH'||data.receiveToken!=='USDC'||send<=0n||send>units('10',18)||receive!==units(a.receiveAmount,6))throw Error();
+  for(const [limit,coin] of [[data.withdrawLimits?.sendToken,'ETH'],[data.withdrawLimits?.receiveToken,'USDC']] as const)if(limit&&(limit.coin!==coin||limit.network!=='ETH'))throw Error();
+  // Fee calculations may use more precision than USDC transfers. Keep them exact;
+  // round UP only the optional order fee ceiling, never the advertised fee.
+  const fee=units(data.feeAmount,18),withdrawal=units(data.networkFee,18),total=fee+withdrawal;
+  if(total>units('1000',18))throw Error();
+  const payoutLimit=data.withdrawLimits?.receiveToken;
+  const minPayout=payoutLimit?.withdrawMin==null?null:units(payoutLimit.withdrawMin,6);
+  const maxPayout=payoutLimit?.withdrawMax==null?null:units(payoutLimit.withdrawMax,6);
+  const meetsMinimum=send>=minimum&&(minPayout===null||receive>=minPayout);
+  const withinMaximum=maxPayout===null||receive<=maxPayout;
+  return {provider:'husher' as const,rateType:'standard-fixed' as const,route:'eth-usdc' as const,sendNetwork:'ETH' as const,receiveNetwork:'ETH' as const,sendAmount:formatUnits(send,18),receiveAmount:formatUnits(receive,6),minimumSendAmount:formatUnits(minimum,18),feeAmount:formatUnits(fee,18),networkFee:formatUnits(withdrawal,18),totalProviderFees:formatUnits(total,18),suggestedFeeCeiling:formatUnits((total+999999999999n)/1000000000000n,6),minimumReceiveAmount:minPayout===null?null:formatUnits(minPayout,6),maximumReceiveAmount:maxPayout===null?null:formatUnits(maxPayout,6),meetsMinimum,withinMaximum,networkEchoVerified:!!data.withdrawLimits?.sendToken&&!!payoutLimit,estimatedTimeSeconds:data.estimatedTimeSeconds,checkedAt:new Date().toISOString(),refreshAfterSeconds:60,ordersEnabled:false,signingEnabled:false,privacyEnabled:false,notice:'Live estimate before order creation. Recheck the exact order terms and deadlines before offline approval. Ethereum deposit gas is additional.'};
+ }catch{throw new HusherReadError('Husher standard quote did not match the exact payout, assets, networks or supported precision. No order was created.');}
+}
 export async function inspectHusherPrivateRate(input:unknown,key:string|undefined,fetcher:typeof fetch=fetch){
  let a:z.infer<typeof husherRateInput>,amount:bigint;
  try{a=husherRateInput.parse(input);amount=units(a.amount,routes[a.route].sendDecimals);if(amount<=0n||amount>=2n**128n)throw Error();}

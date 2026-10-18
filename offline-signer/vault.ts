@@ -1,19 +1,10 @@
 // Node-only module. Never import into the website or Windows companion.
 import { randomUUID } from "node:crypto";
 import { Wallet, decryptKeystoreJson, encryptKeystoreJson, getAddress, Transaction } from "ethers";
-import { z } from "zod";
-import { CHAIN_ID, approvalMessage, metadataSchema, validateRequest, verifyResponse, type SignedResponseV2 } from "../core/protocol";
+import { CHAIN_ID, approvalMessage, validateRequest, verifyResponse, type SignedResponseV2 } from "../core/protocol";
 
-const hex = (length: number) => z.string().regex(new RegExp(`^[0-9a-fA-F]{${length}}$`));
-const keystoreSchema = z.object({
-  address: hex(40), id: z.string().uuid(), version: z.literal(3),
-  Crypto: z.object({
-    cipher: z.literal("aes-128-ctr"), cipherparams: z.object({ iv: hex(32) }).strict(), ciphertext: hex(64),
-    kdf: z.literal("scrypt"), kdfparams: z.object({ dklen: z.literal(32), n: z.literal(131072), r: z.literal(8), p: z.literal(1), salt: hex(64) }).strict(), mac: hex(64),
-  }).strict(),
-}).strict();
-export const vaultSchema = z.object({ version: z.literal(2), kind: z.literal("drivekey-offline-vault"), public: metadataSchema, keystore: keystoreSchema }).strict();
-export type OfflineVault = z.infer<typeof vaultSchema>;
+import {vaultSchema,validateVault,type OfflineVault} from "./vault-format";
+export {vaultSchema,validateVault,type OfflineVault} from "./vault-format";
 
 export function checkPassword(password: string): void {
   if (password.length < 16 || password.length > 256) throw new Error("Use a unique passphrase of 16–256 characters. Prefer several random words.");
@@ -24,13 +15,6 @@ export async function createOfflineVault(password: string): Promise<OfflineVault
   const wallet = Wallet.createRandom();
   const encrypted = JSON.parse(await encryptKeystoreJson({ address: wallet.address, privateKey: wallet.privateKey }, password, { scrypt: { N: 131072, r: 8, p: 1 } }));
   return vaultSchema.parse({ version: 2, kind: "drivekey-offline-vault", public: { version: 2, chainId: CHAIN_ID, address: wallet.address, deviceId: randomUUID(), createdAt: new Date().toISOString() }, keystore: encrypted });
-}
-
-export function validateVault(input: unknown): OfflineVault {
-  // Fixed supported KDF parameters prevent malicious vault files requesting arbitrary CPU/RAM.
-  const v = vaultSchema.parse(input);
-  if (getAddress(`0x${v.keystore.address}`) !== getAddress(v.public.address)) throw new Error("Vault address metadata is inconsistent.");
-  return v;
 }
 
 export async function checkOfflineVaultPassword(input: unknown, password: string): Promise<string> {

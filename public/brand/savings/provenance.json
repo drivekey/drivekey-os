@@ -1,0 +1,12 @@
+{
+  "asset": "dvk-presets-minimal.png",
+  "purpose": "Decorative Standard and Strong preset marks; no security attestation",
+  "provider": "Higgsfield",
+  "model": "gpt_image_2_5",
+  "jobId": "340923a5-9772-48e4-ac0b-830016a22313",
+  "createdDate": "2026-10-11",
+  "reference": "/brand/mark.png",
+  "direction": "Original DriveKey D/keyhole motif, monochrome, tiny sage and lavender accents",
+  "layout": "Left half Standard, right half Strong; original paired image retained",
+  "rendering": "Next.js image optimization and CSS half-image framing; light mode uses CSS inversion"
+}

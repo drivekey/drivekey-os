@@ -1,0 +1,7 @@
+Official, unmodified Uniswap brand assets retrieved 2026-10-05.
+Source: https://github.com/Uniswap/brand-assets
+uniswap-icon.svg: Uniswap Brand Assets/Uniswap_icon_pink.svg
+Git blob: d1bcabfd96cb30bc3affeb7cec4f0c1e1b99b9ca
+uniswap-wordmark.svg: Uniswap Brand Assets/Uniswap_horizontallogo_pink.svg
+Git blob: 238cd325a93e5fdedd6a982438614d794d36077e
+Used to identify the existing Uniswap v3 integration; no partnership endorsement claimed.

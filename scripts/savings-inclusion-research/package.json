@@ -1,0 +1,8 @@
+{
+  "name": "drivekey-savings-inclusion-research",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "engines": {"node": ">=22.21"},
+  "dependencies": {"@ethereumjs/mpt": "10.1.3", "@ethereumjs/rlp": "10.1.3"}
+}

@@ -1,0 +1,2 @@
+import {Check,ChevronRight} from 'lucide-react';
+export function ApprovalSteps({step}:{step:number}){return <nav className="approval-steps" aria-label="Offline approval steps">{['Public wallet','Prepare & export','Approve offline','Verify & submit'].map((label,i)=><span key={label} aria-current={i===step?'step':undefined} className={i===step?'current':i<step?'completed':''}><b>{i<step?<Check size={13}/>:String(i+1).padStart(2,'0')}</b>{label}<ChevronRight size={13}/></span>)}</nav>;}

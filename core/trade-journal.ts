@@ -16,7 +16,7 @@ function open(){return new Promise<IDBDatabase>((resolve,reject)=>{
  r.onsuccess=()=>{if(failed){r.result.close();return;}r.result.onversionchange=()=>r.result.close();resolve(r.result);};
 });}
 export async function withTradeJournal<T>(scope:string,hash:string,fingerprint:string,operation:(store:AttemptStore)=>Promise<T>):Promise<T>{
- if(!/^((?:ethereum|robinhood):0x[0-9a-f]{40}|solana:[1-9A-HJ-NP-Za-km-z]{32,44})$/.test(scope))throw Error('Invalid wallet/network journal scope.');
+ if(!/^((?:ethereum|robinhood):0x[0-9a-f]{40}|solana:[1-9A-HJ-NP-Za-km-z]{32,44}|solana-nonce-invalidate:[1-9A-HJ-NP-Za-km-z]{32,44}:[1-9A-HJ-NP-Za-km-z]{32,44})$/.test(scope))throw Error('Invalid wallet/network journal scope.');
  checked({hash,fingerprint,state:'unknown'});
  if(!globalThis.isSecureContext||!navigator.locks||!globalThis.indexedDB)throw Error('Secure browser locking and durable storage are required.');
  return navigator.locks.request('drivekey-submit:'+scope,{mode:'exclusive'},async()=>{

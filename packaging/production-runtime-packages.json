@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "kind": "drivekey-production-runtime-package-roots",
+  "packages": [
+    "base-files", "bubblewrap", "busybox", "fontconfig-config",
+    "fonts-dejavu-core", "fonts-dejavu-mono", "fonts-urw-base35",
+    "libstdc++6", "mount", "qrencode", "python3-pil", "python3-pil.imagetk",
+    "python3.13-minimal", "python3.13-tk", "udev", "util-linux",
+    "x11-xkb-utils", "xkb-data", "xserver-xorg-core",
+    "xserver-xorg-input-libinput", "xserver-xorg-video-fbdev"
+  ]
+}
