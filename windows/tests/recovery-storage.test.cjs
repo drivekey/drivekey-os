@@ -89,3 +89,50 @@ test('a valid key from another same-user profile cannot add records to existing 
   const next = await restored.forJournal('transactions').seal('valid new record');
   assert.equal(await restored.forJournal('transactions').unseal(next), 'valid new record');
 });
+
+test('damaged journal headers cannot be ignored when provisioning a missing key', {skip:process.platform!=='win32'}, async t => {
+  const directory=await profile(t),wallet=randomUUID(),recordDirectory=path.join(directory,'transactions-v1',wallet);
+  await fs.mkdir(recordDirectory,{recursive:true});
+  const record=Buffer.from('XKJR1 damaged encrypted record'),file=path.join(recordDirectory,'a'.repeat(64)+'.bin');
+  await fs.writeFile(file,record);
+  await assert.rejects(()=>createRecoveryStorage(directory,{}).ready(),/journal key is missing|existing record could not be verified/);
+  await assert.rejects(()=>fs.stat(path.join(directory,'journal-key-v1.dpapi')),{code:'ENOENT'});
+  assert.deepEqual(await fs.readFile(file),record);
+});
+
+test('a damaged header blocks new writes with the original key and after a prior successful readiness check', {skip:process.platform!=='win32'}, async t => {
+  const directory=await profile(t),storage=createRecoveryStorage(directory,{}),scope=storage.forJournal('transactions');
+  const original=await scope.seal('recoverable fixture'),recordDirectory=path.join(directory,'transactions-v1',randomUUID());
+  await fs.mkdir(recordDirectory,{recursive:true});const file=path.join(recordDirectory,'b'.repeat(64)+'.bin');
+  const damaged=Buffer.from(original);damaged[0]^=1;await fs.writeFile(file,damaged);
+  const key=await fs.readFile(path.join(directory,'journal-key-v1.dpapi'));
+  await assert.rejects(()=>storage.ready(),/existing record could not be verified/);
+  await assert.rejects(()=>scope.seal('new write after corruption'),/existing record could not be verified/);
+  await assert.rejects(()=>createRecoveryStorage(directory,{}).ready(),/existing record could not be verified/);
+  assert.deepEqual(await fs.readFile(file),damaged);assert.deepEqual(await fs.readFile(path.join(directory,'journal-key-v1.dpapi')),key);
+  await fs.writeFile(file,original);
+  // Repair permits recovery with the same original key, including on the same instance.
+  await storage.ready();assert.equal(await scope.unseal(original),'recoverable fixture');
+});
+
+test('an interrupted journal publication preserves its temporary ciphertext and blocks lost-key reprovisioning', {skip:process.platform!=='win32'}, async t => {
+  const directory=await profile(t),recordDirectory=path.join(directory,'signatures-v1',randomUUID());await fs.mkdir(recordDirectory,{recursive:true});
+  const file=path.join(recordDirectory,'c'.repeat(64)+'.bin.'+randomUUID()+'.tmp'),bytes=Buffer.from('DKJR1 incomplete publication');await fs.writeFile(file,bytes);
+  await assert.rejects(()=>createRecoveryStorage(directory,{}).ready(),/journal key is missing|existing record could not be verified/);
+  assert.deepEqual(await fs.readFile(file),bytes);await assert.rejects(()=>fs.stat(path.join(directory,'journal-key-v1.dpapi')),{code:'ENOENT'});
+});
+
+test('authenticated legacy journals can migrate but unauthenticated legacy records block new keys', {skip:process.platform!=='win32'}, async t => {
+  for(const result of ['authenticated legacy fixture',null]){
+    const directory=await profile(t),recordDirectory=path.join(directory,'transactions-v1',randomUUID());await fs.mkdir(recordDirectory,{recursive:true});
+    const file=path.join(recordDirectory,'d'.repeat(64)+'.bin'),bytes=Buffer.from('legacy fixture ciphertext');await fs.writeFile(file,bytes);
+    const storage=createRecoveryStorage(directory,{isAsyncEncryptionAvailable:async()=>true,decryptStringAsync:async()=>({result})});
+    if(result){await storage.ready();assert.equal(await storage.forJournal('transactions').unseal(bytes),result);}
+    else {await assert.rejects(()=>storage.ready(),/journal key is missing|existing record could not be verified/);await assert.rejects(()=>fs.stat(path.join(directory,'journal-key-v1.dpapi')),{code:'ENOENT'});}
+    assert.deepEqual(await fs.readFile(file),bytes);
+  }
+});
+
+test('unregistered journal purposes cannot create records invisible to key-preservation scans',()=>{
+  assert.throws(()=>createRecoveryStorage('unused fixture directory',{}).forJournal('unregistered'),/journal purpose/);
+});

@@ -10,6 +10,7 @@ const nonceLength = 12;
 const tagLength = 16;
 const wrappedLimit = 4096;
 const journalLimit = 256 * 1024;
+const journalPurposes = Object.freeze(['signatures', 'transactions']);
 const storageError = 'Windows encrypted recovery storage is unavailable. Signing is disabled.';
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const journalContext = purpose => Buffer.from('DriveKey journal v1: ' + purpose);
@@ -63,7 +64,7 @@ async function readProtectedKey(file) {
 }
 
 async function* protectedJournals(profile) {
-  for (const purpose of ['signatures', 'transactions']) {
+  for (const purpose of journalPurposes) {
     const root = path.join(profile, purpose + '-v1');
     const wallets = await fs.readdir(root, {withFileTypes:true}).catch(error => {
       if (error.code === 'ENOENT') return [];
@@ -72,16 +73,35 @@ async function* protectedJournals(profile) {
     for (const wallet of wallets.filter(entry => entry.isDirectory())) {
       const scope = path.join(root, wallet.name);
       for (const file of await fs.readdir(scope)) {
-        if (!/^[a-f0-9]{64}\.bin$/.test(file)) continue;
+        // An interrupted exclusive publication can leave the only copy of a
+        // signature in its temporary file. It still depends on this profile key.
+        if (!/^[a-f0-9]{64}\.bin(?:\.[a-f0-9-]{36}\.tmp)?$/.test(file)) continue;
         const handle = await fs.open(path.join(scope, file), 'r');
         try {
-          const prefix = Buffer.alloc(format.length);
-          await handle.read(prefix, 0, prefix.length, 0);
-          if (prefix.equals(format)) yield {handle, purpose};
+          // Never use an unauthenticated header as a reason to omit a record.
+          // Damaged protected ciphertext must not masquerade as an empty profile.
+          yield {handle, purpose};
         } finally {await handle.close();}
       }
     }
   }
+}
+
+async function journalBytes(handle) {
+  const stat = await handle.stat();
+  if (!stat.isFile() || stat.size < 1 || stat.size > journalLimit) throw Error('Invalid encrypted journal size.');
+  const bytes = Buffer.alloc(stat.size);
+  const {bytesRead} = await handle.read(bytes, 0, bytes.length, 0);
+  if (bytesRead !== bytes.length) throw Error('Journal changed during verification.');
+  return bytes;
+}
+
+async function legacyPlaintext(bytes, safeStorage) {
+  if (process.platform !== 'win32' || typeof safeStorage?.isAsyncEncryptionAvailable !== 'function' ||
+      !await safeStorage.isAsyncEncryptionAvailable() || typeof safeStorage.decryptStringAsync !== 'function') throw Error(storageError);
+  const plaintext = (await safeStorage.decryptStringAsync(bytes))?.result;
+  if (typeof plaintext !== 'string' || !plaintext.length || Buffer.byteLength(plaintext, 'utf8') > journalLimit) throw Error(storageError);
+  return plaintext;
 }
 
 function decryptJournal(bytes, key, aad) {
@@ -101,15 +121,12 @@ function decryptJournal(bytes, key, aad) {
   }
 }
 
-async function authenticateExistingJournals(profile, key) {
+async function authenticateExistingJournals(profile, key, safeStorage) {
   try {
     for await (const {handle, purpose} of protectedJournals(profile)) {
-      const stat = await handle.stat();
-      if (!stat.isFile() || stat.size > journalLimit) throw Error('Invalid encrypted journal size.');
-      const bytes = Buffer.alloc(stat.size);
-      const {bytesRead} = await handle.read(bytes, 0, bytes.length, 0);
-      if (bytesRead !== bytes.length || !bytes.subarray(0, format.length).equals(format)) throw Error('Journal changed during verification.');
-      decryptJournal(bytes, key, journalContext(purpose)).fill(0);
+      const bytes = await journalBytes(handle);
+      if (bytes.subarray(0, format.length).equals(format)) decryptJournal(bytes, key, journalContext(purpose)).fill(0);
+      else await legacyPlaintext(bytes, safeStorage);
     }
   } catch {
     throw Error('The protected journal key or an existing record could not be verified. Preserve the profile and restore its original key state.');
@@ -121,8 +138,16 @@ function createRecoveryStorage(profile, safeStorage) {
   let pendingKey, writeCheck;
 
   async function provision() {
-    for await (const _ of protectedJournals(profile)) {
-      throw Error('The protected journal key is missing. Preserve this profile and restore its original key.');
+    try {
+      for await (const {handle} of protectedJournals(profile)) {
+        const bytes = await journalBytes(handle);
+        // Only positively authenticated legacy Electron ciphertext is independent
+        // of the missing journal key. Unknown or damaged bytes always fail closed.
+        if (bytes.subarray(0, format.length).equals(format)) throw Error(storageError);
+        await legacyPlaintext(bytes, safeStorage);
+      }
+    } catch {
+      throw Error('The protected journal key is missing or an existing record could not be verified. Preserve this profile and restore its original key.');
     }
     const key = randomBytes(32);
     const temp = file + '.' + randomUUID() + '.tmp';
@@ -160,7 +185,9 @@ function createRecoveryStorage(profile, safeStorage) {
   async function keyForWrite() {
     const {key, protectedDigest} = await loadKey(true);
     // DPAPI proves that this user can open the key, not that it belongs to this profile.
-    writeCheck ??= authenticateExistingJournals(profile, key);
+    // Recheck before each write batch, rather than caching success forever.
+    // Corruption discovered after a prior successful write must still stop signing.
+    writeCheck ??= authenticateExistingJournals(profile, key, safeStorage).finally(() => {writeCheck=undefined;});
     await writeCheck;
     const wrapped = await readProtectedKey(file).catch(() => {throw Error(storageError);});
     try {
@@ -170,6 +197,7 @@ function createRecoveryStorage(profile, safeStorage) {
   }
 
   function forJournal(purpose) {
+    if (!journalPurposes.includes(purpose)) throw Error('Unsupported journal purpose. Register it in the key-preservation scan first.');
     const aad = journalContext(purpose);
     return {
       async seal(text) {
@@ -182,8 +210,7 @@ function createRecoveryStorage(profile, safeStorage) {
       },
       async unseal(bytes) {
         if (!bytes.subarray(0, format.length).equals(format)) {
-          if (process.platform !== 'win32' || !await safeStorage.isAsyncEncryptionAvailable()) throw Error(storageError);
-          return (await safeStorage.decryptStringAsync(bytes)).result;
+          return legacyPlaintext(bytes, safeStorage);
         }
         const {key} = await loadKey(false);
         const body = decryptJournal(bytes, key, aad);
