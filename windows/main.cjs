@@ -39,7 +39,7 @@ const {isDeepStrictEqual} = require('node:util');
 const {RequestExchange} = require('./tools/request-exchange.cjs');
 const requestExchange = new RequestExchange();
 const ROOT = __dirname, ENTRY = pathToFileURL(path.join(ROOT,'ui','index.html')).href;
-let win, encryptedVault, vaultFile, publicWallet, backupVerified=false, pendingReview, busy=false, activeWalletId=null, productProofUi, productAdmissionUi, signingRecoveryUi, requestLifecycleUi, privateViewUi, providerFinalizerUi;
+let win, encryptedVault, vaultFile, publicWallet, backupVerified=false, pendingReview, busy=false, activeWalletId=null, productProofUi, productAdmissionUi, signingRecoveryUi, requestLifecycleUi, privateViewUi, providerFinalizerUi, noteDiscoveryUi;
 const activeWorkers=new Set();
 const publicReadControllers = new Set();
 function cancelAccountReads() {
@@ -60,6 +60,8 @@ const proofRequestStore=new TransactionStore(path.join(app.getPath('userData'),'
 const proofAuthorizationStore=new SignatureStore(path.join(app.getPath('userData'),'proofs-v1'),recoveryStorage.forJournal('proofs'));
 const proofResultStore=new SignatureStore(path.join(app.getPath('userData'),'proof-results-v1'),recoveryStorage.forJournal('proof-results'));
 const viewStores=Object.fromEntries(['view-sessions','view-requests','view-responses','view-job-attempts','view-preparations'].map(purpose=>[purpose,purpose==='view-requests'?new TransactionStore(path.join(app.getPath('userData'),purpose+'-v1'),recoveryStorage.forJournal(purpose)):new SignatureStore(path.join(app.getPath('userData'),purpose+'-v1'),recoveryStorage.forJournal(purpose))]));
+const noteDiscoveryStores=Object.fromEntries(['note-discovery-jobs','note-discovery-pages','note-discovery-results'].map(purpose=>[purpose,new SignatureStore(path.join(app.getPath('userData'),purpose+'-v1'),recoveryStorage.forJournal(purpose))]));
+const publicNotePages=new (require('./tools/public-note-pages.cjs').PublicNotePages)(path.join(app.getPath('userData'),'public-note-history-v31'));
 const proofFinalizationStore=new SignatureStore(path.join(app.getPath('userData'),'proof-finalizations-v1'),recoveryStorage.forJournal('proof-finalizations'));
 const providerFinalizations=new (require('./tools/provider-finalizations.cjs').ProviderFinalizations)(proofFinalizationStore,proofAuthorizationStore,proofResultStore,async(request,response,result)=>(await job({action:'verify-product-proof-result',vault:{public:request.wallet},request,response,result})).result);
 const privateNoteClaims=new (require('./tools/private-note-claims.cjs').PrivateNoteClaims)(app.getPath('userData'),recoveryStorage);
@@ -70,7 +72,7 @@ async function online(input,options={}){if(OFFLINE)throw Error('Networking is di
 const verifiedWallets=new Map();
 const digest = v => createHash('sha256').update(JSON.stringify(v)).digest('hex');
 function passwordOf(v) { if(typeof v!=='string'||v.length<16||v.length>256) throw Error('Use a passphrase of 16–256 characters.'); return v; }
-function clearPendingReview() {pendingReview=undefined;productProofUi?.clear();productAdmissionUi?.clear();signingRecoveryUi?.clear();requestLifecycleUi?.clear();privateViewUi?.clear();providerFinalizerUi?.clear();requestExchange.clearBinding();}
+function clearPendingReview() {pendingReview=undefined;productProofUi?.clear();productAdmissionUi?.clear();signingRecoveryUi?.clear();requestLifecycleUi?.clear();privateViewUi?.clear();providerFinalizerUi?.clear();noteDiscoveryUi?.clear();requestExchange.clearBinding();}
 function reset() { cancelAccountReads();requestExchange.clear();encryptedVault=undefined; vaultFile=undefined; publicWallet=undefined; backupVerified=false; clearPendingReview();activeWalletId=null; }
 function walletList(){const problem=walletStore.problem||watchStore.problem;return problem?{wallets:[],activeId:null,recoveryRequired:true,canRecover:problem.canRecover,error:problem.error}:{wallets:[...walletStore.list(activeWalletId,verifiedWallets).wallets,...watchStore.list(activeWalletId).wallets.map(w=>({...w,watchOnly:true}))],activeId:activeWalletId,recoveryRequired:false};}
 function selectedWallet(){const wallet=storeFor(activeWalletId).get(activeWalletId);return {public:publicWallet,backupVerified,watchOnly:!encryptedVault,wallet:{id:wallet.id,name:wallet.name},...walletList()};}
@@ -98,7 +100,7 @@ async function job(input,worker='worker.cjs',{signal,owner:expectedOwner}={}) {
     const timer=setTimeout(()=>{child.kill();finish(Error('Signer timed out. No result was accepted.'));},120000);
     activeWorkers.add(cancel);
     child.on('error',()=>finish(Error('Could not start the local signer worker.')));
-    child.stdout.on('data',b=>{if(settled){b.fill(0);return;}bytes+=b.length;if(bytes>1024*1024){b.fill(0);child.kill();finish(Error('Signer output limit exceeded.'));}else parts.push(b);});
+    child.stdout.on('data',b=>{if(settled){b.fill(0);return;}bytes+=b.length;if(bytes>(worker==='public-note-worker.cjs'?8*1024*1024:1024*1024)){b.fill(0);child.kill();finish(Error('Signer output limit exceeded.'));}else parts.push(b);});
     // Do not display diagnostics from key-bearing workers.
     child.stderr.resume();
     child.on('close',(code,signal)=>{if(settled)return;let raw;try{raw=Buffer.concat(parts);const r=JSON.parse(raw.toString('utf8'));if(!r.ok||code!==0||signal!==null)throw Error();finish(null,r.result);}catch{finish(Error(worker==='worker.cjs'?'Local signer rejected the operation. Check the passphrase, vault and reviewed request.':'Network worker rejected the operation. Check the request and RPC configuration.'));}finally{raw?.fill(0);}});
@@ -421,6 +423,7 @@ privateViewUi=require('./tools/native-private-view.cjs').installPrivateView({
  register,dialog,job,openJSON,saveJSON,passwordOf,policy:paymentPolicy,getWindow:()=>win,getPublic:()=>{requirePublic();return publicWallet;},getVault:()=>encryptedVault,isOffline:()=>OFFLINE,backupVerified:()=>backupVerified,clearPending:clearPendingReview,ready:()=>recoveryStorage.ready(),attempts:signingAttempts,
  proofAuthorizationStore,proofResultStore,sessionStore:viewStores['view-sessions'],requestStore:viewStores['view-requests'],responseStore:viewStores['view-responses'],jobAttemptStore:viewStores['view-job-attempts'],preparationStore:viewStores['view-preparations'],proofRequestStore
 });
+noteDiscoveryUi=require('./tools/native-note-discovery.cjs').installNoteDiscovery({register,dialog,job,saveJSON,passwordOf,policy:paymentPolicy,getWindow:()=>win,getPublic:()=>{requirePublic();return publicWallet;},getVault:()=>encryptedVault,isOffline:()=>OFFLINE,backupVerified:()=>backupVerified,clearPending:clearPendingReview,ready:()=>recoveryStorage.ready(),jobStore:noteDiscoveryStores['note-discovery-jobs'],pageStore:noteDiscoveryStores['note-discovery-pages'],resultStore:noteDiscoveryStores['note-discovery-results'],publicPages:publicNotePages});
 providerFinalizerUi=require('./tools/native-provider-finalizer.cjs').installProviderFinalizer({
  register,dialog,job,openJSON,saveJSON,policy:paymentPolicy,requestStore:proofRequestStore,authorizationStore:proofAuthorizationStore,finalizations:providerFinalizations,signingAttempts,getWindow:()=>win,getPublic:()=>{requirePublic();return publicWallet;},getVaultHash:()=>encryptedVault?digest(encryptedVault):null,isOffline:()=>OFFLINE,clearPending:clearPendingReview,ready:()=>recoveryStorage.ready(),
  verifySigningResponse:async(response,request,authority,wallet)=>{if(authority==='private-view'){const core=require('./dist/hinkal-view.cjs');core.assertViewWallet(request,wallet);return core.verifyViewResponse(request,response,Date.now(),false);}if(authority==='private-proof'){require('./dist/hinkal-product-admission.cjs').assertProductPackageWallet(request,wallet);return require('./dist/hinkal-product-proof.cjs').verifyProductProofResponse(request,response,Date.now(),false);}return verifyIntent(response,request,wallet,Date.now(),false);}
@@ -430,7 +433,7 @@ app.whenReady().then(()=>{
   const isolated=session.fromPartition('drivekey-connect-preview');
   isolated.setPermissionRequestHandler((_wc,_permission,callback)=>callback(false));
   isolated.setPermissionCheckHandler(()=>false);
-  const allowed=new Set(['index.html','shell.js','routes.js','chooser.js','chooser.css','black.css','portfolio.js','workspace.js','assets.js',...require('./ui-assets.json'),'app.js','style.css','vendor/tabler.min.css','assets/drivekey-logo.jpg','assets/usb-pcb-hero.png','assets/usb-pcb-detail.png','assets/solana.png','assets/hinkal.svg','assets/provider-lifi.svg','assets/provider-jupiter.png','assets/provider-uniswap.svg','assets/provider-husher.png','assets/chain-ethereum.svg','assets/Inter.woff2','assets/SpaceGrotesk.woff2'].map(f=>pathToFileURL(path.join(ROOT,'ui',f)).href));
+  const allowed=new Set(['index.html','shell.js','routes.js','chooser.js','chooser.css','black.css','portfolio.js','workspace.js','assets.js','private-view.js','note-discovery.js',...require('./ui-assets.json'),'app.js','style.css','vendor/tabler.min.css','assets/drivekey-logo.jpg','assets/usb-pcb-hero.png','assets/usb-pcb-detail.png','assets/solana.png','assets/hinkal.svg','assets/provider-lifi.svg','assets/provider-jupiter.png','assets/provider-uniswap.svg','assets/provider-husher.png','assets/chain-ethereum.svg','assets/Inter.woff2','assets/SpaceGrotesk.woff2'].map(f=>pathToFileURL(path.join(ROOT,'ui',f)).href));
   isolated.webRequest.onBeforeRequest((details,callback)=>callback({cancel:!allowed.has(details.url)}));
   win=new BrowserWindow({width:1440,height:1000,minWidth:850,minHeight:650,backgroundColor:'#080c12',show:true,autoHideMenuBar:true,title:OFFLINE?'DriveKey Offline Companion':'DriveKey Windows',webPreferences:{session:isolated,preload:path.join(ROOT,'preload.cjs'),sandbox:true,contextIsolation:true,nodeIntegration:false,webSecurity:true,devTools:!app.isPackaged}});
   win.webContents.setWindowOpenHandler(()=>({action:'deny'}));

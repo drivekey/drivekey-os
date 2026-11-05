@@ -10,7 +10,7 @@ const nonceLength = 12;
 const tagLength = 16;
 const wrappedLimit = 4096;
 const journalLimit = 256 * 1024;
-const journalPurposes = Object.freeze(['signatures', 'transactions', 'proofs', 'proof-requests', 'proof-results', 'signing-attempts', 'signing-results', 'signing-commitments', 'view-sessions', 'view-requests', 'view-responses', 'view-job-attempts', 'view-preparations', 'proof-finalizations', 'private-note-claims', 'private-note-chains', 'private-note-locks']);
+const journalPurposes = Object.freeze(['signatures', 'transactions', 'proofs', 'proof-requests', 'proof-results', 'signing-attempts', 'signing-results', 'signing-commitments', 'view-sessions', 'view-requests', 'view-responses', 'view-job-attempts', 'view-preparations', 'proof-finalizations', 'private-note-claims', 'private-note-chains', 'private-note-locks','note-discovery-jobs','note-discovery-pages','note-discovery-results']);
 const storageError = 'Windows encrypted recovery storage is unavailable. Signing is disabled.';
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const journalContext = purpose => Buffer.from('DriveKey journal v1: ' + purpose);

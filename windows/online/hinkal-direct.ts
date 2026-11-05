@@ -2,7 +2,7 @@ import {randomUUID} from 'node:crypto';
 import {Transaction,getAddress,keccak256} from 'ethers';
 import {z} from 'zod';
 import {OnlineAdapter} from './adapter';
-import {verifyHinkalEvmPrivateState} from './hinkal-private-state';
+import {verifyHinkalEvmPrivateState,verifyHinkalEvmPoolIdentity} from './hinkal-private-state';
 import {CHAINS,ERC20_PAYMENT} from '../engine/core/payment-intent';
 import {HINKAL_PIN,HINKAL_ABI,HinkalIntent,decodeHinkalData,hinkalFingerprint,validateHinkal,verifyHinkalResponse} from '../engine/core/hinkal-intent';
 import {SWAP_TOKEN} from '../engine/core/swap-intent';
@@ -20,7 +20,7 @@ export class HinkalDirectAdapter{
   if(p.proofNonce!==undefined&&nonce!==p.proofNonce)throw Error('Nonce changed after proof authorization; reconcile without replacing it.');r.maximumFee=(gas*maxFee).toString();if(p.proofMaximumFee&&BigInt(r.maximumFee)>BigInt(p.proofMaximumFee))throw Error('Proof authorization fee ceiling would be exceeded.');r.unsignedTransaction=Transaction.from({type:2,chainId:1,nonce,to:call.to,data:call.data,value:call.value,gasLimit:gas,maxFeePerGas:maxFee,maxPriorityFeePerGas:priority}).unsignedSerialized;r.fingerprint=hinkalFingerprint(r);validateHinkal(r,now);await this.preflight(r);return r as HinkalIntent;
  }
  async preflight(input:unknown){const r=validateHinkal(input),tx=Transaction.from(r.unsignedTransaction);await this.identity();const balance=await this.adapter.balance('ethereum',r.from,r.asset);
-  if(!['hinkal-approve','hinkal-revoke'].includes(r.action)){const {circomData:d}=decodeHinkalData(tx.data,r);await verifyHinkalEvmPrivateState(this.adapter,d.rootHashHinkal,d.rootHashHinkalIndex,d.inputNullifiers.flat());await verifyProviderEvmVerifier(this.adapter,tx.data);}
+  if(!['hinkal-approve','hinkal-revoke'].includes(r.action)){const {circomData:d}=decodeHinkalData(tx.data,r);await verifyHinkalEvmPrivateState(this.adapter,d.rootHashHinkal,d.rootHashHinkalIndex,d.inputNullifiers.flat());await verifyProviderEvmVerifier(this.adapter,tx.data);}else await verifyHinkalEvmPoolIdentity(this.adapter,'pending');
   if(BigInt(await this.rpc('eth_getTransactionCount',[r.from,'pending']))!==BigInt(tx.nonce))throw Error('Hinkal nonce conflict.');
   if(BigInt(balance.native)<BigInt(r.maximumFee)+tx.value||(r.action==='hinkal-deposit'&&BigInt(balance.amount)<BigInt(r.amount)))throw Error('Insufficient Hinkal public funds.');
   if(r.action==='hinkal-approve'||(r.action==='hinkal-deposit'&&r.asset==='USDC')){const allowance=SWAP_TOKEN.decodeFunctionResult('allowance',await this.rpc('eth_call',[{to:CHAINS.ethereum.usdc,data:SWAP_TOKEN.encodeFunctionData('allowance',[r.from,HINKAL_PIN.ethereumContract])},'pending']))[0];if(r.action==='hinkal-approve'?allowance!==0n:allowance!==BigInt(r.amount))throw Error('Hinkal approval must start at zero and deposit must have the exact-amount allowance.');}

@@ -1,6 +1,7 @@
 import './engine/offline-signer/network-deny';
 import {authorizePrivateView} from './engine/offline-signer/hinkal-view';
 import {inspectProductNotes} from './engine/offline-signer/private-note-manifest';
+import {inspectPublicNotePage} from './engine/offline-signer/hinkal-note-discovery';
 import {validateViewRequest,assertViewWallet,viewReview,verifyViewResponse} from './engine/core/hinkal-view';
 import {createVault, inspectVault, verifyVault, reviewRequest, signReviewed, verifySavedSignature} from './signer';
 import {reviewProductProof,authorizeProductProof} from './engine/offline-signer/hinkal-product-proof';
@@ -34,6 +35,7 @@ process.stdin.on('end', async () => {
       case 'sign': paymentPolicy.assertIntent(job.request); result = await signReviewed(job.vault,job.password,job.request,job.fingerprint); break;
       case 'verify-saved': result = await verifySavedSignature(job.vault,job.request,job.response); break;
       case 'review-product-proof': result = reviewProductProof(job.request,job.vault); break;
+      case 'inspect-public-notes': paymentPolicy.assertPrivateView();result=await inspectPublicNotePage(job.vault,job.password,job.wallet,job.manifest,job.page);break;
       case 'inspect-product-notes': paymentPolicy.assertProductProof(job.request); result=await inspectProductNotes(job.vault,job.password,job.request);break;
       case 'sign-product-proof': paymentPolicy.assertProductProof(job.request);if(typeof job.noteManifestFingerprint!=='string'||!/^[a-f0-9]{64}$/.test(job.noteManifestFingerprint))throw Error('The independently owned note reservation is required.'); result = await authorizeProductProof(job.vault,job.password,job.request,job.fingerprint,Date.now(),job.noteManifestFingerprint); break;
       case 'verify-product-proof': reviewProductProof(job.request,job.vault,Date.now(),false); result = {response:await verifyProductProofResponse(job.request,job.response,Date.now(),false)}; break;

@@ -1,0 +1,16 @@
+{
+  "chainId": 1,
+  "sdk": "0.4.1",
+  "pool": "0x7cb60446d7635C68EDf1c568cac74A1f98c1Cfa4",
+  "helper": "0x5f912cBBB7F14E4524faAe8559666e7C79227C1b",
+  "helperCodeHash": "0x3900a5b9e2a01d5f697c4902c4c42fb28c3403527cdf50102fbf2d2dd097dc7b",
+  "helperPool": "0x7cb60446d7635C68EDf1c568cac74A1f98c1Cfa4",
+  "proxySlot": "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc",
+  "provenance": {
+    "checkedAt": "2026-11-05T22:47:40.949Z",
+    "block": "0x1921822",
+    "blockHash": "0x95470114ef909d6ce58575f6880752d46c8dc234ae260e06962b02b49d88a8e9",
+    "verification": "Official pinned SDK expected address plus independent two-endpoint runtime/counterpart observations; final independent security review remains required.",
+    "officialSource": "https://github.com/Hinkal-Protocol/Hinkal-Contracts-Circuits/blob/main/contracts/HinkalHelper.sol"
+  }
+}
