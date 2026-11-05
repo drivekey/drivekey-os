@@ -3,6 +3,7 @@
 // handoff, separate-device, proof-generation, settlement or live qualification.
 const {test,before}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs/promises'),path=require('node:path'),os=require('node:os');
 const {randomUUID}=require('node:crypto');
+const {SigningAttempts}=require('../tools/signing-attempts.cjs');
 const {productProofFixture}=require('../dist/hinkal-product-proof-fixture.cjs'),{reviewProductProof,authorizeProductProof}=require('../dist/hinkal-product-proof-signer.cjs'),{verifyProductProofResponse}=require('../dist/hinkal-product-proof.cjs');
 const {installProductProofUi}=require('../tools/native-product-proof.cjs'),{SignatureStore}=require('../signature-store.cjs'),{TransactionStore}=require('../transaction-store.cjs'),{createRecoveryStorage}=require('../tools/recovery-storage.cjs');
 let fixture;
@@ -24,6 +25,7 @@ async function controller(profile){
    if(job.action==='sign-product-proof'){state.signs++;return authorizeProductProof(job.vault,job.password,job.request,job.fingerprint);}
    throw Error('Unexpected fixture worker action');}
  };
+ c.signingAttempts=new SigningAttempts(directory,storage,{'private-proof':c.authorizationStore});
  const ui=installProductProofUi(c),invoke=(name,p)=>handlers.get(name)(p);
  return {directory,c,state,calls,ui,invoke};
 }
@@ -102,4 +104,9 @@ test('canceled proving does not run, while invalidation after proving preserves 
  f.state.backup=false;await assert.rejects(f.invoke('prove-product-proof',{id:fixture.request.fingerprint,password:fixture.password}),/backup/);assert.equal(f.state.dialogCalls,0);f.state.backup=true;
  f.state.approval=0;assert.deepEqual(await f.invoke('prove-product-proof',{id:fixture.request.fingerprint,password:fixture.password}),{cancelled:true});assert.equal(await f.c.resultStore.load(fixture.vault.public.deviceId,fixture.request.fingerprint.slice(2)),null);
  f.state.approval=1;await assert.rejects(f.invoke('prove-product-proof',{id:fixture.request.fingerprint,password:fixture.password}),/canceled/);assert.equal(f.state.exports,0);assert.deepEqual((await f.c.resultStore.load(fixture.vault.public.deviceId,fixture.request.fingerprint.slice(2))).response,completedProof.result);
+});
+
+test('private-proof fallback authorization remains recoverable after a primary write outage with no new authorization',async()=>{
+ const f=await controller();f.c.authorizationStore.seal=async()=>{throw Error('Injected primary proof outage');};const r=await f.invoke('import-product-proof');await f.invoke('sign-product-proof',{token:r.token,fingerprint:r.review.fingerprint,password:fixture.password});assert.equal(f.state.signs,1);assert.equal(await f.c.authorizationStore.load(fixture.vault.public.deviceId,fixture.request.fingerprint.slice(2)),null);
+ const fresh=await controller(f.directory),rows=await fresh.invoke('list-product-proofs');assert.equal(rows[0].state,'authorized');await fresh.invoke('export-product-proof',{id:fixture.request.fingerprint});assert.equal(fresh.state.signs,0);assert.equal(fresh.state.exports,1);
 });

@@ -11,6 +11,7 @@ const {app, BrowserWindow, ipcMain, dialog, session, shell, clipboard, safeStora
 // Grayscale antialiasing avoids colored fringes on small desktop text.
 app.commandLine.appendSwitch('disable-lcd-text');
 const {SignatureStore}=require('./signature-store.cjs');
+const {SigningAttempts}=require('./tools/signing-attempts.cjs');
 const {TransactionStore,reconcileRecord}=require('./transaction-store.cjs');
 const {createRecoveryStorage}=require('./tools/recovery-storage.cjs');
 const {transactionSummary}=require('./transaction-summary.cjs');
@@ -57,6 +58,7 @@ const transactionStore=new TransactionStore(path.join(app.getPath('userData'),'t
 const proofRequestStore=new TransactionStore(path.join(app.getPath('userData'),'proof-requests-v1'),recoveryStorage.forJournal('proof-requests'));
 const proofAuthorizationStore=new SignatureStore(path.join(app.getPath('userData'),'proofs-v1'),recoveryStorage.forJournal('proofs'));
 const proofResultStore=new SignatureStore(path.join(app.getPath('userData'),'proof-results-v1'),recoveryStorage.forJournal('proof-results'));
+const signingAttempts=new SigningAttempts(app.getPath('userData'),recoveryStorage,{'transaction':signatureStore,'private-proof':proofAuthorizationStore});
 const OFFLINE=process.env.DRIVEKEY_OFFLINE==='1'||require('./package.json').drivekeyOffline===true;
 const rpcFile=path.join(app.getPath('userData'),'rpc-endpoints-v1.json');
 async function online(input,options={}){if(OFFLINE)throw Error('Networking is disabled in the offline companion.');paymentPolicy.assertOnlineJob(input);let endpoints;try{endpoints=await readJSON(rpcFile);}catch{throw Error('Import an RPC configuration first.');}return job({...input,endpoints},'online-worker.cjs',options);}
@@ -68,9 +70,9 @@ function reset() { cancelAccountReads();requestExchange.clear();encryptedVault=u
 function walletList(){const problem=walletStore.problem||watchStore.problem;return problem?{wallets:[],activeId:null,recoveryRequired:true,canRecover:problem.canRecover,error:problem.error}:{wallets:[...walletStore.list(activeWalletId,verifiedWallets).wallets,...watchStore.list(activeWalletId).wallets.map(w=>({...w,watchOnly:true}))],activeId:activeWalletId,recoveryRequired:false};}
 function selectedWallet(){const wallet=storeFor(activeWalletId).get(activeWalletId);return {public:publicWallet,backupVerified,watchOnly:!encryptedVault,wallet:{id:wallet.id,name:wallet.name},...walletList()};}
 function selectWallet(record,vault,file,identity){cancelAccountReads();requestExchange.clear();clearPendingReview();encryptedVault=vault;vaultFile=file;publicWallet=identity;activeWalletId=record.id;backupVerified=verifiedWallets.get(record.id)===record.vaultHash;return selectedWallet();}
-async function job(input,worker='worker.cjs',{signal}={}) {
+async function job(input,worker='worker.cjs',{signal,owner:expectedOwner}={}) {
   signal?.throwIfAborted();
-  const owner=win;
+  const owner=expectedOwner||win;
   const requireOwner=()=>{if(!owner||win!==owner||owner.isDestroyed?.())throw Error('Operation cancelled because the wallet window closed.');};
   requireOwner();
   const node = app.isPackaged ? path.join(process.resourcesPath,'node.exe') : (process.env.DRIVEKEY_NODE || process.execPath);
@@ -203,6 +205,8 @@ register('sign-request',async p=>{
   const password=passwordOf(p?.password),r=pendingReview;
   if(!r||p?.token!==r.token||p?.fingerprint!==r.review.fingerprint||r.vaultHash!==digest(encryptedVault))throw Error('Review expired or changed. Import the request again.');
   paymentPolicy.assertIntent(r.request);
+  const signingVault=structuredClone(encryptedVault),signingWallet=structuredClone(publicWallet),signingWindow=win;
+  const currentSigningScope=()=>{if(!signingWindow||signingWindow.isDestroyed?.()||win!==signingWindow||!encryptedVault||!publicWallet||!backupVerified||digest(encryptedVault)!==digest(signingVault)||digest(publicWallet)!==digest(signingWallet))throw Error('Signing was canceled because the wallet, backup or window changed. Preserve the profile.');validateIntent(r.request);};
   clearPendingReview(); // An approval token can be consumed only once.
   await recoveryStorage.ready();
   if(r.productProof!==undefined)await productAdmissionUi.verifyPending(r,publicWallet,true);
@@ -210,24 +214,20 @@ register('sign-request',async p=>{
   const terms=Object.entries(refreshed).map(([key,value])=>key+': '+(typeof value==='object'?JSON.stringify(value):value)).join('\n');
   const confirm=await dialog.showMessageBox(win,{type:'warning',title:'Approve this exact transaction?',message:'Create a transferable signature?',detail:terms+'\n\nLocal software signing trusts the running computer. No transaction is broadcast here.',buttons:['Cancel','Approve exact transaction'],defaultId:0,cancelId:0,noLink:true});
   if(confirm.response!==1)return {cancelled:true,reviewConsumed:true};
-  const previous=await signatureStore.load(publicWallet.deviceId,r.review.fingerprint.slice(2));
-  let response;
-  if(previous){await job({action:'verify',vault:encryptedVault,password});response=(await job({action:'verify-saved',vault:encryptedVault,request:previous.request,response:previous.response})).response;}
-  else{
-    response=await job({action:'sign',vault:encryptedVault,password,request:r.request,fingerprint:r.review.fingerprint});
-    // A transferable result must be durable before a save picker or renderer reply.
-    try{response=(await signatureStore.save(publicWallet.deviceId,r.request,response)).response;}
-    catch{throw Error('Could not preserve encrypted signature recovery. No response was exported. Keep this profile and import the same request to retry.');}
-  }
+  currentSigningScope();await job({action:'verify',vault:signingVault,password});currentSigningScope();
+  const {response}=await signingAttempts.run({walletId:signingWallet.deviceId,request:r.request,authority:'transaction',current:currentSigningScope,
+    verify:async(response,request,authority)=>(await job({action:authority==='private-proof'?'verify-product-proof':'verify-saved',vault:signingVault,request,response})).response,
+    sign:request=>job({action:'sign',vault:signingVault,password,request,fingerprint:r.review.fingerprint})});
+  currentSigningScope();
   const file=await saveJSON('Export signed response — return it to the dapp',(r.request.network||r.request.chain)==='ethereum'?'signed-trade-response.json':'signed-multi-response.json',response);
   return {saved:!!file,reviewConsumed:true,transactionHash:response.transactionHash,recoverable:true,warning:file?'Return this file to the dapp for verification.':'Signature created but export cancelled. No broadcast occurred. Export it again from Saved signatures.'};
 });
 register('list-signatures',async()=>{
-  requireVault();const records=await signatureStore.list(publicWallet.deviceId);
-  return records.map(record=>({id:record.request.fingerprint.slice(2),requestId:record.request.requestId,network:record.request.network||record.request.chain,signedAt:record.response.signedAt,transactionHash:record.response.transactionHash}));
+  requireVault();const records=await signingAttempts.list(publicWallet.deviceId,'transaction');
+  return records.map(record=>({id:record.request.fingerprint.slice(2),requestId:record.request.requestId,network:record.request.network||record.request.chain,signedAt:record.response?.signedAt,transactionHash:record.response?.transactionHash,...(record.uncertain?{state:'signing-uncertain',warning:'Signing outcome unknown. Preserve this profile; new signing for this wallet is disabled.'}:{})}));
 });
 register('export-signature',async p=>{
-  requireVault();const stored=await signatureStore.load(publicWallet.deviceId,p?.id);if(!stored)throw Error('Saved signature not found for this wallet.');
+  requireVault();const stored=await signingAttempts.recover(publicWallet.deviceId,p?.id,'transaction',async(response,request)=>(await job({action:'verify-saved',vault:encryptedVault,request,response})).response);if(!stored)throw Error('Saved signature not found for this wallet.');
   const checked=await job({action:'verify-saved',vault:encryptedVault,request:stored.request,response:stored.response});
   const terms=Object.entries(checked.review).map(([key,value])=>key+': '+value).join('\n');
   const confirmation=await dialog.showMessageBox(win,{type:'warning',title:'Export a saved signature?',message:'Export the previously approved transaction?',detail:terms+'\n\nThis creates no new signature. The application deadline does not revoke the existing signature. Check the original request and current chain state in the dapp before submitting.',buttons:['Cancel','Export saved signature'],defaultId:0,cancelId:0,noLink:true});
@@ -332,22 +332,27 @@ register('import-exchange-response',async()=>{
  return ingestResponse(picked.data,scope,request);
 });
 register('list-transactions',async()=>{
- requirePublic();const records=await transactionStore.list(publicWallet.deviceId),saved=await signatureStore.list(publicWallet.deviceId);
+ requirePublic();const records=await transactionStore.list(publicWallet.deviceId),saved=(await signingAttempts.list(publicWallet.deviceId,'transaction')).filter(r=>r.response);
  for(const s of saved.filter(s=>[8,9,10,11,12,14,16,18,21,22,23,24,25,26,29].includes(s.request.version))){let record=records.find(r=>r.request.fingerprint===s.request.fingerprint);if(!record){record={version:1,request:s.request,state:'uncertain',response:s.response,reason:'Submission history is missing. Reconcile the saved hash; do not rebroadcast.'};records.push(record);await transactionStore.put(record);}else if(record.state==='prepared'){record.state='signed';record.response=s.response;await transactionStore.put(record);}}
  return records.map(transactionSummary);
 });
 register('submit-payment',async p=>{
- requirePublic();if(OFFLINE)throw Error('Offline companion cannot broadcast.');const record=await transactionStore.load(publicWallet.deviceId,p?.id);
+ requirePublic();if(OFFLINE)throw Error('Offline companion cannot broadcast.');const submissionScope=importScope();const record=await transactionStore.load(publicWallet.deviceId,p?.id);
  if(!record?.response||record.state!=='signed')throw Error('Only a signed, never-submitted intent can be submitted. Reconcile prior submissions.');
  paymentPolicy.assertIntent(record.request);
  const r=validateIntent(record.request);await verifyIntent(record.response,r,publicWallet,Date.now(),false);
  if(record.productProof!==undefined)await productAdmissionUi.verifyRecord(record,publicWallet,false);
+ await signingAttempts.assertResolved(submissionScope.wallet.deviceId,async(response,request,authority)=>{
+  if(authority==='transaction')return verifyIntent(response,request,submissionScope.wallet,Date.now(),false);
+  require('./dist/hinkal-product-admission.cjs').assertProductPackageWallet(request,submissionScope.wallet);
+  return require('./dist/hinkal-product-proof.cjs').verifyProductProofResponse(request,response,Date.now(),false);
+ });assertImportScope(submissionScope);
  const confirmation=await dialog.showMessageBox(win,{type:'warning',title:'Submit transaction?',message:'Broadcast the approved transaction?',detail:Object.entries(reviewIntent(r)).map(([k,v])=>k+': '+v).join('\n'),buttons:['Cancel','Broadcast exact transaction'],defaultId:0,cancelId:0,noLink:true});
- if(confirmation.response!==1)return {cancelled:true};
+ assertImportScope(submissionScope);if(confirmation.response!==1)return {cancelled:true};
  // V14 broadcasts perform the full preflight in the same worker that sends.
- if(r.version!==14)await online({action:intentAction(r,'preflight'),request:r});
+ if(r.version!==14)await online({action:intentAction(r,'preflight'),request:r},{owner:submissionScope.window});assertImportScope(submissionScope);
  await transactionStore.put({...record,state:'submitting',updatedAt:new Date().toISOString()});
- try{await online({action:intentAction(r,'broadcast'),request:r,response:record.response});await transactionStore.put({...record,state:'pending',updatedAt:new Date().toISOString()});return {submitted:true};}
+ try{assertImportScope(submissionScope);await online({action:intentAction(r,'broadcast'),request:r,response:record.response},{owner:submissionScope.window});await transactionStore.put({...record,state:'pending',updatedAt:new Date().toISOString()});return {submitted:true};}
  catch{await transactionStore.put({...record,state:'uncertain',reason:'Submission result unknown. Reconcile the approved hash. No automatic retry.'});throw Error('Submission result unknown. Reconcile before any further action.');}
 });
 register('reconcile-payment',async p=>{
@@ -366,7 +371,7 @@ productProofUi=require('./tools/native-product-proof.cjs').installProductProofUi
  register,dialog,job,openJSON,saveJSON,passwordOf,policy:paymentPolicy,
  getVault:()=>{requireVault();return encryptedVault;},getPublic:()=>{requirePublic();return publicWallet;},getWindow:()=>win,
  backupVerified:()=>backupVerified,clearOtherReview:clearPendingReview,ready:()=>recoveryStorage.ready(),
- requestStore:proofRequestStore,authorizationStore:proofAuthorizationStore,resultStore:proofResultStore,
+ requestStore:proofRequestStore,authorizationStore:proofAuthorizationStore,resultStore:proofResultStore,signingAttempts,
  artifactDirectory:()=>app.isPackaged?path.join(process.resourcesPath,'hinkal-prover'):process.env.DRIVEKEY_HINKAL_ARTIFACTS
 });
 productAdmissionUi=require('./tools/native-product-admission.cjs').installProductAdmission({

@@ -12,6 +12,8 @@ const nacl = require('tweetnacl');
 const bs58 = require('bs58').default;
 const {Transaction, Wallet} = require('ethers');
 const {TransactionStore} = require('../transaction-store.cjs');
+const {SignatureStore} = require('../signature-store.cjs');
+const {SigningAttempts} = require('../tools/signing-attempts.cjs');
 const {OnlineAdapter} = require('../dist/adapter.cjs');
 const {HinkalSolanaAdapter} = require('../dist/hinkal-solana-adapter.cjs');
 const {
@@ -179,7 +181,8 @@ function installSubmit(bindings) {
   const begin = main.indexOf("register('submit-payment',");
   const end = main.indexOf("register('reconcile-payment',", begin);
   assert.ok(begin >= 0 && end > begin);
-  new Function(...Object.keys(bindings), main.slice(begin, end))(...Object.values(bindings));
+  const scopeBegin=main.indexOf('function importScope()'),scopeEnd=main.indexOf("register('choose-request-exchange'",scopeBegin);assert.ok(scopeBegin>=0&&scopeEnd>scopeBegin);
+  new Function(...Object.keys(bindings),main.slice(scopeBegin,scopeEnd)+main.slice(begin,end))(...Object.values(bindings));
 }
 
 async function mainFixture(t, options = {}) {
@@ -197,10 +200,11 @@ async function mainFixture(t, options = {}) {
     assert.deepEqual(persisted.response, response);
   });
   let submit;
-  const window = {};
+  const window = {isDestroyed:()=>false};
+  const signatures=new SignatureStore(path.join(directory,'signature-fixture'),codec),signingAttempts=new SigningAttempts(path.join(directory,'recovery-fixture'),{forJournal:()=>codec},{'transaction':signatures});
   installSubmit({
     register(channel, handler) {assert.equal(channel, 'submit-payment'); submit = handler;},
-    requirePublic() {}, OFFLINE: false, publicWallet: wallet, win: window,
+    requirePublic() {}, OFFLINE: false, publicWallet: wallet, win: window,activeWalletId:wallet.deviceId,signingAttempts,require,
     transactionStore: {load: store.load.bind(store), async put(record) {
       control.journal.push(record.state);
       if (control.failJournal) throw Error('Synthetic journal failure');

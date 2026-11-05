@@ -22,12 +22,17 @@ test('existing records are never overwritten and conflicting requests are reject
  const existing=await f.store.save(f.walletId,f.request,{...f.response,rawSignedTransaction:'new signature'});assert.deepEqual(existing.response,f.response);assert.deepEqual(await fs.readFile(file),before);
  await assert.rejects(f.store.save(f.walletId,{...f.request,network:'solana'},f.response),/conflicts/);assert.deepEqual(await fs.readFile(file),before);
 });
-test('failed durable publication leaves no recoverable response and no temporary file',async()=>{
+test('failed durable publication preserves encrypted temporary recovery across restart',async()=>{
  const f=await fixture({...fs,link:async()=>{throw Error('Injected write failure');}});
- await assert.rejects(f.store.save(f.walletId,f.request,f.response),/write failure/);assert.equal(await f.store.load(f.walletId,f.id),null);assert.deepEqual(await fs.readdir(path.join(f.directory,f.walletId)),[]);
+ await assert.rejects(f.store.save(f.walletId,f.request,f.response),/write failure/);const names=await fs.readdir(path.join(f.directory,f.walletId));assert.equal(names.length,1);assert.match(names[0],/\.tmp$/);const bytes=await fs.readFile(path.join(f.directory,f.walletId,names[0]));assert.equal(bytes.includes(Buffer.from(f.response.rawSignedTransaction)),false);const restarted=new SignatureStore(f.directory,f.options);assert.deepEqual((await restarted.load(f.walletId,f.id)).response,f.response);assert.equal((await restarted.list(f.walletId)).length,1);
 });
 test('encryption failure prevents any plaintext fallback',async()=>{
  const f=await fixture();const store=new SignatureStore(f.directory,{...f.options,seal:async()=>{throw Error('Encryption unavailable');}});
  await assert.rejects(store.save(f.walletId,f.request,f.response),/Encryption unavailable/);await assert.rejects(fs.stat(f.directory));
 });
 
+
+test('signature publication snapshots request and response before asynchronous encryption',async()=>{
+ const f=await fixture();let release,entered;const gate=new Promise(resolve=>release=resolve),ready=new Promise(resolve=>entered=resolve),seal=f.store.seal;f.store.seal=async text=>{entered();await gate;return seal(text);};
+ const request=structuredClone(f.request),response=structuredClone(f.response),saving=f.store.save(f.walletId,request,response);await ready;request.network='changed';response.rawSignedTransaction='changed';release();await saving;const r=await f.store.load(f.walletId,f.id);assert.deepEqual(r.request,f.request);assert.deepEqual(r.response,f.response);
+});

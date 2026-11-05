@@ -41,42 +41,35 @@ function installProductProofUi(c){
    buttons:['Cancel','Authorize exact private proof'],defaultId:0,cancelId:0,noLink:true});current(s);
   if(approval.response!==1)return {cancelled:true,reviewConsumed:true};
   // Recheck the monotonic expiry and exact request in the one-use offline child.
-  const previous=await c.authorizationStore.load(s.wallet.deviceId,r.request.fingerprint.slice(2));current(s);
-  let response;
-  if(previous){
-   await c.job({action:'verify',vault:s.vault,password});current(s);
-   response=(await c.job({action:'verify-product-proof',vault:s.vault,request:previous.request,response:previous.response})).response;
-  }else{
-   response=await c.job({action:'sign-product-proof',vault:s.vault,password,request:r.request,fingerprint:r.request.fingerprint});
-   // A cancellation cannot erase authority already created by the one-use
-   // child. Preserve it under the original wallet before checking UI scope.
-   try{response=(await c.authorizationStore.save(s.wallet.deviceId,r.request,response)).response;}
-   catch{throw Error('Could not preserve encrypted private-proof recovery. No authorization was exported. Preserve this profile.');}
-  }
+  await c.job({action:'verify',vault:s.vault,password});current(s);validateProductProof(r.request);
+  const {response}=await c.signingAttempts.run({walletId:s.wallet.deviceId,request:r.request,authority:'private-proof',
+   current:()=>{current(s);validateProductProof(r.request);},
+   verify:async(response,request,authority)=>(await c.job({action:authority==='private-proof'?'verify-product-proof':'verify-saved',vault:s.vault,request,response})).response,
+   sign:request=>c.job({action:'sign-product-proof',vault:s.vault,password,request,fingerprint:request.fingerprint})});
   current(s);
   const file=await c.saveJSON('Export private-proof authorization','drivekey-private-proof-response.json',response);current(s);
   return {kind:'private-proof',saved:!!file,reviewConsumed:true,recoverable:true,authorizationFingerprint:r.request.fingerprint,
    warning:file?'Private-proof authorization exported. Generate and verify the proof, then review the chain transaction separately.':'Export canceled. The same private-proof authorization is recoverable from Saved proof authorizations. No chain transaction was signed or broadcast.'};
  });
  c.register('list-product-proofs',async()=>{
-  const s=scope(),requests=await c.requestStore.list(s.wallet.deviceId),authorized=await c.authorizationStore.list(s.wallet.deviceId);current(s);
+  const s=scope(),requests=await c.requestStore.list(s.wallet.deviceId),authorized=await c.signingAttempts.list(s.wallet.deviceId,'private-proof');current(s);
   const all=new Map(requests.map(record=>[record.request.fingerprint,record.request]));
   for(const record of authorized)all.set(record.request.fingerprint,record.request);
   const rows=[];
   for(const [id,request]of all){
    validateProductProof(request,Date.now(),false);
-   const signed=authorized.find(record=>record.request.fingerprint===id);
+   const entry=authorized.find(record=>record.request.fingerprint===id),signed=entry?.response?entry:null;
    if(signed)await c.job({action:'verify-product-proof',vault:s.vault,request,response:signed.response});current(s);
    const proved=await c.resultStore.load(s.wallet.deviceId,id.slice(2));current(s);
    if(proved){if(!signed)throw Error('Private proof recovery is missing its original authorization. Preserve this profile.');await c.job({action:'verify-product-proof-result',vault:s.vault,request,response:signed.response,result:proved.response});current(s);}
    const review=productProofReview(request,Date.now(),false);
-   rows.push({id,state:proved?'proved':signed?'authorized':'prepared',localProvingSupported:localProductProvingSupported(request),chain:review.chain,action:review.action,amount:review.amount,asset:review.inputAsset,
+   rows.push({id,state:entry?.uncertain?'signing-uncertain':proved?'proved':signed?'authorized':'prepared',localProvingSupported:localProductProvingSupported(request),chain:review.chain,action:review.action,amount:review.amount,asset:review.inputAsset,
     recipient:review.recipient,expiresAt:request.expiresAt,createdAt:request.createdAt,requiresSeparateChainReview:true});
   }
   return rows.sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
  });
  c.register('export-product-proof',async p=>{
-  const s=scope(),record=await c.authorizationStore.load(s.wallet.deviceId,String(p?.id||'').replace(/^0x/,''));current(s);
+  const s=scope(),record=await c.signingAttempts.recover(s.wallet.deviceId,String(p?.id||'').replace(/^0x/,''),'private-proof',async(response,request)=>(await c.job({action:'verify-product-proof',vault:s.vault,request,response})).response);current(s);
   if(!record)throw Error('Private-proof authorization is unavailable for this wallet.');
   c.policy.assertProductProof(record.request);
   const {response}=await c.job({action:'verify-product-proof',vault:s.vault,request:record.request,response:record.response});current(s);
@@ -87,7 +80,7 @@ function installProductProofUi(c){
   c.clearOtherReview();clear();const s=scope();
   if(!c.backupVerified())throw Error('Verify a separate encrypted backup before creating a private proof.');
   const password=c.passwordOf(p?.password),id=String(p?.id||'').replace(/^0x/,'');
-  const record=await c.authorizationStore.load(s.wallet.deviceId,id);current(s);
+  const record=await c.signingAttempts.recover(s.wallet.deviceId,id,'private-proof',async(response,request)=>(await c.job({action:'verify-product-proof',vault:s.vault,request,response})).response);current(s);
   if(!record)throw Error('Authorize the private proof request before generating a proof.');
   c.policy.assertProductProof(record.request);
   if(!localProductProvingSupported(record.request))throw Error('This proof profile still requires its supported provider finalizer. No local replacement was made.');
@@ -110,7 +103,7 @@ function installProductProofUi(c){
  });
  c.register('export-product-proof-result',async p=>{
   const s=scope(),id=String(p?.id||'').replace(/^0x/,'');
-  const record=await c.authorizationStore.load(s.wallet.deviceId,id),proved=await c.resultStore.load(s.wallet.deviceId,id);current(s);
+  const record=await c.signingAttempts.recover(s.wallet.deviceId,id,'private-proof',async(response,request)=>(await c.job({action:'verify-product-proof',vault:s.vault,request,response})).response),proved=await c.resultStore.load(s.wallet.deviceId,id);current(s);
   if(!record||!proved)throw Error('The proof or its original authorization is unavailable. Preserve this profile.');
   c.policy.assertProductProof(record.request);
   const {result}=await c.job({action:'verify-product-proof-result',vault:s.vault,request:record.request,response:record.response,result:proved.response});current(s);

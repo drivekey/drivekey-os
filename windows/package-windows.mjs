@@ -31,7 +31,7 @@ for(const offline of [false,true]){
  const label=offline?'DriveKey Offline Companion':'DriveKey Windows',stage=path.join(stageBase,offline?'offline':'windows');await mkdir(stage,{recursive:true});
  for(const file of ['main.cjs','preload.cjs','preparation-import.cjs','market-data.cjs','account-balances.cjs','transaction-summary.cjs','ui-routes-main.cjs','ui-assets.json','wallet-store.cjs','signature-store.cjs','transaction-store.cjs','web-links.cjs','RUNTIME-INTEGRITY.json'])await copyFile(path.join(root,file),path.join(stage,file));
  await mkdir(path.join(stage,'tools'),{recursive:true});
- for(const file of ['bridge-intent-codecs.cjs','request-exchange.cjs','store-payment-policy.cjs','recovery-storage.cjs','native-product-proof.cjs','native-product-admission.cjs','strict-json.cjs'])await copyFile(path.join(root,'tools',file),path.join(stage,'tools',file));
+ for(const file of ['bridge-intent-codecs.cjs','request-exchange.cjs','store-payment-policy.cjs','recovery-storage.cjs','native-product-proof.cjs','native-product-admission.cjs','strict-json.cjs','signing-attempts.cjs'])await copyFile(path.join(root,'tools',file),path.join(stage,'tools',file));
  await copyDirectory(path.join(root,'ui'),path.join(stage,'ui'));await mkdir(path.join(stage,'dist'),{recursive:true});
  await copyFile(path.join(root,'dist','hinkal-product-proof.cjs'),path.join(stage,'dist','hinkal-product-proof.cjs'));
  await copyFile(path.join(root,'dist','hinkal-product-result.cjs'),path.join(stage,'dist','hinkal-product-result.cjs'));
