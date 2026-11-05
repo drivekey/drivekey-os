@@ -272,6 +272,24 @@ test('pixel-sampled-content-contrast',[7,13,23],async page=>{await activate(page
  }}});
 
 async function serve(){const server=http.createServer(async(req,res)=>{try{const url=new URL(req.url,'http://localhost');const file=path.resolve(ui,'.'+decodeURIComponent(url.pathname==='/'?'/index.html':url.pathname));if(!file.startsWith(ui+path.sep)){res.writeHead(403).end();return;}const bytes=await fs.readFile(file);const mime={'.html':'text/html','.js':'text/javascript','.css':'text/css','.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp','.svg':'image/svg+xml','.woff2':'font/woff2'}[path.extname(file)]||'application/octet-stream';res.writeHead(200,{'Content-Type':mime,'Cache-Control':'no-store'});res.end(bytes);}catch{res.writeHead(404).end();}});await new Promise(r=>server.listen(0,'127.0.0.1',r));return server;}
+test('product-private-proof-review-and-recovery',[20,21],async page=>{
+ await activate(page);await verifyBackup(page);await navigate(page,'review');
+ await page.click('#import-product-proof');await idle(page);await visible(page,'#review-loaded');
+ assert.match(await text(page,'#terms'),/private-proof-swap/);assert.match(await text(page,'#terms'),/0.0001 ETH/);
+ assert.match(await text(page,'#sign-submit'),/Authorize exact private proof/);
+ await page.check('#approval');await page.fill('#sign-pass',passphrase);await page.click('#sign-submit');await idle(page);await visible(page,'#signed');
+ assert.match(await text(page,'#signed-title'),/Private-proof authorization/);assert.match(await text(page,'#signed-message'),/separate chain review/);
+ assert.equal(await text(page,'#tx-identifier-label'),'Authorization fingerprint');
+ assert.equal((await snapshot(page)).calls.filter(c=>c.method==='authorizeProductProof').length,1);
+ assert.equal((await snapshot(page)).calls.filter(c=>c.method==='sign').length,0);
+ await page.click('#product-proof-history');await idle(page);assert.match(await text(page,'#product-proof-list'),/0.0001 ETH/);
+ await page.click('#hide-balances');await page.waitForFunction(()=>document.querySelector('[data-proof-amount]')?.textContent==='••••');
+ assert.doesNotMatch(await text(page,'#product-proof-list'),/0\.0001 ETH/);
+ await page.click('#product-proof-list button');await idle(page);
+ assert.equal((await snapshot(page)).calls.filter(c=>c.method==='authorizeProductProof').length,1);
+ assert.equal((await snapshot(page)).calls.filter(c=>c.method==='exportProductProof').length,1);
+},{productProofs:true});
+
 async function main(){
   if(process.argv.includes('--list')){console.log(JSON.stringify(suites.map(s=>({name:s.name,screens:s.screens})),null,2));return;}
   await fs.mkdir(output,{recursive:true});

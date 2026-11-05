@@ -35,7 +35,7 @@ const {isDeepStrictEqual} = require('node:util');
 const {RequestExchange} = require('./tools/request-exchange.cjs');
 const requestExchange = new RequestExchange();
 const ROOT = __dirname, ENTRY = pathToFileURL(path.join(ROOT,'ui','index.html')).href;
-let win, encryptedVault, vaultFile, publicWallet, backupVerified=false, pendingReview, busy=false, activeWalletId=null;
+let win, encryptedVault, vaultFile, publicWallet, backupVerified=false, pendingReview, busy=false, activeWalletId=null, productProofUi;
 const activeWorkers=new Set();
 const publicReadControllers = new Set();
 function cancelAccountReads() {
@@ -52,13 +52,15 @@ const storeFor=id=>watchStore.records.some(r=>r.id===id)?watchStore:walletStore;
 const recoveryStorage=createRecoveryStorage(app.getPath('userData'),safeStorage);
 const signatureStore=new SignatureStore(path.join(app.getPath('userData'),'signatures-v1'),recoveryStorage.forJournal('signatures'));
 const transactionStore=new TransactionStore(path.join(app.getPath('userData'),'transactions-v1'),recoveryStorage.forJournal('transactions'));
+const proofRequestStore=new TransactionStore(path.join(app.getPath('userData'),'proof-requests-v1'),recoveryStorage.forJournal('proof-requests'));
+const proofAuthorizationStore=new SignatureStore(path.join(app.getPath('userData'),'proofs-v1'),recoveryStorage.forJournal('proofs'));
 const OFFLINE=process.env.DRIVEKEY_OFFLINE==='1'||require('./package.json').drivekeyOffline===true;
 const rpcFile=path.join(app.getPath('userData'),'rpc-endpoints-v1.json');
 async function online(input,options={}){if(OFFLINE)throw Error('Networking is disabled in the offline companion.');paymentPolicy.assertOnlineJob(input);let endpoints;try{endpoints=await readJSON(rpcFile);}catch{throw Error('Import an RPC configuration first.');}return job({...input,endpoints},'online-worker.cjs',options);}
 const verifiedWallets=new Map();
 const digest = v => createHash('sha256').update(JSON.stringify(v)).digest('hex');
 function passwordOf(v) { if(typeof v!=='string'||v.length<16||v.length>256) throw Error('Use a passphrase of 16–256 characters.'); return v; }
-function clearPendingReview() {pendingReview=undefined;requestExchange.clearBinding();}
+function clearPendingReview() {pendingReview=undefined;productProofUi?.clear();requestExchange.clearBinding();}
 function reset() { cancelAccountReads();requestExchange.clear();encryptedVault=undefined; vaultFile=undefined; publicWallet=undefined; backupVerified=false; clearPendingReview();activeWalletId=null; }
 function walletList(){const problem=walletStore.problem||watchStore.problem;return problem?{wallets:[],activeId:null,recoveryRequired:true,canRecover:problem.canRecover,error:problem.error}:{wallets:[...walletStore.list(activeWalletId,verifiedWallets).wallets,...watchStore.list(activeWalletId).wallets.map(w=>({...w,watchOnly:true}))],activeId:activeWalletId,recoveryRequired:false};}
 function selectedWallet(){const wallet=storeFor(activeWalletId).get(activeWalletId);return {public:publicWallet,backupVerified,watchOnly:!encryptedVault,wallet:{id:wallet.id,name:wallet.name},...walletList()};}
@@ -351,6 +353,12 @@ require('./ui-routes-main.cjs').installRouteUi({
  getPublic:()=>{requirePublic();return publicWallet;},getWindow:()=>win,isOffline:()=>OFFLINE,
  clearPending:clearPendingReview,setPending:value=>{pendingReview=value;},
  getVaultHash:()=>encryptedVault?digest(encryptedVault):null
+});
+productProofUi=require('./tools/native-product-proof.cjs').installProductProofUi({
+ register,dialog,job,openJSON,saveJSON,passwordOf,policy:paymentPolicy,
+ getVault:()=>{requireVault();return encryptedVault;},getPublic:()=>{requirePublic();return publicWallet;},getWindow:()=>win,
+ backupVerified:()=>backupVerified,clearOtherReview:clearPendingReview,ready:()=>recoveryStorage.ready(),
+ requestStore:proofRequestStore,authorizationStore:proofAuthorizationStore
 });
 app.whenReady().then(()=>{
   if(!primaryInstance)return;

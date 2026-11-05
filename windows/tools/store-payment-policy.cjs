@@ -15,7 +15,8 @@ const reconciliation = new Set([
   'hinkal-direct-reconcile', 'hinkal-solana-reconcile', 'hinkal-solana-spend-reconcile',
   'hinkal-evm-swap-reconcile', 'hinkal-solana-swap-reconcile',
 ]);
-const blockedIpc = new Set(['import-prepared-private', 'import-prepared-bridge', 'hinkal-discover']);
+const blockedIpc = new Set(['import-prepared-private', 'import-prepared-bridge', 'hinkal-discover',
+  'import-product-proof','review-product-proof','sign-product-proof','export-product-proof']);
 
 function assertChain(chain) {
   if (!chains.has(chain)) throw Error(notice);
@@ -39,6 +40,10 @@ function assertIntent(request) {
   if (!allowedIntent(request)) throw Error(notice);
 }
 
+// Product proof signing requires its own release qualification. A new request
+// format or a valid circuit signature never enables this release implicitly.
+function assertProductProof() { throw Error(notice); }
+
 function assertOnlineJob(job) {
   switch (job?.action) {
     case 'prepare': assertPaymentInput(job.input); return;
@@ -54,4 +59,4 @@ function assertIpcChannel(channel) {
   if ((channel.startsWith('prepare-') && channel !== 'prepare-payment') || blockedIpc.has(channel)) throw Error(notice);
 }
 
-module.exports = {notice, assertChain, assertPaymentInput, allowedIntent, assertIntent, assertOnlineJob, assertIpcChannel};
+module.exports = {notice, assertChain, assertPaymentInput, allowedIntent, assertIntent, assertProductProof, assertOnlineJob, assertIpcChannel};

@@ -136,3 +136,11 @@ test('authenticated legacy journals can migrate but unauthenticated legacy recor
 test('unregistered journal purposes cannot create records invisible to key-preservation scans',()=>{
   assert.throws(()=>createRecoveryStorage('unused fixture directory',{}).forJournal('unregistered'),/journal purpose/);
 });
+
+test('product proof authorization journals alone prevent lost-key reprovisioning', {skip:process.platform!=='win32'}, async t=>{
+  const directory=await profile(t),storage=createRecoveryStorage(directory,{}),recordDirectory=path.join(directory,'proofs-v1',randomUUID());
+  const bytes=await storage.forJournal('proofs').seal('Unfunded proof authorization fixture');await fs.mkdir(recordDirectory,{recursive:true});
+  const file=path.join(recordDirectory,'e'.repeat(64)+'.bin');await fs.writeFile(file,bytes);await fs.unlink(path.join(directory,'journal-key-v1.dpapi'));
+  await assert.rejects(()=>createRecoveryStorage(directory,{}).ready(),/journal key is missing/);assert.deepEqual(await fs.readFile(file),bytes);
+  await assert.rejects(()=>fs.stat(path.join(directory,'journal-key-v1.dpapi')),{code:'ENOENT'});
+});
