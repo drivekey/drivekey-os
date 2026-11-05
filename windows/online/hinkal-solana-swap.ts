@@ -4,6 +4,7 @@ import {randomUUID} from 'node:crypto';
 import {PublicKey} from '@solana/web3.js';
 import {getAssociatedTokenAddressSync,TOKEN_PROGRAM_ID} from '@solana/spl-token';
 import {OnlineAdapter} from './adapter';
+import {verifyHinkalSolanaPrivateState} from './hinkal-private-state';
 import {verifySolanaPrograms} from './solana-programs';
 import {HinkalSolanaSpendAdapter} from './hinkal-solana-spend';
 import {CHAINS} from '../engine/core/payment-intent';
@@ -16,6 +17,7 @@ const safe=(n:any)=>{if(!Number.isSafeInteger(n)||n<0)throw Error('Unsafe privat
 // Includes staging/temporary account creation in gross rent, even if it is
 // returned in the same atomic transaction. No refund reduces the reservation.
 export async function hinkalSolanaSwapAccountState(adapter:OnlineAdapter,seed:HinkalLocalSolanaSwapSeed,wire:ReturnType<typeof buildHinkalSolanaSwapWire>){
+ await verifyHinkalSolanaPrivateState(adapter,wire.signals.root,seed.job.response.rootHashHinkalIndex,wire.signals.nullifiers);
  const rpc=(m:string,p:any[])=>adapter.rpc('solana',m,p),a=wire.accounts,rootVerify=wire.instructions.at(-1)!.accounts[13].address,required=[a.storage,a.vault,a.merkle,a.root,rootVerify],unused=[...a.nullifiers,a.staging,a.swapper],keys=[...required,...unused],infos=await rpc('getMultipleAccounts',[keys,{encoding:'base64',commitment:'confirmed',dataSlice:{offset:0,length:10}}]);
  if(infos.value?.length!==keys.length||infos.value.slice(0,required.length).some((x:any,i:number)=>x?.owner!==(i===1?'11111111111111111111111111111111':HINKAL_SOLANA.program)||i===1&&x.space!==0)||infos.value.slice(required.length).some((x:any)=>x!==null)||wire.accounts.nextRoot)throw Error('Private swap pool, cursor, staging or nullifier state differs.');assertHinkalSolanaAppendCursor(seed.merkleMIndex,await new HinkalSolanaSpendAdapter(adapter).cursor(seed.job.context.from,'SOL'),2);
  if(BigInt(safe(infos.value[1].lamports))<BigInt(seed.job.context.amount))throw Error('Insufficient native pool liquidity for private swap.');
