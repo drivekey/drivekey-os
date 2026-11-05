@@ -49,7 +49,7 @@ test('the Store worker signs exact ETH, SOL and USDC payments on the supported c
   const password = randomBytes(32).toString('hex');
   const {result: vault} = worker('worker.cjs', {action: 'create', password});
   assert.ok(vault?.public);
-  for (const [chain, asset] of [['ethereum','ETH'], ['ethereum','USDC'], ['solana','SOL'], ['solana','USDC'], ['sepolia','ETH'], ['devnet','SOL']]) {
+  for (const [chain, asset] of [['ethereum','ETH'], ['ethereum','USDC'], ['solana','SOL'], ['solana','USDC'], ['sepolia','ETH'], ['sepolia','USDC'], ['devnet','SOL'], ['devnet','USDC']]) {
     const request = fixture(chain, asset, vault.public);
     const signed = worker('worker.cjs', {action:'sign', password, vault, request, fingerprint:request.fingerprint});
     assert.equal(signed.ok, true, `${chain} ${asset} fixture should sign.`);

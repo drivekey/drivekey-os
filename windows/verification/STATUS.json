@@ -1,5 +1,5 @@
 {
-  "sourceReferenceFingerprint": "597d14ef591846138900356277928f04349ebae00ec87b4f6c301c92c16fb396",
+  "sourceReferenceFingerprint": "f3252d45589f5101015fb833bdcbc1100a9ff7c881956d602d8269c70178f204",
   "status": "Engineering preview. Current Windows mainnet SOL and USDC execution remains pending.",
   "enabledTransactions": [
     "Ethereum ETH",
@@ -18,12 +18,12 @@
   "directPaymentRegressionChecks": 67,
   "exactPackagedWorkerGroups": 2,
   "broaderSuite": {
-    "tests": 494,
-    "passed": 469,
+    "tests": 498,
+    "passed": 473,
     "failed": 25,
     "skipped": 0,
-    "sourceReferenceFingerprint": "597d14ef591846138900356277928f04349ebae00ec87b4f6c301c92c16fb396",
-    "notes": "Remaining failures expect deferred Hinkal, swap or bridge operations to succeed. The full suite is not a passing release qualification."
+    "sourceReferenceFingerprint": "f3252d45589f5101015fb833bdcbc1100a9ff7c881956d602d8269c70178f204",
+    "notes": "Every historical test ran. Deferred-positive failures remain failures; no full historical release qualification is claimed."
   },
   "correctedNativeSolanaUsdcAccountCreation": {
     "network": "isolated local LiteSVM",
@@ -85,7 +85,7 @@
     "skipped": 0,
     "pngCompressedImageDataPreserved": true
   },
-  "previousSourceReferenceFingerprint": "4e0ccfe16d233289d2fd22c49036c948a77f79ddf98e103569c83d36767e55b7",
+  "previousSourceReferenceFingerprint": "597d14ef591846138900356277928f04349ebae00ec87b4f6c301c92c16fb396",
   "testHarnessUpdates": [
     "tests/hinkal-solana-submit.test.cjs",
     "tests/ui/native-smoke.cjs"
@@ -141,5 +141,23 @@
     "verified": false,
     "reason": "Additional local-vault and companion approval attempts timed out at native file dialogs before approval."
   },
-  "productionUiAndLinkCodeChanged": true
+  "productionUiAndLinkCodeChanged": true,
+  "localStoreCommand": {
+    "command": "pnpm check:store",
+    "paymentsOnlyPassed": true,
+    "fullHistoricalSuitePassed": false,
+    "testsSkipped": 0,
+    "deferredFailuresDisclosed": 25,
+    "qualificationIssued": false
+  },
+  "lastUpdateProductionRuntimeChanged": false,
+  "localUnsignedLabArtifacts": {
+    "msixVersion": "1.0.6.0",
+    "msixSha256": "0997b80e6f677d5f9491edb83a792715e51bb2ae952c323e391ef1f8ea9693e0",
+    "companionZipSha256": "e430370b8e4d7196c0ae4f8a3030c89a716e2d3b08a21609f425b1e255de4237",
+    "published": false,
+    "publisherSigned": false,
+    "installed": false,
+    "storeIdentityVerified": false
+  }
 }

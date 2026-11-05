@@ -6,7 +6,7 @@ Direct ETH, SOL and canonical USDC payments are enabled on Ethereum and Solana, 
 
 ## Current local verification
 
-- Full historical suite: 469 passes, 25 deferred-workflow failures, no skipped tests. The standard full release command remains gated by that suite.
+- Full historical suite: 473 passes, 25 deferred-workflow failures, no skipped tests. The standard full release command remains gated by that suite.
 - Exact unsigned package workers: 67 direct regressions plus two worker groups covering eight chain/asset pairs.
 - Both unsigned packages launched and passed integrity/tamper checks; all 151 original payload files were rehashed.
 - Five settlement cases passed on same-host Ganache/LiteSVM, including Solana recipient-account creation, exact fees/rent, invoice claims and recovery.
@@ -23,9 +23,12 @@ Use the pinned dependencies. From this directory:
 pnpm install --frozen-lockfile
 pnpm build
 pnpm typecheck
+pnpm check:store
 node --test tests/payment.test.cjs tests/merchant.test.cjs tests/merchant-solana-verifier.test.cjs tests/market-attribution.test.cjs
 node --test tests/store-payment-scope.test.cjs
 ```
+
+`pnpm check:store` builds, typechecks and runs the entire historical suite. It reports the supported payments-only result separately, retaining the 25 deferred-positive failures and their log. Unexpected failures, missing required checks or skipped tests fail this command. Its scoped success does not make the full suite green or issue a funded-signing/release grant. See [the command documentation](tools/STORE-CHECKS.md).
 
 Use the Offline Companion on a separate disconnected computer for the intended separation model. Local software-vault signing is also supported. Preserve unresolved signed transaction records; never automatically replace or rebroadcast them.
 
@@ -35,7 +38,7 @@ The candidate provides a fixed, keyboard-accessible CoinGecko source link beside
 
 ## Source provenance
 
-Reference local source fingerprint: `597d14ef591846138900356277928f04349ebae00ec87b4f6c301c92c16fb396`. Two legacy funding helpers require `DRIVEKEY_LEGACY_FUNDING_DIRECTORY` instead of an embedded developer-machine path. Metadata was removed from two PCB images without changing compressed image data. Export changes are recorded in the status file. Generate fresh qualification and package evidence for builds from this branch.
+Reference local source fingerprint: `f3252d45589f5101015fb833bdcbc1100a9ff7c881956d602d8269c70178f204`. Two legacy funding helpers require `DRIVEKEY_LEGACY_FUNDING_DIRECTORY` instead of an embedded developer-machine path. Metadata was removed from two PCB images without changing compressed image data. Export changes are recorded in the status file. Generate fresh qualification and package evidence for builds from this branch.
 
 The source checksum inventory records Git blob bytes. Git may convert text line endings in a Windows working copy; use the repository blob contents when verifying this inventory.
 

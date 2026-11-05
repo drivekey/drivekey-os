@@ -16,7 +16,8 @@
     "release": "node release.mjs",
     "typecheck": "tsc --noEmit",
     "test:ui": "node tests/ui/renderer-suite.cjs",
-    "test:smoke": "node tests/ui/native-smoke.cjs"
+    "test:smoke": "node tests/ui/native-smoke.cjs",
+    "check:store": "node tools/check-store-payments.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.14",
