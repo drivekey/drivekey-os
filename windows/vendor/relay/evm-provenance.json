@@ -1,0 +1,53 @@
+{
+  "checkedAt": "2026-11-02T02:19:21.919Z",
+  "readOnly": true,
+  "mainnetSubmissions": 0,
+  "observations": [
+    {
+      "endpoint": "https://eth.rpc.blxrbdn.com",
+      "blockNumber": "0x191ac14",
+      "blockHash": "0xe3c5614b48595902cfd0403662374b1cdf60ebff692fc30d881699736e3ca466",
+      "selector": "0xa3443faa",
+      "pins": {
+        "diamond": {
+          "address": "0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE",
+          "codeHash": "0x828f8a0694bfba25c80a406283f149d701cdc944acbbc18b57315cf157db9220",
+          "codeBytes": 5176
+        },
+        "relayFacet": {
+          "address": "0x88E0Dd83E6da24bF317323E5Ca06842406D57eD0",
+          "codeHash": "0x2fefce11c23ea545e9e16af5e264347558cf7c2370f5d359d9e6d7dea0ec9032",
+          "codeBytes": 7487
+        },
+        "relayDepository": {
+          "address": "0x4cD00E387622C35bDDB9b4c962C136462338BC31",
+          "codeHash": "0x27fed69438cf2a1e69f053e52d5ee6f9637963c44da6035fb9241063240c799e",
+          "codeBytes": 8628
+        }
+      }
+    },
+    {
+      "endpoint": "https://ethereum-public.nodies.app",
+      "blockNumber": "0x191ac14",
+      "blockHash": "0xe3c5614b48595902cfd0403662374b1cdf60ebff692fc30d881699736e3ca466",
+      "selector": "0xa3443faa",
+      "pins": {
+        "diamond": {
+          "address": "0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE",
+          "codeHash": "0x828f8a0694bfba25c80a406283f149d701cdc944acbbc18b57315cf157db9220",
+          "codeBytes": 5176
+        },
+        "relayFacet": {
+          "address": "0x88E0Dd83E6da24bF317323E5Ca06842406D57eD0",
+          "codeHash": "0x2fefce11c23ea545e9e16af5e264347558cf7c2370f5d359d9e6d7dea0ec9032",
+          "codeBytes": 7487
+        },
+        "relayDepository": {
+          "address": "0x4cD00E387622C35bDDB9b4c962C136462338BC31",
+          "codeHash": "0x27fed69438cf2a1e69f053e52d5ee6f9637963c44da6035fb9241063240c799e",
+          "codeBytes": 8628
+        }
+      }
+    }
+  ]
+}

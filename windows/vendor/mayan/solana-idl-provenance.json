@@ -1,0 +1,21 @@
+{
+  "checkedAt": "2026-11-02T01:01:55.739Z",
+  "readOnly": true,
+  "program": "Gx9rivpS3YR8pBFwMuP6omYqVxunpLvLkNn7ubNyuZZ5",
+  "observations": [
+    {
+      "endpoint": "https://api.mainnet-beta.solana.com",
+      "address": "4ZurZgLhHLiKctoaZHhsW3QKLjxKfK3w5MEYvDSbLZ7m",
+      "owner": "Gx9rivpS3YR8pBFwMuP6omYqVxunpLvLkNn7ubNyuZZ5",
+      "slot": 464303063,
+      "dataSha256": "0ec3eb38899b3bbe0ad0f6612f4b1c3e3f39f2600c04bf9ed1741302813649dc"
+    },
+    {
+      "endpoint": "https://solana-rpc.publicnode.com",
+      "address": "4ZurZgLhHLiKctoaZHhsW3QKLjxKfK3w5MEYvDSbLZ7m",
+      "owner": "Gx9rivpS3YR8pBFwMuP6omYqVxunpLvLkNn7ubNyuZZ5",
+      "slot": 464303070,
+      "dataSha256": "0ec3eb38899b3bbe0ad0f6612f4b1c3e3f39f2600c04bf9ed1741302813649dc"
+    }
+  ]
+}

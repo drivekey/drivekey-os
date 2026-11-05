@@ -1,0 +1,229 @@
+{
+  "evidenceLevel": "public-unsigned-quotes-with-provider-signature",
+  "executionVerified": false,
+  "orders": [
+    {
+      "direction": "reverse",
+      "checkedAt": "2026-11-02T02:02:44.987Z",
+      "request": {
+        "user": "6dQSVENnX8qBxY5UE8K6cwjf4zdt3RBgZ4QmWJ9P7jnc",
+        "originChainId": 792703809,
+        "destinationChainId": 1,
+        "originCurrency": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "destinationCurrency": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        "recipient": "0xA6A5Cf9964339Fd68dAEc84b32326e9B607B92d9",
+        "refundTo": "6dQSVENnX8qBxY5UE8K6cwjf4zdt3RBgZ4QmWJ9P7jnc",
+        "refundOnOrigin": true,
+        "tradeType": "EXACT_INPUT",
+        "amount": "498750",
+        "slippageTolerance": "99",
+        "includeProtocolData": true,
+        "explicitDeposit": true
+      },
+      "protocol": {
+        "orderId": "0xeed43f89821a285456cb506cfbe64d6fa723b1f98a2aa9fcf0f8b37e220866d6",
+        "hubType": "onchain",
+        "orderData": {
+          "version": "v1",
+          "solverChainId": "base",
+          "solver": "0xf70da97812cb96acdf810712aa562db8dfa3dbef",
+          "salt": "0x956d4a78ca6a6aeaeace90ef0d22982ae24188701f8969c286a5c9224fba80cf",
+          "inputs": [
+            {
+              "payment": {
+                "chainId": "solana",
+                "currency": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+                "amount": "498750",
+                "weight": "1"
+              },
+              "refunds": [
+                {
+                  "chainId": "solana",
+                  "recipient": "6dQSVENnX8qBxY5UE8K6cwjf4zdt3RBgZ4QmWJ9P7jnc",
+                  "currency": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+                  "minimumAmount": "0",
+                  "deadline": 1794189764,
+                  "extraData": "0x"
+                },
+                {
+                  "chainId": "ethereum",
+                  "recipient": "0xA6A5Cf9964339Fd68dAEc84b32326e9B607B92d9",
+                  "currency": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+                  "minimumAmount": "0",
+                  "deadline": 1794189764,
+                  "extraData": "0x0000000000000000000000000729e2a4716d9f7dd17858d5d504426d228697f7"
+                }
+              ]
+            }
+          ],
+          "output": {
+            "chainId": "ethereum",
+            "payments": [
+              {
+                "recipient": "0xA6A5Cf9964339Fd68dAEc84b32326e9B607B92d9",
+                "currency": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+                "minimumAmount": "448335",
+                "expectedAmount": "452818"
+              }
+            ],
+            "calls": [],
+            "deadline": 1794189764,
+            "extraData": "0x0000000000000000000000000729e2a4716d9f7dd17858d5d504426d228697f7"
+          },
+          "fees": []
+        },
+        "orderSignature": "0xa3e7b958846b0bc1a62596084709a1cbd46609c3a9b517451fe4d224b37925925e98453d4b91f7b85fc0f897f61163712350ff4d66b159c01e1a2cca902c23b61c",
+        "paymentDetails": {
+          "chainId": "solana",
+          "depository": "99vQwtBwYtrqqD9YSXbdum3KBdxPAVxYTaQ3cfnJSrN2",
+          "currency": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "amount": "498750"
+        }
+      }
+    },
+    {
+      "direction": "forward",
+      "checkedAt": "2026-11-02T02:04:04.472Z",
+      "request": {
+        "user": "0xA6A5Cf9964339Fd68dAEc84b32326e9B607B92d9",
+        "originChainId": 1,
+        "destinationChainId": 792703809,
+        "originCurrency": "0x0000000000000000000000000000000000000000",
+        "destinationCurrency": "11111111111111111111111111111111",
+        "recipient": "6dQSVENnX8qBxY5UE8K6cwjf4zdt3RBgZ4QmWJ9P7jnc",
+        "refundTo": "0xA6A5Cf9964339Fd68dAEc84b32326e9B607B92d9",
+        "tradeType": "EXACT_INPUT",
+        "amount": "1300000000000000",
+        "slippageTolerance": "99",
+        "includeProtocolData": true,
+        "explicitDeposit": true
+      },
+      "protocol": {
+        "orderId": "0x6c3322ba1b199c8124e0d6667d284dcb8494b9944573a4d8c5008434934eea65",
+        "hubType": "onchain",
+        "orderData": {
+          "version": "v1",
+          "solverChainId": "base",
+          "solver": "0xf70da97812cb96acdf810712aa562db8dfa3dbef",
+          "salt": "0x71b617436d93b5719c619424cf092092881f2dd1b3aaf24e956f2083ecbaccff",
+          "inputs": [
+            {
+              "payment": {
+                "chainId": "ethereum",
+                "currency": "0x0000000000000000000000000000000000000000",
+                "amount": "1300000000000000",
+                "weight": "1"
+              },
+              "refunds": [
+                {
+                  "chainId": "ethereum",
+                  "recipient": "0xA6A5Cf9964339Fd68dAEc84b32326e9B607B92d9",
+                  "currency": "0x0000000000000000000000000000000000000000",
+                  "minimumAmount": "0",
+                  "deadline": 1794189844,
+                  "extraData": "0x0000000000000000000000000729e2a4716d9f7dd17858d5d504426d228697f7"
+                },
+                {
+                  "chainId": "solana",
+                  "recipient": "6dQSVENnX8qBxY5UE8K6cwjf4zdt3RBgZ4QmWJ9P7jnc",
+                  "currency": "11111111111111111111111111111111",
+                  "minimumAmount": "0",
+                  "deadline": 1794189844,
+                  "extraData": "0x"
+                }
+              ]
+            }
+          ],
+          "output": {
+            "chainId": "solana",
+            "payments": [
+              {
+                "recipient": "6dQSVENnX8qBxY5UE8K6cwjf4zdt3RBgZ4QmWJ9P7jnc",
+                "currency": "11111111111111111111111111111111",
+                "minimumAmount": "30720317",
+                "expectedAmount": "31027489"
+              }
+            ],
+            "calls": [],
+            "deadline": 1794189844,
+            "extraData": "0x"
+          },
+          "fees": []
+        },
+        "orderSignature": "0xe18da5b883871238bc8e47cb170dd151ebd30644c448072ccd255cb1cc95e5122b847ca15df7d6b4d3745492071ec9f300918d9f6e5d5b339360c6c00478d3491c",
+        "paymentDetails": {
+          "chainId": "ethereum",
+          "depository": "0x4cd00e387622c35bddb9b4c962c136462338bc31",
+          "currency": "0x0000000000000000000000000000000000000000",
+          "amount": "1300000000000000"
+        }
+      }
+    }
+  ],
+  "lifi": {
+    "quoteId": "ed3d7aa0-12cb-4412-a155-d64aef803bae:0",
+    "serializedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCVOd2MgLtMl8pvxZNL6u19modiaqN991xBKumlFG9LRNcvRFs6GawEjSqSj+B3TPe4te+nxkV8vMvILs8OrJPHmvFICkCT7lLHccz1cLhCX1s+IMRfAMlanZ7g2KX1PrTig9DdKCNU/vCuOw4ifTfNicomb7F93498t8zvvk69xVeSaJN47NUdgEBusMqjtieVvrELbF3Ja8Lg3wPL/uGr+OJT1ByHDdh2G4P7lm1RabzVs71PUrxb3e8UJc4wqNywMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAABqfVFxjHdMkoVmOYaR1etoteuKObS21cc1VbIQAAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqZqq+TtjBY2s2MstmvJP/jubtsMAMjYAcQAE1Lzhk1SUBQYABQIQ6wkABgAJAxz/AAAAAAAAAwIHBQkAonxqXRJwTQAIBAIOAQAKDOIEAAAAAAAABgQKDQAACw4CCQgMCjALnGDaJ6O0Ez6cBwAAAAAA8J2FRf9mjEkl9iWMiS792FqbTan81VwxXbsZ+3GXZ8kB+QpXl9KdVthNAcDQuuP5xYxGl07rlcoOT9Un+uH/7wIBBwUOAhABBQ==",
+    "action": {
+      "fromToken": {
+        "address": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "chainId": 1151111081099710,
+        "symbol": "USDC",
+        "decimals": 6,
+        "name": "USD Coin",
+        "coinKey": "USDC",
+        "logoURI": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48/logo.png",
+        "priceUSD": "0.9962225912",
+        "tags": [
+          "stablecoin"
+        ],
+        "verificationStatus": "verified",
+        "verificationStatusBreakdown": [
+          {
+            "provider": "hypernative",
+            "result": "verified",
+            "providerResult": "accept"
+          }
+        ]
+      },
+      "fromAmount": "500000",
+      "toToken": {
+        "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        "chainId": 1,
+        "symbol": "USDC",
+        "decimals": 6,
+        "name": "USD Coin",
+        "coinKey": "USDC",
+        "logoURI": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48/logo.png",
+        "priceUSD": "0.9985416057",
+        "tags": [
+          "stablecoin"
+        ],
+        "verificationStatus": "verified",
+        "verificationStatusBreakdown": [
+          {
+            "provider": "hypernative",
+            "result": "verified",
+            "providerResult": "accept"
+          }
+        ]
+      },
+      "fromChainId": 1151111081099710,
+      "toChainId": 1,
+      "slippage": 0.0099,
+      "fromAddress": "6dQSVENnX8qBxY5UE8K6cwjf4zdt3RBgZ4QmWJ9P7jnc",
+      "toAddress": "0xA6A5Cf9964339Fd68dAEc84b32326e9B607B92d9",
+      "destinationGasConsumption": "",
+      "destinationCallData": "0x00",
+      "svmMaxSupportedTransactionVersion": 0
+    },
+    "minimumOutput": "447647",
+    "quotedOutput": "452123",
+    "epoch": 1074
+  },
+  "lookup": {
+    "address": "Hm9fUgcn7qwDaiNTFiGh6pNtVATgnaRcmK6Bbx6EMZfP",
+    "owner": "AddressLookupTab1e1111111111111111111111111",
+    "dataBase64": "AQAAAP//////////kGoUGAAAAAAZAUZBmkocMZxdYhY41mcK5e0b28hjahZq48O7Y6k2uTd3AAB5Jok3js1R2AQG6wyqO2J5W+sQtsXclrwuDfA8v+4av74+bShdLuljNRtt7rCh6WyIFDXM1FCyZF8kzCeWC+5HZpY7N+WB3BSg9XPu7ejlSiV9g9CCxUqyCMv/0dwqcMpOWFbGEZBy5VYpprmOZtPk1QWvAOuFuSwroW/KLztPZLf6K3eHRbE0zOLZykatQ5V+5eiGSPTViHw/bADWsPg3xvp6877brTo9ZfNqq8l0MbG75MLS9uDkfKYCA0UvXWHOAQ5gr+2yJxe9YxkvVBRaP5ZaM7uC0scCnrLOHiCCZDhWdSNEKBusX4l9AgnRQYhcIZp8XvrOY9r78MIkIa0LPXWMdf10wOpIdvNVl/dw/ceHMuurmfGxayQ9epLC0DjRwkvLLPL3h5Go5j0uUovk6SOUSQCvbYgm8AY+kdFRXwXoSsB3SBkF6AlB9oyrASH5Fx8F2qs54vrrlOsVPQSRhjO7WunpTrCT4W6k/JqAD/G8Neg9C4olOJDqId9EgTruCm72tiMVPCyd7BfTdD1svgNfx89kPpQRGMfDqP9yLViizbdF+xdU2TiHkW764JYvd8ny0ia3XPsMtJazsb4oAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqYyXJY9OJInxuz0QKRSODYMLWhOZ2v8QhASOe9jb6fhZBUpTWpkpIQZNJOhxYNo4fHw1td28kruB5B+oQEEFRI2140oU4rxzSGkO4fWvXe7WVThAo22quGCwUGBzvcA8EAbd9uHudY/eGEJdvORszdq2GvxNg7kNJ/69+SjYoYv8MqfUu3foflPQUlgmg468Xhbx2y3eKChCBDV5S8+z9XIF6ErAd0gZBegJQfaMqwEh+RcfBdqrOeL665TrFT0EkbXjShTivHNIaQ7h9a9d7tZVOECjbaq4YLBQYHO9wDwQBHnVW/IxwG7udMVuzmgVB/2xst6j9I5RArHNola8E48Gm4hX/quBhPtof2NGGMA12sQ53BrrO1WYoPAAAAAAAfFAxFLkW5/hugDrMDE0VpDCMtnR5HaqMlKGEiAjPJg6N1orFpMM1rOJAQV4ZXrDy5L1YK9cUSY2/6VMChEwblRszUHpEuro6mTgJSoUNf4Bu3YqoS7N5Qs8xnYTcQGy+KDJXQPX5L1tbg732s/naz111k/VfGrKDmA8DlPrWEd6",
+    "contextSlot": 464320562
+  }
+}

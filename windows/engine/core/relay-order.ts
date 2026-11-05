@@ -1,0 +1,36 @@
+// Finite Ethereum/Solana Relay v1 order verification. No RPC or signing.
+// Schema/hash specification: relayprotocol/relay-settlement b2f3e0e5fba9381293f030ef340ffb4872687fcf,
+// packages/sdk/src/order/index.ts. Provider status is never settlement evidence.
+import {z} from 'zod';
+import {TypedDataEncoder,getAddress,getBytes,verifyMessage,ZeroAddress} from 'ethers';
+import {PublicKey} from '@solana/web3.js';
+import {CHAINS} from './payment-intent';
+export const RELAY={solver:'0xf70da97812CB96acDF810712Aa562db8dfA3dbEF',ethereumDepository:'0x4cd00e387622c35bddb9b4c962c136462338bc31',solanaDepository:'99vQwtBwYtrqqD9YSXbdum3KBdxPAVxYTaQ3cfnJSrN2',solanaVault:'7uTT8Xi5RWXzy7h9XL244GRgEycDYDhLjr3ZyNdXi8pZ',ethereumRouter:'0x0729e2a4716d9f7dd17858d5d504426d228697f7'} as const;
+const uint=z.string().regex(/^(0|[1-9][0-9]*)$/).max(39),chain=z.enum(['ethereum','solana']),hex=z.string().regex(/^0x(?:[0-9a-f]{2})*$/).max(130),address=z.string().min(32).max(44),deadline=z.number().int().min(1).max(4294967295);
+const refund=z.object({chainId:chain,recipient:address,currency:address,minimumAmount:uint,deadline,extraData:hex}).strict();
+const schema=z.object({version:z.literal('v1'),solverChainId:z.literal('base'),solver:address,salt:z.string().regex(/^0x[0-9a-f]{64}$/),inputs:z.array(z.object({payment:z.object({chainId:chain,currency:address,amount:uint,weight:z.literal('1')}).strict(),refunds:z.array(refund).min(1).max(2)}).strict()).length(1),output:z.object({chainId:chain,payments:z.array(z.object({recipient:address,currency:address,minimumAmount:uint,expectedAmount:uint}).strict()).length(1),calls:z.array(z.never()).length(0),deadline,extraData:hex}).strict(),fees:z.array(z.never()).length(0)}).strict();
+export const RELAY_ORDER_TYPES={
+ Order:[{name:'version',type:'string'},{name:'solverChainId',type:'string'},{name:'solver',type:'address'},{name:'salt',type:'uint256'},{name:'inputs',type:'Input[]'},{name:'output',type:'Output'},{name:'fees',type:'Fee[]'}],
+ Input:[{name:'payment',type:'InputPayment'},{name:'refunds',type:'InputRefund[]'}],
+ InputPayment:[{name:'chainId',type:'string'},{name:'currency',type:'bytes'},{name:'amount',type:'uint256'},{name:'weight',type:'uint256'}],
+ InputRefund:[{name:'chainId',type:'string'},{name:'recipient',type:'bytes'},{name:'currency',type:'bytes'},{name:'minimumAmount',type:'uint256'},{name:'deadline',type:'uint32'},{name:'extraData',type:'bytes'}],
+ Output:[{name:'chainId',type:'string'},{name:'payments',type:'OutputPayment[]'},{name:'deadline',type:'uint32'},{name:'calls',type:'bytes[]'},{name:'extraData',type:'bytes'}],
+ OutputPayment:[{name:'recipient',type:'bytes'},{name:'currency',type:'bytes'},{name:'minimumAmount',type:'uint256'},{name:'expectedAmount',type:'uint256'}],
+ Fee:[{name:'recipientChainId',type:'string'},{name:'recipient',type:'bytes'},{name:'currencyChainId',type:'string'},{name:'currency',type:'bytes'},{name:'amount',type:'uint256'}]
+};
+type Chain='ethereum'|'solana';
+const addr=(c:Chain,a:string)=>c==='ethereum'?getAddress(a):new PublicKey(a).toBase58();
+const bytes=(c:Chain,a:string)=>c==='ethereum'?getAddress(a):'0x'+new PublicKey(a).toBuffer().toString('hex');
+const extra=(c:Chain)=>c==='ethereum'?'0x'+RELAY.ethereumRouter.slice(2).padStart(64,'0'):'0x';
+export function relayOrderId(input:unknown){const o=schema.parse(input),normalized={...o,inputs:o.inputs.map(i=>({payment:{...i.payment,currency:bytes(i.payment.chainId,i.payment.currency)},refunds:i.refunds.map(r=>({...r,currency:bytes(r.chainId,r.currency),recipient:bytes(r.chainId,r.recipient)}))})),output:{...o.output,payments:o.output.payments.map(p=>({...p,currency:bytes(o.output.chainId,p.currency),recipient:bytes(o.output.chainId,p.recipient)}))}};return TypedDataEncoder.hashStruct('Order',RELAY_ORDER_TYPES,normalized);}
+export type RelayBounds={sourceChain:Chain;destinationChain:Chain;source:string;recipient:string;inputAsset:'ETH'|'SOL'|'USDC';outputAsset:'ETH'|'SOL'|'USDC';amount:string;quotedOutput:string;minimumOutput:string;slippageBps:number;depositOrderId:string};
+const currency=(c:Chain,asset:string)=>asset==='USDC'?CHAINS[c].usdc:c==='ethereum'&&asset==='ETH'?ZeroAddress:c==='solana'&&asset==='SOL'?'11111111111111111111111111111111':(()=>{throw Error('Relay asset does not belong to its chain.');})();
+export function verifyRelayOrder(input:unknown,b:RelayBounds,now=Date.now(),expiry=true){
+ const p=z.object({orderId:z.string().regex(/^0x[0-9a-f]{64}$/),hubType:z.literal('onchain'),orderData:schema,orderSignature:z.string().regex(/^0x[0-9a-f]{130}$/),paymentDetails:z.object({chainId:chain,depository:address,currency:address,amount:uint}).strict()}).strict().parse(input),o=p.orderData,i=o.inputs[0],out=o.output,pay=out.payments[0],nativeIn=currency(b.sourceChain,b.inputAsset),nativeOut=currency(b.destinationChain,b.outputAsset),depository=b.sourceChain==='ethereum'?RELAY.ethereumDepository:RELAY.solanaDepository;
+ if(!Number.isSafeInteger(now)||b.sourceChain===b.destinationChain||!Number.isInteger(b.slippageBps)||b.slippageBps<0||b.slippageBps>100||BigInt(b.amount)<=0n||BigInt(b.minimumOutput)<=0n||BigInt(b.minimumOutput)>BigInt(b.quotedOutput)||BigInt(b.minimumOutput)*10000n<BigInt(b.quotedOutput)*BigInt(10000-b.slippageBps))throw Error('Invalid Relay route or slippage bounds.');
+ if(getAddress(o.solver)!==getAddress(RELAY.solver)||relayOrderId(o)!==p.orderId||p.orderId!==b.depositOrderId||getAddress(verifyMessage(getBytes(p.orderId),p.orderSignature))!==getAddress(RELAY.solver))throw Error('Relay solver signature, order terms or deposit commitment differs.');
+ if(i.payment.chainId!==b.sourceChain||addr(b.sourceChain,i.payment.currency)!==addr(b.sourceChain,nativeIn)||i.payment.amount!==b.amount||out.chainId!==b.destinationChain||addr(out.chainId,pay.recipient)!==addr(out.chainId,b.recipient)||addr(out.chainId,pay.currency)!==addr(out.chainId,nativeOut)||pay.minimumAmount!==b.minimumOutput||pay.expectedAmount!==b.quotedOutput||out.extraData!==extra(out.chainId)||out.deadline*1000>now+8*86400000||expiry&&out.deadline*1000<=now)throw Error('Relay input, controlled output, router or deadline differs.');
+ const refundChains=new Set<string>();for(const r of i.refunds){if(refundChains.has(r.chainId)||![b.sourceChain,b.destinationChain].includes(r.chainId)||addr(r.chainId,r.recipient)!==addr(r.chainId,r.chainId===b.sourceChain?b.source:b.recipient)||addr(r.chainId,r.currency)!==addr(r.chainId,r.chainId===b.sourceChain?nativeIn:nativeOut)||r.minimumAmount!=='0'||r.deadline!==out.deadline||r.extraData!==extra(r.chainId))throw Error('Uncontrolled or unreviewed Relay refund.');refundChains.add(r.chainId);}
+ if(!refundChains.has(b.sourceChain)||p.paymentDetails.chainId!==b.sourceChain||addr(b.sourceChain,p.paymentDetails.depository)!==addr(b.sourceChain,depository)||addr(b.sourceChain,p.paymentDetails.currency)!==addr(b.sourceChain,nativeIn)||p.paymentDetails.amount!==b.amount)throw Error('Missing origin refund or unpinned Relay depository/payment.');
+ return {orderId:p.orderId,solver:getAddress(o.solver),source:b.source,recipient:b.recipient,minimumOutput:b.minimumOutput,expectedOutput:b.quotedOutput,protocolDeadline:out.deadline,controlledRefunds:[...refundChains],orderCommitmentVerified:true,executionVerified:false,finalityVerified:false};
+}

@@ -1,0 +1,24 @@
+'use strict';
+const {solanaNullifierAddress}=require('../dist/hinkal-solana-spend.cjs');
+const {independent}=require('./bridge-acceptance-policy.cjs');
+const GENESIS='5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d';
+function authorizeLocalProofCancellation(op,manifest,observations,identity,now=Date.now()){
+ const s=manifest.seed,c=s?.job?.context;
+ if(s?.version!==20||c?.chain!=='solana'||c.from!==identity.source.solanaAddress||op.state!=='proof-signed'||op.proofFingerprint!==s.fingerprint||!op.proofResponseHash||op.transactionHash||op.chainFingerprint||op.chainManifestHash||op.broadcastAttempts||Date.parse(s.expiresAt)>now)throw Error('Only an expired local Solana proof with no chain signature or submission can be cancelled.');
+ const addresses=s.job.response.publicSignals.slice(13,17).filter(n=>n!=='0').map(n=>solanaNullifierAddress(BigInt(n)));
+ if(!addresses.length||!Array.isArray(observations)||observations.length!==2||!independent(observations.map(o=>o.endpoint))||observations.some(o=>!Number.isSafeInteger(o.observedAt)||o.observedAt>now||now-o.observedAt>60000||o.genesisHash!==GENESIS||o.source!==c.from||o.blockhash!==s.chainContext.blockhash||o.blockhashValid!==false||!Number.isSafeInteger(o.blockHeight)||o.blockHeight<=s.chainContext.lastValidBlockHeight||JSON.stringify(o.nullifierAddresses)!==JSON.stringify(addresses)||!Array.isArray(o.nullifierAccounts)||o.nullifierAccounts.length!==addresses.length||o.nullifierAccounts.some(a=>a!==null)))throw Error('Two fresh independent expired-blockhash and unspent-note observations are required.');
+ return {state:'cancelled-before-signing',actualUsdMicros:'0',cancelledAt:new Date(now).toISOString(),cancelledAfterLocalProof:true,cancellation:{kind:'expired-local-proof-before-chain-signature',proofFingerprint:s.fingerprint,proofVersion:20,proofExpiresAt:s.expiresAt,lastValidBlockHeight:s.chainContext.lastValidBlockHeight,blockhash:s.chainContext.blockhash,chainSignatureCreated:false,broadcasts:0,proofRetained:true,observations}};
+}
+// Recognize a previously authorized, retained V13 deposit-proof closure during
+// test-profile requalification. This does not authorize closure or a new proof.
+function isSafelyCancelledEthereumProof(o){
+ const c=o?.cancellation,a=c?.approval,t=Date.parse(o?.cancelledAt),expires=Date.parse(c?.proofExpiresAt),approved=Date.parse(a?.approvedAt),hash=/^0x[0-9a-f]{64}$/;
+ if(o?.state!=='cancelled-before-signing'||o.cancelledAfterLocalProof!==true||o.actualUsdMicros!=='0'||o.privateInputTotal!=='0'||!hash.test(o.proofFingerprint||'')||o.fingerprint!==o.proofFingerprint||!o.proofResponseHash||o.transactionHash||o.chainFingerprint||o.chainManifestHash||o.broadcastAttempts||c?.kind!=='expired-ethereum-proof-before-chain-signature'||c.proofVersion!==13||c.proofFingerprint!==o.proofFingerprint||c.chainSignatureCreated!==false||c.broadcasts!==0||c.proofRetained!==true||!Number.isSafeInteger(t)||!Number.isSafeInteger(expires)||expires>t||!Number.isSafeInteger(approved)||approved>t)return false;
+ if(a?.version!==1||a.userAnswer!=='Allow Ethereum proof closure only'||a.fingerprint!==o.proofFingerprint||a.sourceFingerprint!==o.sourceFingerprint||a.allowReplacement!==false||a.allowRebroadcast!==false||a.maxFreshAttempts!==0||c.absence?.noChainFiles!==true||c.absence.noLinkedChainOperations!==true||c.absence.noNativeRequest!==true)return false;
+ const observations=c.observations;
+ if(!Array.isArray(observations)||observations.length!==2||!independent(observations.map(x=>x.endpoint)))return false;
+ const first=observations[0];
+ return observations.every(x=>x.chainId==='1'&&Number.isSafeInteger(x.observedAt)&&x.observedAt<=t&&t-x.observedAt<=60000&&Number.isSafeInteger(x.pendingNonce)&&x.pendingNonce>=0&&x.pendingNonce===first.pendingNonce&&x.latestNonce===x.pendingNonce&&x.finalizedNonce===x.pendingNonce&&typeof x.latestBalance==='string'&&/^(0|[1-9][0-9]{0,38})$/.test(x.latestBalance)&&x.latestBalance===first.latestBalance&&x.finalizedBalance===x.latestBalance);
+}
+function isSafelyCancelledLocalProof(o){if(isSafelyCancelledEthereumProof(o))return true;const c=o.cancellation;return o.state==='cancelled-before-signing'&&o.cancelledAfterLocalProof===true&&o.actualUsdMicros==='0'&&!o.transactionHash&&!o.chainFingerprint&&!o.chainManifestHash&&!o.broadcastAttempts&&c?.kind==='expired-local-proof-before-chain-signature'&&c.proofFingerprint===o.proofFingerprint&&c.proofVersion===20&&c.chainSignatureCreated===false&&c.broadcasts===0&&c.proofRetained===true&&Array.isArray(c.observations)&&c.observations.length===2&&independent(c.observations.map(x=>x.endpoint))&&c.observations.every(x=>x.blockhash===c.blockhash&&x.blockhashValid===false&&x.blockHeight>c.lastValidBlockHeight&&Array.isArray(x.nullifierAccounts)&&x.nullifierAccounts.length>0&&x.nullifierAccounts.every(a=>a===null));}
+module.exports={authorizeLocalProofCancellation,isSafelyCancelledLocalProof};

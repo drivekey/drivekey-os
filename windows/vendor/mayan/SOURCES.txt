@@ -1,0 +1,9 @@
+Mayan SDK 15.3.0, MIT (see LICENSE).
+Protocol layout and PDA derivation references:
+https://github.com/mayan-finance/swap-sdk/blob/main/src/solana/solanaFastMctp.ts
+https://github.com/mayan-finance/swap-sdk/blob/main/src/cctp.ts
+https://github.com/mayan-finance/swap-sdk/blob/main/src/addresses.ts
+
+solana-provenance.json records independent read-only finalized program hashes.
+Observed deployments can be upgraded; preflight must recheck these pins.
+No SDK-generated keypair or auxiliary private key is exported to providers.

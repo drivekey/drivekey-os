@@ -1,0 +1,471 @@
+{
+  "evidenceLevel": "public-unsigned-provider-quote-and-local-readonly-fork-call",
+  "mainnetSubmissions": 0,
+  "livePass": false,
+  "bridgeSigned": false,
+  "bridgeSubmitted": false,
+  "quote": {
+    "type": "lifi",
+    "id": "eca954b5-387b-4068-a8d1-9b9ed5965e59:0",
+    "tool": "mayanFastMCTP",
+    "toolDetails": {
+      "key": "mayanFastMCTP",
+      "name": "CCTPv2 + Mayan",
+      "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/bridges/mayan.svg"
+    },
+    "action": {
+      "fromToken": {
+        "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        "chainId": 1,
+        "symbol": "USDC",
+        "decimals": 6,
+        "name": "USD Coin",
+        "coinKey": "USDC",
+        "logoURI": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48/logo.png",
+        "priceUSD": "1.0006293969",
+        "tags": [
+          "stablecoin"
+        ],
+        "verificationStatus": "verified",
+        "verificationStatusBreakdown": [
+          {
+            "provider": "hypernative",
+            "result": "verified",
+            "providerResult": "accept"
+          }
+        ]
+      },
+      "fromAmount": "1000000",
+      "toToken": {
+        "address": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "chainId": 1151111081099710,
+        "symbol": "USDC",
+        "decimals": 6,
+        "name": "USD Coin",
+        "coinKey": "USDC",
+        "logoURI": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48/logo.png",
+        "priceUSD": "1.0018381065",
+        "tags": [
+          "stablecoin"
+        ],
+        "verificationStatus": "verified",
+        "verificationStatusBreakdown": [
+          {
+            "provider": "hypernative",
+            "result": "verified",
+            "providerResult": "accept"
+          }
+        ]
+      },
+      "fromChainId": 1,
+      "toChainId": 1151111081099710,
+      "slippage": 0.0099,
+      "fromAddress": "0x57fcf386B26CeaB95916a0BE13A82b66B39f7a30",
+      "toAddress": "458AVU3ZSTNLbwjnMRi4td6rMfdUWANgZt6eGoMEhweU"
+    },
+    "estimate": {
+      "tool": "mayanFastMCTP",
+      "approvalAddress": "0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE",
+      "toAmountMin": "562585",
+      "toAmount": "565997",
+      "fromAmount": "1000000",
+      "feeCosts": [
+        {
+          "name": "LIFI Fixed Fee",
+          "description": "Fixed LIFI fee, independent of any other fee",
+          "token": {
+            "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+            "chainId": 1,
+            "symbol": "USDC",
+            "decimals": 6,
+            "name": "USD Coin",
+            "coinKey": "USDC",
+            "logoURI": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48/logo.png",
+            "priceUSD": "1.0006293969",
+            "tags": [
+              "stablecoin"
+            ],
+            "verificationStatus": "verified",
+            "verificationStatusBreakdown": [
+              {
+                "provider": "hypernative",
+                "result": "verified",
+                "providerResult": "accept"
+              }
+            ]
+          },
+          "amount": "2500",
+          "amountUSD": "0.0025",
+          "percentage": "0.0025",
+          "included": true,
+          "feeSplit": {
+            "lifiFee": "2500",
+            "integratorFee": "0",
+            "recipients": [
+              {
+                "name": "lifi",
+                "type": "FIXED",
+                "fee": "2500"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Redeem Relayer Fee",
+          "description": "Fee for the destination chain relayer",
+          "token": {
+            "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+            "chainId": 1,
+            "symbol": "USDC",
+            "decimals": 6,
+            "name": "USD Coin",
+            "coinKey": "USDC",
+            "logoURI": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48/logo.png",
+            "priceUSD": "1.0006293969",
+            "tags": [
+              "stablecoin"
+            ],
+            "verificationStatus": "verified",
+            "verificationStatusBreakdown": [
+              {
+                "provider": "hypernative",
+                "result": "verified",
+                "providerResult": "accept"
+              }
+            ]
+          },
+          "amount": "430999",
+          "amountUSD": "0.4313",
+          "percentage": "0.4321",
+          "included": true
+        }
+      ],
+      "gasCosts": [
+        {
+          "type": "SEND",
+          "price": "46051854",
+          "estimate": "452823",
+          "limit": "588670",
+          "amount": "20853338683842",
+          "amountUSD": "0.0473",
+          "token": {
+            "address": "0x0000000000000000000000000000000000000000",
+            "chainId": 1,
+            "symbol": "ETH",
+            "decimals": 18,
+            "name": "ETH",
+            "coinKey": "ETH",
+            "logoURI": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2/logo.png",
+            "priceUSD": "2267.25",
+            "tags": [
+              "major_asset"
+            ],
+            "verificationStatus": "verified",
+            "verificationStatusBreakdown": [
+              {
+                "provider": "hypernative",
+                "result": "verified",
+                "providerResult": "accept"
+              }
+            ]
+          }
+        }
+      ],
+      "executionDuration": 35,
+      "fromAmountUSD": "1.0006",
+      "toAmountUSD": "0.5670"
+    },
+    "includedSteps": [
+      {
+        "id": "c0b00411-3b91-4a38-bfcc-0ab6485f0b3b",
+        "type": "protocol",
+        "action": {
+          "fromChainId": 1,
+          "fromAmount": "1000000",
+          "fromToken": {
+            "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+            "chainId": 1,
+            "symbol": "USDC",
+            "decimals": 6,
+            "name": "USD Coin",
+            "coinKey": "USDC",
+            "logoURI": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48/logo.png",
+            "priceUSD": "1.0006293969",
+            "tags": [
+              "stablecoin"
+            ],
+            "verificationStatus": "verified",
+            "verificationStatusBreakdown": [
+              {
+                "provider": "hypernative",
+                "result": "verified",
+                "providerResult": "accept"
+              }
+            ]
+          },
+          "toChainId": 1,
+          "toToken": {
+            "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+            "chainId": 1,
+            "symbol": "USDC",
+            "decimals": 6,
+            "name": "USD Coin",
+            "coinKey": "USDC",
+            "logoURI": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48/logo.png",
+            "priceUSD": "1.0006293969",
+            "tags": [
+              "stablecoin"
+            ],
+            "verificationStatus": "verified",
+            "verificationStatusBreakdown": [
+              {
+                "provider": "hypernative",
+                "result": "verified",
+                "providerResult": "accept"
+              }
+            ]
+          },
+          "slippage": 0.0099,
+          "fromAddress": "0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE",
+          "toAddress": "0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE",
+          "integratorId": "DriveKey"
+        },
+        "estimate": {
+          "fromAmount": "1000000",
+          "toAmount": "997500",
+          "toAmountMin": "997500",
+          "tool": "feeCollection",
+          "approvalAddress": "0xCE40449B773a3E6E5e769ADb4e567179d4828cbd",
+          "gasCosts": [
+            {
+              "type": "SEND",
+              "price": "46051854",
+              "estimate": "130000",
+              "limit": "169000",
+              "amount": "5986741020000",
+              "amountUSD": "0.0136",
+              "token": {
+                "address": "0x0000000000000000000000000000000000000000",
+                "chainId": 1,
+                "symbol": "ETH",
+                "decimals": 18,
+                "name": "ETH",
+                "coinKey": "ETH",
+                "logoURI": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2/logo.png",
+                "priceUSD": "2267.25",
+                "tags": [
+                  "major_asset"
+                ],
+                "verificationStatus": "verified",
+                "verificationStatusBreakdown": [
+                  {
+                    "provider": "hypernative",
+                    "result": "verified",
+                    "providerResult": "accept"
+                  }
+                ]
+              }
+            }
+          ],
+          "feeCosts": [
+            {
+              "name": "LIFI Fixed Fee",
+              "description": "Fixed LIFI fee, independent of any other fee",
+              "token": {
+                "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+                "chainId": 1,
+                "symbol": "USDC",
+                "decimals": 6,
+                "name": "USD Coin",
+                "coinKey": "USDC",
+                "logoURI": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48/logo.png",
+                "priceUSD": "1.0006293969",
+                "tags": [
+                  "stablecoin"
+                ],
+                "verificationStatus": "verified",
+                "verificationStatusBreakdown": [
+                  {
+                    "provider": "hypernative",
+                    "result": "verified",
+                    "providerResult": "accept"
+                  }
+                ]
+              },
+              "amount": "2500",
+              "amountUSD": "0.0025",
+              "percentage": "0.0025",
+              "included": true,
+              "feeSplit": {
+                "lifiFee": "2500",
+                "integratorFee": "0",
+                "recipients": [
+                  {
+                    "name": "lifi",
+                    "type": "FIXED",
+                    "fee": "2500"
+                  }
+                ]
+              }
+            }
+          ],
+          "executionDuration": 0
+        },
+        "tool": "feeCollection",
+        "toolDetails": {
+          "key": "feeCollection",
+          "name": "Integrator Fee",
+          "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/protocols/feeCollection.svg"
+        }
+      },
+      {
+        "id": "c9fa69aa-7135-4473-be3d-51c89c2eea12",
+        "type": "cross",
+        "action": {
+          "fromChainId": 1,
+          "fromAmount": "997500",
+          "fromToken": {
+            "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+            "chainId": 1,
+            "symbol": "USDC",
+            "decimals": 6,
+            "name": "USD Coin",
+            "coinKey": "USDC",
+            "logoURI": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48/logo.png",
+            "priceUSD": "1.0006293969",
+            "tags": [
+              "stablecoin"
+            ],
+            "verificationStatus": "verified",
+            "verificationStatusBreakdown": [
+              {
+                "provider": "hypernative",
+                "result": "verified",
+                "providerResult": "accept"
+              }
+            ]
+          },
+          "toChainId": 1151111081099710,
+          "toToken": {
+            "address": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+            "chainId": 1151111081099710,
+            "symbol": "USDC",
+            "decimals": 6,
+            "name": "USD Coin",
+            "coinKey": "USDC",
+            "logoURI": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48/logo.png",
+            "priceUSD": "1.0018381065",
+            "tags": [
+              "stablecoin"
+            ],
+            "verificationStatus": "verified",
+            "verificationStatusBreakdown": [
+              {
+                "provider": "hypernative",
+                "result": "verified",
+                "providerResult": "accept"
+              }
+            ]
+          },
+          "slippage": 0.0099,
+          "fromAddress": "0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE",
+          "toAddress": "458AVU3ZSTNLbwjnMRi4td6rMfdUWANgZt6eGoMEhweU",
+          "integratorId": "DriveKey",
+          "destinationGasConsumption": "0"
+        },
+        "estimate": {
+          "tool": "mayanFastMCTP",
+          "fromAmount": "997500",
+          "toAmount": "565997",
+          "toAmountMin": "562585",
+          "gasCosts": [
+            {
+              "type": "SEND",
+              "price": "46051854",
+              "estimate": "300000",
+              "limit": "390000",
+              "amount": "13815556200000",
+              "amountUSD": "0.0313",
+              "token": {
+                "address": "0x0000000000000000000000000000000000000000",
+                "chainId": 1,
+                "symbol": "ETH",
+                "decimals": 18,
+                "name": "ETH",
+                "coinKey": "ETH",
+                "logoURI": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2/logo.png",
+                "priceUSD": "2267.25",
+                "tags": [
+                  "major_asset"
+                ],
+                "verificationStatus": "verified",
+                "verificationStatusBreakdown": [
+                  {
+                    "provider": "hypernative",
+                    "result": "verified",
+                    "providerResult": "accept"
+                  }
+                ]
+              }
+            }
+          ],
+          "executionDuration": 35,
+          "approvalAddress": "458AVU3ZSTNLbwjnMRi4td6rMfdUWANgZt6eGoMEhweU",
+          "feeCosts": [
+            {
+              "name": "Redeem Relayer Fee",
+              "description": "Fee for the destination chain relayer",
+              "token": {
+                "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+                "chainId": 1,
+                "symbol": "USDC",
+                "decimals": 6,
+                "name": "USD Coin",
+                "coinKey": "USDC",
+                "logoURI": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48/logo.png",
+                "priceUSD": "1.0006293969",
+                "tags": [
+                  "stablecoin"
+                ],
+                "verificationStatus": "verified",
+                "verificationStatusBreakdown": [
+                  {
+                    "provider": "hypernative",
+                    "result": "verified",
+                    "providerResult": "accept"
+                  }
+                ]
+              },
+              "amount": "430999",
+              "amountUSD": "0.4313",
+              "percentage": "0.4321",
+              "included": true
+            }
+          ]
+        },
+        "tool": "mayanFastMCTP",
+        "toolDetails": {
+          "key": "mayanFastMCTP",
+          "name": "CCTPv2 + Mayan",
+          "logoURI": "https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/bridges/mayan.svg"
+        }
+      }
+    ],
+    "integrator": "DriveKey",
+    "stepSimulation": {
+      "status": "success",
+      "gasSource": "simulation"
+    },
+    "transactionRequest": {
+      "value": "0x0",
+      "to": "0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE",
+      "data": "0x80c65808000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000002200000000000000000000000000000000000000000000000000000000000000420fe3353395f56d147362fb2cc7be289f5f2a71d8553609c277444ab1470eb486a000000000000000000000000000000000000000000000000000000000000014000000000000000000000000000000000000000000000000000000000000001800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb4800000000000000000000000011f111f111f111f111f111f111f111f111f111f100000000000000000000000000000000000000000000000000000000000f387c000000000000000000000000000000000000000000000000000416edef1601be00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000d6d6179616e466173744d43545000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000844726976654b657900000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000020000000000000000000000000ce40449b773a3e6e5e769adb4e567179d4828cbd000000000000000000000000ce40449b773a3e6e5e769adb4e567179d4828cbd000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb4800000000000000000000000000000000000000000000000000000000000f424000000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000a4332d746b000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb4800000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000001000000000000000000000000c06ebbefd94032b85424d51906e2a335efae264b00000000000000000000000000000000000000000000000000000000000009c4000000000000000000000000000000000000000000000000000000002da17be4f9e5f6338bdc87417227b962da712349c12d803c82c796eea58f5ea5000000000000000000000000c1062b7c5dc8e4b1df9f200fe360cdc0ed6e77410000000000000000000000000000000000000000000000000000000000000120000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000057fcf386b26ceab95916a0be13a82b66b39f7a3000000000000000000000000000000000000000000000000000000000000f387c00000000000000000000000000000000000000000000000000000000000001a4f58b6de8000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb4800000000000000000000000000000000000000000000000000000000000f387c00000000000000000000000000000000000000000000000000000000000694a6000000000000000000000000000000000000000000000000000000000000006e00000000000000000000000000000000000000000000000000000000000000002da17be4f9e5f6338bdc87417227b962da712349c12d803c82c796eea58f5ea500000000000000000000000000000000000000000000000000000000000000051e8c4fab8994494c8f1e5c1287445b2917d60c43c79aa959162f5d6000598d3200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000001800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "from": "0x57fcf386B26CeaB95916a0BE13A82b66B39f7a30",
+      "chainId": 1,
+      "gasPrice": "0x2beb20e",
+      "gasLimit": "0x8fb7e"
+    },
+    "transactionId": "0xfe3353395f56d147362fb2cc7be289f5f2a71d8553609c277444ab1470eb486a",
+    "recommendedSlippage": null
+  }
+}

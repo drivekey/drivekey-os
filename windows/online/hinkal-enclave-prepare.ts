@@ -1,0 +1,12 @@
+// Same pinned SDK handshake, sealed response and enclave-signature verification.
+// Decode authenticated error envelopes as well as 200 responses; never accept an
+// error as a proof job or fall back to plaintext/provider-managed signing.
+import {HINKAL_PIN} from '../engine/core/hinkal-intent';
+const {makeEnclaveHandshakeAndEncryptInput,enclavePostSealed}=require('../node_modules/@hinkal/common/common/src/functions/utils/encryptInputForEnclave.cjs'),{verifySignedEnclaveResponse}=require('../node_modules/@hinkal/common/common/src/functions/snarkjs/verifySignedEnclaveResponse.cjs'),{verifyPrepareTxResponse}=require('../node_modules/@hinkal/common/common/src/functions/snarkjs/constructTxEnclaveVerify.cjs');
+export const redactHinkalProviderHint=(value:unknown)=>String(value||'').replace(/0x[0-9a-f]+/gi,'[hex]').replace(/[1-9][0-9]{4,}/g,'[integer]').replace(/[A-Za-z0-9+/=_-]{32,}/g,'[encoded]').slice(0,180);
+export async function prepareSealedEvmHinkalJob(request:any,key:any){const sent={...request,amountChanges:request.amountChanges.map(String),messageSeed:String(request.messageSeed),nullifyingKey:key.getShieldedPrivateKey(),spendingPublicKey:key.getSpendingKeyPair().pubSpendingBJJPoint.map(String)},sealed=await makeEnclaveHandshakeAndEncryptInput(sent);let status=0,providerHint='';
+ try{let envelope;try{envelope=await enclavePostSealed(HINKAL_PIN.proofEndpoint+'/prepare-tx',{key:sealed.keyCiphertext,inputs:sealed.inputCiphertext},sealed.key,{timeout:30000,maxContentLength:1024*1024,maxBodyLength:256*1024,transformResponse:[(raw:any)=>{let body;try{body=typeof raw==='string'?JSON.parse(raw):raw;}catch{body=raw;}if(status!==200)providerHint=redactHinkalProviderHint(typeof body==='string'?body:JSON.stringify(body,(name,value)=>/private|password|mnemonic|nullifying|vault/i.test(name)?'[redacted]':value));return body;}],validateStatus:(code:number)=>{status=code;return true;}});}catch{const failure:any=Error('Encrypted Hinkal response could not be authenticated.');failure.response={status,data:{message:providerHint||'Encrypted response unavailable or authentication failed.'}};throw failure;}
+  if(status!==200){const failure:any=Error('Hinkal enclave refused prepared request.');failure.response={status,data:{message:redactHinkalProviderHint(envelope?.error?.message||envelope?.error||envelope?.message||envelope?.details?.message)}};throw failure;}
+  const response=verifySignedEnclaveResponse(envelope.data,envelope.signature);verifyPrepareTxResponse(sent,response);return response;
+ }finally{sealed.key.fill(0);}
+}

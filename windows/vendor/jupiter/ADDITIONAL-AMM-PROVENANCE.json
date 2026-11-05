@@ -1,0 +1,44 @@
+{
+  "checkedAt": "2026-11-02T14:42:20.211Z",
+  "registry": "https://lite-api.jup.ag/swap/v1/program-id-to-label",
+  "independentEndpoints": [
+    "https://api.mainnet-beta.solana.com",
+    "https://solana-rpc.publicnode.com"
+  ],
+  "programs": [
+    {
+      "address": "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK",
+      "loader": "BPFLoaderUpgradeab1e11111111111111111111111",
+      "programData": "HzD2cCXXT3UQNjMMY6kDv9w6gZ9qquSdfoGXrLL3LXx",
+      "space": 1700205,
+      "deployedSlot": "459932378",
+      "programDataSha256": "95100de643fbba3ba124a1800721463730ddee7280303959ffda9564730a738d",
+      "label": "Raydium CLMM",
+      "variant": "RaydiumClmm"
+    },
+    {
+      "address": "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc",
+      "loader": "BPFLoaderUpgradeab1e11111111111111111111111",
+      "programData": "CtXfPzz36dH5Ws4UYKZvrQ1Xqzn42ecDW6y8NKuiN8nD",
+      "space": 10485760,
+      "deployedSlot": "457152296",
+      "programDataSha256": "a49ebc534880f4aaf525b5fd1504aed6223928bdbbea6c83d40473eb17abd04e",
+      "label": "Whirlpool",
+      "variant": "WhirlpoolSwapV2"
+    },
+    {
+      "address": "3TK9D8aoBFYjYZtKCjciPrVrRStsnvo7KmpcJqDavpaU",
+      "loader": "BPFLoaderUpgradeab1e11111111111111111111111",
+      "programData": "7UnpT4Zk1kWzKszWkX58jToMXAXayUXghKvjQD67yQA5",
+      "space": 716637,
+      "deployedSlot": "464523165",
+      "programDataSha256": "cb6e471d0834a097b7cae9b7b9bc1d6ec18a26fba62852760c8d8bc23735b3eb",
+      "label": "Kipseli",
+      "variant": "KipseliV3"
+    }
+  ],
+  "newSignatures": 0,
+  "evidenceLevel": "official-registry-and-two-independent-current-executable-hashes",
+  "financialSignatures": 0,
+  "reason": "Current finite SOL/USDC route quotes use these three variants; all other unknown variants remain rejected."
+}

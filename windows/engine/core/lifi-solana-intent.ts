@@ -1,0 +1,23 @@
+import {z} from 'zod';
+import {keccak256} from 'ethers';
+import {PublicKey,VersionedTransaction} from '@solana/web3.js';
+import nacl from 'tweetnacl';
+import bs58 from 'bs58';
+import {canonical} from './payment-intent';
+import {inspectLifiSolana} from './lifi-solana-inspect';
+const uint=z.string().regex(/^(0|[1-9][0-9]*)$/).max(39),hash=z.string().regex(/^0x[0-9a-f]{64}$/),address=z.string().max(44);
+const schema=z.object({version:z.literal(11),action:z.literal('swap'),provider:z.literal('lifi-jupiter'),chain:z.literal('solana'),network:z.literal('solana'),requestId:z.string().uuid(),deviceId:z.string().uuid(),createdAt:z.string().datetime(),expiresAt:z.string().datetime(),from:address,recipient:address,tokenIn:z.enum(['SOL','USDC']),tokenOut:z.enum(['SOL','USDC']),amount:uint,quotedOutput:uint,minimumOutput:uint,slippageBps:z.number().int().min(0).max(100),protocolFee:uint,maximumFee:uint,accountRent:uint,blockhash:address,lastValidBlockHeight:z.number().int().positive(),epoch:z.number().int().nonnegative(),lookupTables:z.array(z.object({address,owner:address,dataBase64:z.string().max(11000),contextSlot:z.number().int().positive()}).strict()).max(4),unsignedTransaction:z.string().max(1700),fingerprint:hash}).strict();
+export type LifiSolanaIntent=z.infer<typeof schema>;
+export const lifiSolanaFingerprint=(input:any)=>{const {fingerprint,...body}=input;return keccak256(new TextEncoder().encode('DriveKey LI.FI Solana intent v11\n'+canonical(body)));};
+export const lifiSolanaApproval=(r:LifiSolanaIntent)=>new TextEncoder().encode('DriveKey LI.FI Solana approval v11\n'+r.fingerprint);
+export function validateLifiSolana(input:unknown,now=Date.now(),expiry=true){const r=schema.parse(input),created=Date.parse(r.createdAt),expires=Date.parse(r.expiresAt);
+ if(!Number.isSafeInteger(now)||created>now+60000||expires<=created||expires-created>180000||(expiry&&now>=expires)||r.fingerprint!==lifiSolanaFingerprint(r)||r.tokenIn===r.tokenOut||!PublicKey.isOnCurve(new PublicKey(r.from).toBytes())||BigInt(r.accountRent)>30000000n||BigInt(r.maximumFee)>2000000n)throw Error('Invalid Solana swap identity, fee, rent or expiry.');
+ const resolved=inspectLifiSolana(r.unsignedTransaction,r.lookupTables,r);if(resolved.tx.message.recentBlockhash!==r.blockhash||resolved.tx.message.header.numReadonlySignedAccounts!==0)throw Error('Solana swap blockhash or fee-payer permission mismatch.');return r;
+}
+export function assertLifiSolanaWallet(r:LifiSolanaIntent,w:any){if(r.deviceId!==w.deviceId||r.from!==w.solanaAddress)throw Error('Solana swap belongs to a different wallet.');}
+const response=z.object({version:z.literal(11),deviceId:z.string().uuid(),requestId:z.string().uuid(),fingerprint:hash,signedAt:z.string().datetime(),rawSignedTransaction:z.string().max(1700),transactionHash:z.string().max(88),approvalSignature:z.string().max(88)}).strict();
+export function verifyLifiSolanaResponse(input:unknown,request:unknown,w:any,now=Date.now(),expiry=true){const r=validateLifiSolana(request,now,expiry),s=response.parse(input);assertLifiSolanaWallet(r,w);const bytes=Buffer.from(s.rawSignedTransaction,'base64'),tx=VersionedTransaction.deserialize(bytes),unsigned=VersionedTransaction.deserialize(Buffer.from(r.unsignedTransaction,'base64')),signed=Date.parse(s.signedAt),pub=new PublicKey(r.from).toBytes();
+ if(bytes.toString('base64')!==s.rawSignedTransaction||tx.signatures.length!==1||!Buffer.from(tx.message.serialize()).equals(Buffer.from(unsigned.message.serialize()))||!nacl.sign.detached.verify(tx.message.serialize(),tx.signatures[0],pub)||bs58.encode(tx.signatures[0])!==s.transactionHash||!nacl.sign.detached.verify(lifiSolanaApproval(r),bs58.decode(s.approvalSignature),pub)||s.deviceId!==r.deviceId||s.requestId!==r.requestId||s.fingerprint!==r.fingerprint||signed<createdAt(r)-60000||signed>=Date.parse(r.expiresAt)||signed>now+60000)throw Error('Solana swap signature differs from reviewed intent.');return s;
+}
+const createdAt=(r:LifiSolanaIntent)=>Date.parse(r.createdAt);
+export function lifiSolanaReview(input:unknown,now=Date.now()){const r=validateLifiSolana(input,now),v=inspectLifiSolana(r.unsignedTransaction,r.lookupTables,r).review;return {action:r.action,provider:r.provider,chain:r.chain,from:r.from,recipient:r.recipient,tokenIn:r.tokenIn,tokenOut:r.tokenOut,amount:r.amount,quotedOutput:r.quotedOutput,minimumOutput:r.minimumOutput,slippageBps:String(r.slippageBps),protocolFee:r.protocolFee,maximumFeeBaseUnits:r.maximumFee,accountRentBaseUnits:r.accountRent,blockhash:r.blockhash,lastValidBlockHeight:String(r.lastValidBlockHeight),lookupTableCount:String(r.lookupTables.length),ammPrograms:v.ammPrograms.join(', '),fingerprint:r.fingerprint,deadlineUTC:r.expiresAt};}

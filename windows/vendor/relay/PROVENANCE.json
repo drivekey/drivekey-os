@@ -1,0 +1,27 @@
+{
+  "readOnly": true,
+  "executionVerified": false,
+  "commit": "b2f3e0e5fba9381293f030ef340ffb4872687fcf",
+  "sources": [
+    {
+      "url": "https://github.com/relayprotocol/relay-settlement/tree/b2f3e0e5fba9381293f030ef340ffb4872687fcf",
+      "localResearchFile": "relay-orderSource-public.txt",
+      "sha256": "b9109694f6a1001fa5b30d3cd15727d3cc54e6aa4ac6d658f11e0829f38e9f94"
+    },
+    {
+      "url": "https://github.com/relayprotocol/relay-settlement/tree/b2f3e0e5fba9381293f030ef340ffb4872687fcf",
+      "localResearchFile": "relay-svmSource-public.txt",
+      "sha256": "807e64ecc45d9365508d58836b76c372626c4bd1e51e5e8c6830df7ca1c97a29"
+    },
+    {
+      "url": "https://github.com/relayprotocol/relay-settlement/tree/b2f3e0e5fba9381293f030ef340ffb4872687fcf",
+      "localResearchFile": "relay-utils-public.txt",
+      "sha256": "dcf9aafb45cd70e90c4b1f99164ccf4e5a7264559233bfaca366e43c1e31cc56"
+    }
+  ],
+  "documentation": [
+    "https://docs.relay.link/references/api/api_core_concepts/input-validation",
+    "https://docs.relay.link/references/protocol/components/depository"
+  ],
+  "note": "LI.FI public quote omits protocol.v2; direct Relay quote creates a different order. Never authorize one order using another order signature. Local composed packet tests are engineering fixtures only."
+}

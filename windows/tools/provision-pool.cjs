@@ -1,0 +1,17 @@
+// Local interactive provisioning. Never put the passphrase in args, env or logs.
+const fs=require('node:fs/promises'),path=require('node:path'),{spawn}=require('node:child_process'),{randomUUID,createHash}=require('node:crypto');
+const readline=require('node:readline');
+async function hidden(prompt){if(!process.stdin.isTTY)throw Error('Use an interactive local terminal.');process.stdout.write(prompt);readline.emitKeypressEvents(process.stdin);process.stdin.setRawMode(true);process.stdin.resume();return new Promise((resolve,reject)=>{let value='';const done=(err)=>{process.stdin.removeListener('keypress',key);process.stdin.setRawMode(false);process.stdin.pause();process.stdout.write('\n');err?reject(err):resolve(value);};const key=(text,k)=>{if(k?.ctrl&&k.name==='c')return done(Error('Cancelled.'));if(k?.name==='return')return done();if(k?.name==='backspace'){value=value.slice(0,-1);return;}if(text&&!k?.ctrl&&value.length<256)value+=text;};process.stdin.on('keypress',key);});}
+async function main(){
+ const [directory,chain,countText]=process.argv.slice(2),count=Number(countText);if(!directory||!['ethereum','sepolia','solana','devnet'].includes(chain)||!Number.isSafeInteger(count)||count<1||count>100)throw Error('Usage: node tools/provision-pool.cjs <NEW-output-directory> <chain> <1..100>');
+ const root=path.resolve(__dirname,'..'),target=path.resolve(directory);await fs.mkdir(target,{recursive:false});const runtime=JSON.parse(await fs.readFile(path.join(root,'RUNTIME-INTEGRITY.json'),'utf8')),worker=path.join(root,'dist','worker.cjs');
+ if(createHash('sha256').update(await fs.readFile(worker)).digest('hex')!==runtime['dist/worker.cjs'])throw Error('Worker integrity mismatch. Build and package before provisioning.');
+ let pass=await hidden('New encrypted-pool passphrase (16–256 characters): '),confirm=await hidden('Confirm passphrase: ');if(pass.length<16||pass!==confirm)throw Error('Passphrases do not match or are too short.');confirm=undefined;
+ const addresses=[];
+ for(let n=0;n<count;n++){
+  const vault=await new Promise((resolve,reject)=>{const child=spawn(process.execPath,['--no-addons',worker],{windowsHide:true,stdio:['pipe','pipe','ignore'],env:{SystemRoot:process.env.SystemRoot,TEMP:process.env.TEMP}});let text='',bytes=0;child.stdout.on('data',b=>{bytes+=b.length;if(bytes>65536){child.kill();return reject(Error('Worker output exceeded limit.'));}text+=b;});child.on('error',reject);child.on('exit',code=>{try{const r=JSON.parse(text);if(code!==0||!r.ok)throw Error('Provisioning worker failed.');resolve(r.result);}catch{reject(Error('Provisioning failed; preserve already written encrypted files.'));}});child.stdin.on('error',()=>{});child.stdin.end(JSON.stringify({action:'create',password:pass}));});
+  await fs.writeFile(path.join(target,'encrypted-wallet-'+randomUUID()+'.json'),JSON.stringify(vault,null,2)+'\n',{flag:'wx',mode:0o600});addresses.push(['ethereum','sepolia'].includes(chain)?vault.public.evmAddress:vault.public.solanaAddress);
+ }
+ pass=undefined;await fs.writeFile(path.join(target,'PUBLIC-POOL.json'),JSON.stringify({chain,addresses},null,2)+'\n',{flag:'wx',mode:0o600});console.log('Encrypted wallets and PUBLIC-POOL.json written locally. Make and verify a separate encrypted backup before using these addresses. Transfer only PUBLIC-POOL.json to the merchant service.');
+}
+main().catch(()=>{console.error('Provisioning stopped. Check arguments, permissions and passphrase locally. Preserve any encrypted files already created.');process.exitCode=1;});

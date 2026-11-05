@@ -1,0 +1,22 @@
+{
+  "checkedAt": "2026-11-01T20:10:45.318Z",
+  "program": "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4",
+  "source": "Onchain Anchor IDL, matching independent RPC reads",
+  "officialProtocolDocs": "https://developers.jup.ag/docs/swap/migration/metis-to-build.md",
+  "reads": [
+    {
+      "endpoint": "https://api.mainnet-beta.solana.com",
+      "sha256": "e6c2b425ec740922ee91aa7a3278cea07f4bc00a3ed9efa4eca16facb481bfca",
+      "instructions": 19
+    },
+    {
+      "endpoint": "https://solana-rpc.publicnode.com",
+      "sha256": "e6c2b425ec740922ee91aa7a3278cea07f4bc00a3ed9efa4eca16facb481bfca",
+      "instructions": 19
+    },
+    {
+      "endpoint": "https://solana.drpc.org",
+      "error": "400 Bad Request: {\"id\":\"b80107c5-9428-47ca-93f4-52b17e967e07\",\"jsonrpc\":\"2.0\",\"error\":{\"message\":\"chain is not available on free plan, please upgrade to paid plan\",\"code\":35}}"
+    }
+  ]
+}

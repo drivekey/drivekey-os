@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-11-01T21:24:16.224Z",
+  "evidenceLevel": "view-only-public-unsigned-plan",
+  "sourceFingerprint": "a31d1203fd127a256979027f5ae903d0d004f46985e489c7bd0a932da2bca403",
+  "workerSHA256": "c83975e39fb2efa281004aa2b05876ea7ab462417f82bc3bafa959134fd88252",
+  "result": {
+    "provider": "hinkal",
+    "chain": "solana",
+    "action": "deposit",
+    "asset": "SOL",
+    "amount": "1000000",
+    "from": "6dQSVENnX8qBxY5UE8K6cwjf4zdt3RBgZ4QmWJ9P7jnc",
+    "recipient": "6dQSVENnX8qBxY5UE8K6cwjf4zdt3RBgZ4QmWJ9P7jnc",
+    "program": "8LLNFE62Lr9rJLvmPsTsFttrcmwYrEykZwvpyYDW4Nc2",
+    "originalDeployer": "8xzyYDbvfpqYEGekNsm6KDyNXJybTLJhBWBQwabsZN49",
+    "merkleMIndex": "803469022129495137770981046170581301261101496891396417652641",
+    "rootBucketCurrent": "CfCTn9ScjXAvmAsD976JM8YJKQoMAc2nfenSdpNCCKEL",
+    "rootBucketNext": "8LLNFE62Lr9rJLvmPsTsFttrcmwYrEykZwvpyYDW4Nc2",
+    "blockhash": "29sBYuFCSQdUoyC61WFRf37a8wz2kivB1QmMzUQBvBDd",
+    "lastValidBlockHeight": 442263695,
+    "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAUKU53YyAu0yXym/Fk0vq7X2ah2Jqo333XEEq6aUUb0tE0WnEzfMZpY2IIIGEavYkTlf4/94xtbxJm0WkHgVqeO83NTmc5mIJrb8G0FK6tTIstWcStbDC65XgW5PvHk4VvPb4baGcEpc/CG9xfldHjcrgcyMUrnKIrMrlwaBOzwQwutOZYzAVugcjS2Fn/1eUEN1boYNnizRYnZwGzpgJgD1QAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAbPW9zFy1pbIZ2n3LjpQ9XLQoeMo/HG88buZDqx8D72t2Wk4n2kfpq/ev5AsLs4cefbkxGWIlRiv5bS69I2xqSoyXJY9OJInxuz0QKRSODYMLWhOZ2v8QhASOe9jb6fhZBt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKkRIRMCFUf8dKAs7uT2bE0wbj7UEiJXFMwANocSpOerzAEGDQAHAgMGBgYBBAYJCAWPBO4/HthtJG17AQAAAEBCDwAAAAAAAQAAAC3RWTDBU3qfuUbdzjFO2vgAeneyYZZe73dHd2VdxCQ/F2U/vS3kU3nrTxImTBpRn40ia+tuqRJJL78yx+zciZokcY10EbiHzO6W4mhmeWN0o1c8N5nKPTEi0gM2e5A89gqxLAdEWVcSoRl4n/5i8hWQWF6UncfLxmZBicJFDkmNC6L7Nxvp/CH6AsEyp0fgDqUAbqK+mUM4Rqt9mPFJa48BAAAATQEAAAIBUebKpcVG8lwI23x+BKhHUyE+siFkLYxon8vG0qmv6RHPZ2ThhmVzuEZXDABkhTt2YGuHJh+INJnJ0hoE64bzsO5V4nNPbwRGa10SHvV/Ws5aIsIl1HuLtMfcvAjr+wKidS/vDub6bT3hBJ1hIGDVzvuO1cqlc0F248oEvt+f76S9AH1ZlxFqFKrS7OpsD3nqNi8b0Lf8ZZG9F38nt6jb3aTu0v9Kl+B464FhIwZSGJ12o4DncuwiHaYEZIF4EafgFRIF+f1E21iVW0g3TPx/lwGo8Pb/7sRAwC56wSnu9zZDibRkkUwksKfaWu9a73etKCVz3yWADC3ypDQzBW+g7fUF5KY7FGkQIt5540AGaX/gJrsSTCQVPzi2AHDxeN/IoAkjBtf0wGRMQW/2tNhpNBdcbp0zMvSzsCQB0oSYMwwqOnNqc1qqT1zSGgAA",
+    "viewOnly": true,
+    "blockchainTransactionSigned": false,
+    "submitted": false
+  }
+}

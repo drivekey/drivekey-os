@@ -1,0 +1,16 @@
+'use strict';
+// One-use controller: capture sensitive identity replies in memory, never log them.
+const fs=require('node:fs'),path=require('node:path'),{spawnSync}=require('node:child_process'),{createHash}=require('node:crypto');
+const root=path.resolve(__dirname,'..'),output=path.resolve(root,'../../outputs'),sessionId=JSON.parse(fs.readFileSync(path.resolve(root,'../session-public.json'))).sessionId;
+function child(script,job,timeout=45000){const p=spawnSync(process.execPath,['--no-addons',path.join(root,script)],{input:JSON.stringify(job),encoding:'utf8',windowsHide:true,timeout,maxBuffer:2*1024*1024,env:{SystemRoot:process.env.SystemRoot,WINDIR:process.env.WINDIR,LOCALAPPDATA:process.env.LOCALAPPDATA,TEMP:process.env.TEMP,TMP:process.env.TMP}});let result;try{result=JSON.parse(p.stdout);}catch{throw Error('Worker returned no bounded result.');}if(p.status||!result.ok)throw Error(result.error||'Worker refused the plan.');return result.result;}
+async function run(){
+ const identity=child('tools/protected-test-profile.cjs',{action:'status',sessionId}).identity,source=await (await import('./fingerprint.mjs')).fingerprint(root);
+ const chain=process.argv[2]||'ethereum',asset=process.argv[3]||(chain==='ethereum'?'ETH':'SOL');if(!['ethereum','solana'].includes(chain)||![chain==='ethereum'?'ETH':'SOL','USDC'].includes(asset))throw Error('Unsupported Hinkal planning pair.');const request={testOnly:true,action:'deposit',chain,asset,amount:asset==='ETH'?'100000000000000':asset==='SOL'?'1000000':'100000'};
+ const manifest={version:1,kind:'hinkal-proof-planning-only',sessionId,sourceFingerprint:source.fingerprint,source:chain==='ethereum'?identity.source.evmAddress:identity.source.solanaAddress,request,authorization:'Fixed identity derivation and proof planning only; no token approval, blockchain signature, relayer submission or onchain spending',createdAt:new Date().toISOString(),stopConditions:['identity-mismatch','unknown-signing-payload','unexpected-provider-transaction-signing','unexpected-provider-submission','proof-response-mismatch']};
+ fs.writeFileSync(path.join(output,'HINKAL-'+chain.toUpperCase()+'-'+asset+'-PLAN-MANIFEST.json'),JSON.stringify(manifest,null,2));
+ const credential=child('tools/protected-test-profile.cjs',{action:'hinkal-identity',sessionId,role:'source',chain});
+ const result=child('dist/hinkal-worker.cjs',{action:'plan',input:{...request,identity:credential}});
+ fs.writeFileSync(path.join(output,'HINKAL-'+chain.toUpperCase()+'-'+asset+'-UNSIGNED-PLAN.json'),JSON.stringify({checkedAt:new Date().toISOString(),sourceFingerprint:source.fingerprint,workerSHA256:createHash('sha256').update(fs.readFileSync(path.join(root,'dist/hinkal-worker.cjs'))).digest('hex'),result},null,2));
+ console.log(JSON.stringify({unsignedPlanReceived:true,signed:false,submitted:false,from:result.from,contract:result.contract||result.program,dataBytes:result.transaction?.data?(result.transaction.data.length-2)/2:Buffer.from(result.transactionBase64,'base64').length}));
+}
+run().catch(e=>{const failure={checkedAt:new Date().toISOString(),proofPlanned:false,signed:false,submitted:false,error:e.message};fs.writeFileSync(path.join(output,'HINKAL-PROOF-PLAN-FAILURE.json'),JSON.stringify(failure,null,2));console.error(JSON.stringify(failure));process.exitCode=1;});

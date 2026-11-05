@@ -1,0 +1,12 @@
+const {test}=require('node:test'),assert=require('node:assert/strict'),ganache=require('ganache'),{Wallet,Transaction}=require('ethers'),{randomUUID}=require('node:crypto');
+const {OnlineAdapter}=require('../dist/adapter.cjs'),{SettlementVerifier}=require('../dist/checkout-verifier.cjs'),{paymentFingerprint,verifyPaymentResponse}=require('../dist/payment.cjs');
+test('actual local EVM prepares, signs, submits once and verifies finalized native checkout independently',async()=>{
+ const node=ganache.provider({logging:{quiet:true},chain:{chainId:11155111,hardfork:'shanghai'},wallet:{totalAccounts:2}}),wallet=Wallet.createRandom(),recipient=Wallet.createRandom().address,transport=async(_url,init)=>{const j=JSON.parse(init.body);return {jsonrpc:'2.0',id:j.id,result:await node.request({method:j.method,params:j.params})};};
+ try{
+  // This balance exists only in the local EVM. No testnet or mainnet funding.
+  await node.request({method:'evm_setAccountBalance',params:[wallet.address,'0xde0b6b3a7640000']});
+  const a=new OnlineAdapter({sepolia:'http://localhost:8545'},transport),publicWallet={version:3,deviceId:randomUUID(),createdAt:new Date().toISOString(),evmAddress:wallet.address,solanaAddress:require('@solana/web3.js').Keypair.generate().publicKey.toBase58()};
+  const r=await a.prepare({chain:'sepolia',asset:'ETH',recipient,amount:'1000'},publicWallet);await a.preflight(r);const raw=await wallet.signTransaction(Transaction.from(r.unsignedTransaction)),s={version:8,requestId:r.requestId,deviceId:r.deviceId,fingerprint:r.fingerprint,signedAt:new Date().toISOString(),rawSignedTransaction:raw,transactionHash:Transaction.from(raw).hash,approvalSignature:await wallet.signMessage('DriveKey payment approval v8\n'+r.fingerprint)};verifyPaymentResponse(s,r,publicWallet);await a.broadcast(r,s);assert.equal((await a.reconcile(r,s)).state,'confirmed');
+  const invoice={chain:'sepolia',asset:'ETH',address:recipient.toLowerCase(),created_at:r.createdAt,expires_at:r.expiresAt};const verifier=new SettlementVerifier(a),e=await verifier.verify(invoice,s.transactionHash);assert.equal(e[0].amount,'1000');assert.equal(e[0].canonical,true);assert.equal(e[0].recipient,recipient.toLowerCase());await assert.rejects(()=>verifier.verify({...invoice,address:Wallet.createRandom().address.toLowerCase()},s.transactionHash),/recipient/);await assert.rejects(()=>a.preflight(r),/Nonce conflict/);
+ }finally{await node.disconnect();}
+});

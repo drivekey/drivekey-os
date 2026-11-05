@@ -1,0 +1,38 @@
+services:
+  db:
+    image: postgres:17.7-bookworm
+    environment:
+      POSTGRES_USER: drivekey
+      POSTGRES_DB: drivekey
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets: [db_password]
+    volumes: [database:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U drivekey -d drivekey]
+      interval: 5s
+      retries: 20
+    restart: unless-stopped
+  checkout:
+    build:
+      context: ..
+      dockerfile: merchant/Dockerfile
+    environment:
+      DATABASE_URL_FILE: /run/secrets/database_url
+      ADMIN_TOKEN_FILE: /run/secrets/admin_token
+      RPC_CONFIG_FILE: /run/config/rpc.json
+    secrets: [database_url, admin_token]
+    volumes: [./config:/run/config:ro]
+    ports: [127.0.0.1:8080:8080]
+    depends_on:
+      db: {condition: service_healthy}
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+volumes:
+  database:
+secrets:
+  db_password: {file: ./secrets/db_password}
+  database_url: {file: ./secrets/database_url}
+  admin_token: {file: ./secrets/admin_token}

@@ -1,0 +1,11 @@
+import {readFile} from 'node:fs/promises';
+import {spawn} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
+import path from 'node:path';
+import {fingerprint} from './fingerprint.mjs';
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+const source=await fingerprint(root),manifest=JSON.parse(await readFile(path.join(root,'BUILD-MANIFEST.json'),'utf8'));
+if(manifest.sourceFingerprint!==source.fingerprint)throw Error('Build manifest is stale. Rebuild before testing the packaged applications.');
+const child=spawn(process.execPath,['tests/ui-packaged.mjs','--expected-source='+source.fingerprint],{cwd:root,windowsHide:true,stdio:'inherit'});
+child.on('error',()=>{process.exitCode=1;});
+child.on('exit',(code,signal)=>{process.exitCode=signal?1:code??1;});

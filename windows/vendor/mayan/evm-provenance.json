@@ -1,0 +1,130 @@
+{
+  "checkedAt": "2026-11-02T00:54:45.011Z",
+  "mainnetSubmissions": 0,
+  "livePass": false,
+  "source": {
+    "lifiRepository": "https://github.com/lifinance/contracts",
+    "commit": "900179245570ec56e661e11fa0df2d1d5c1fa420",
+    "deploymentsSha256": "33bf8f8fab0df70fd1dcd638369823540afcae81af66df5f66a7493ab45118b1",
+    "mayanArtifact": "https://raw.githubusercontent.com/mayan-finance/swap-sdk/main/src/evm/MayanFastMctpArtifact.ts",
+    "mayanArtifactSha256": "f95250f6b4fe30500e0d038a1f1edb1596e5536196dd45b56d52d7b50e9a05aa",
+    "circleAddresses": "https://developers.circle.com/cctp/references/contract-addresses.md"
+  },
+  "abi": [
+    "function swapAndStartBridgeTokensViaMayan(tuple(bytes32 transactionId,string bridge,string integrator,address referrer,address sendingAssetId,address receiver,uint256 minAmount,uint256 destinationChainId,bool hasSourceSwaps,bool hasDestinationCall) bridgeData,tuple(address callTo,address approveTo,address sendingAssetId,address receivingAssetId,uint256 fromAmount,bytes callData,bool requiresDeposit)[] swapData,tuple(bytes32 nonEVMReceiver,address mayanProtocol,bytes protocolData,address swapProtocol,bytes swapData,address middleToken,uint256 minMiddleAmount,address refundRecipient,uint256 mayanAmountIn) mayanData) payable",
+    "function startBridgeTokensViaMayan(tuple(bytes32 transactionId,string bridge,string integrator,address referrer,address sendingAssetId,address receiver,uint256 minAmount,uint256 destinationChainId,bool hasSourceSwaps,bool hasDestinationCall) bridgeData,tuple(bytes32 nonEVMReceiver,address mayanProtocol,bytes protocolData,address swapProtocol,bytes swapData,address middleToken,uint256 minMiddleAmount,address refundRecipient,uint256 mayanAmountIn) mayanData) payable"
+  ],
+  "selectors": [
+    "0x80c65808",
+    "0xb4875292"
+  ],
+  "observations": [
+    {
+      "endpoint": "https://eth.rpc.blxrbdn.com",
+      "block": "0x191aa56",
+      "blockHash": "0xfe65f6f983a2d278300ad05bc88fa6b3f7d4de20f7ee091fe4487595494f16cb",
+      "pins": {
+        "diamond": {
+          "address": "0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE",
+          "codeHash": "0x828f8a0694bfba25c80a406283f149d701cdc944acbbc18b57315cf157db9220"
+        },
+        "facet": {
+          "address": "0x124Aa9169E6c0851a4A54D0ebb9158f2313d9Dd8",
+          "codeHash": "0xa5ba09551e64d31cc16d82f5546cd3a79e8c1ac1e44bf6fc558139a0025e36db"
+        },
+        "forwarder": {
+          "address": "0x337685fdaB40D39bd02028545a4FfA7D287cC3E2",
+          "codeHash": "0xb0f42a5e56d1dbfc5cc640c605c24152166bf2e08d68ce85affaf7b7d2fdd7ac"
+        },
+        "fastMctp": {
+          "address": "0xC1062b7C5Dc8E4b1Df9F200fe360cDc0eD6e7741",
+          "codeHash": "0x8b1adbfa3c8efc22c6dbd74874a4a14930bfbeb085dac9a52ddb85f7eb418cde"
+        },
+        "circleMessenger": {
+          "address": "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+          "codeHash": "0xd2c8d48075d832fb7d07f6db5545a1bee37fdf886325c441a8dd1cef4c9dae99",
+          "implementationSlot": "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc",
+          "implementation": "0x555E272506C06e7E559d57418563742AFE363ec8",
+          "implementationCodeHash": "0x6c864e374854e06fd5d42b3e9de53ef9ad4d863b83a8c5dd1cf6e2a67fd2b535"
+        },
+        "circleTransmitter": {
+          "address": "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
+          "codeHash": "0xd2c8d48075d832fb7d07f6db5545a1bee37fdf886325c441a8dd1cef4c9dae99",
+          "implementationSlot": "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc",
+          "implementation": "0xa30C41865729C248067704d4DB9F38385Cbe1186",
+          "implementationCodeHash": "0x297080a27a2eac52d1be79af05bfa640a70b9dbc80f68fbb9e8db530e44924fd"
+        },
+        "feeManager": {
+          "address": "0x54914A963c4197172130C26D496a367bD6609D88",
+          "codeHash": "0x5fd8e68a42b3ac8d5cb2fe5ca4763d2ad85998d2576f54bde8eb6c2748a71bd3",
+          "implementationSlot": "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc",
+          "implementation": "0x791fc0461e30EA0aCddc26b708BB9a1276A17772",
+          "implementationCodeHash": "0x571f6ff4c4f48466e876e8d70382207bf2396a1c61c819196ebc0f0ccb2624d5"
+        }
+      }
+    },
+    {
+      "endpoint": "https://ethereum-public.nodies.app",
+      "block": "0x191aa56",
+      "blockHash": "0xfe65f6f983a2d278300ad05bc88fa6b3f7d4de20f7ee091fe4487595494f16cb",
+      "pins": {
+        "diamond": {
+          "address": "0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE",
+          "codeHash": "0x828f8a0694bfba25c80a406283f149d701cdc944acbbc18b57315cf157db9220"
+        },
+        "facet": {
+          "address": "0x124Aa9169E6c0851a4A54D0ebb9158f2313d9Dd8",
+          "codeHash": "0xa5ba09551e64d31cc16d82f5546cd3a79e8c1ac1e44bf6fc558139a0025e36db"
+        },
+        "forwarder": {
+          "address": "0x337685fdaB40D39bd02028545a4FfA7D287cC3E2",
+          "codeHash": "0xb0f42a5e56d1dbfc5cc640c605c24152166bf2e08d68ce85affaf7b7d2fdd7ac"
+        },
+        "fastMctp": {
+          "address": "0xC1062b7C5Dc8E4b1Df9F200fe360cDc0eD6e7741",
+          "codeHash": "0x8b1adbfa3c8efc22c6dbd74874a4a14930bfbeb085dac9a52ddb85f7eb418cde"
+        },
+        "circleMessenger": {
+          "address": "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+          "codeHash": "0xd2c8d48075d832fb7d07f6db5545a1bee37fdf886325c441a8dd1cef4c9dae99",
+          "implementationSlot": "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc",
+          "implementation": "0x555E272506C06e7E559d57418563742AFE363ec8",
+          "implementationCodeHash": "0x6c864e374854e06fd5d42b3e9de53ef9ad4d863b83a8c5dd1cf6e2a67fd2b535"
+        },
+        "circleTransmitter": {
+          "address": "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
+          "codeHash": "0xd2c8d48075d832fb7d07f6db5545a1bee37fdf886325c441a8dd1cef4c9dae99",
+          "implementationSlot": "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc",
+          "implementation": "0xa30C41865729C248067704d4DB9F38385Cbe1186",
+          "implementationCodeHash": "0x297080a27a2eac52d1be79af05bfa640a70b9dbc80f68fbb9e8db530e44924fd"
+        },
+        "feeManager": {
+          "address": "0x54914A963c4197172130C26D496a367bD6609D88",
+          "codeHash": "0x5fd8e68a42b3ac8d5cb2fe5ca4763d2ad85998d2576f54bde8eb6c2748a71bd3",
+          "implementationSlot": "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc",
+          "implementation": "0x791fc0461e30EA0aCddc26b708BB9a1276A17772",
+          "implementationCodeHash": "0x571f6ff4c4f48466e876e8d70382207bf2396a1c61c819196ebc0f0ccb2624d5"
+        }
+      }
+    }
+  ],
+  "updates": [
+    {
+      "checkedAt": "2026-11-04T00:44:10.698Z",
+      "component": "feeManager",
+      "oldImplementation": "0x25858b08b6d45Be7705c5E85528bD962F73A3C3F",
+      "newImplementation": "0x791fc0461e30EA0aCddc26b708BB9a1276A17772",
+      "newImplementationCodeHash": "0x571f6ff4c4f48466e876e8d70382207bf2396a1c61c819196ebc0f0ccb2624d5",
+      "verifiedSource": {
+        "old": "https://sourcify.dev/server/v2/contract/1/0x25858b08b6d45Be7705c5E85528bD962F73A3C3F?fields=sources,metadata,abi,compilation,runtimeBytecode",
+        "new": "https://eth.blockscout.com/api/v2/smart-contracts/0x791fc0461e30ea0acddc26b708bb9a1276a17772",
+        "newEtherscan": "https://etherscan.io/address/0x791fc0461e30ea0acddc26b708bb9a1276a17772#code",
+        "upstreamFastMctpAbi": "https://raw.githubusercontent.com/mayan-finance/swap-sdk/main/src/evm/MayanFastMctpArtifact.ts",
+        "upstreamSdk": "https://github.com/mayan-finance/swap-sdk",
+        "details": "The old source is an exact Sourcify match. Blockscout reports the new source fully verified. Its deployed runtime hash equals full bytes returned independently by both configured RPCs. The SDK artifact establishes the FastMCTP interface but does not publish FeeManager implementation source."
+      },
+      "review": "DEPLOYMENT-REFRESH-SECURITY-REVIEW.json",
+      "scope": "Exact implementation pin refresh, local fork and live qualification pending; other pins unchanged."
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "checkedAt": "2026-11-01T20:22:13.698Z",
+  "mainnetSubmissions": 0,
+  "officialRepository": "https://github.com/lifinance/contracts",
+  "commit": "e8113fdba66b0e577c6e179115fe1c8d0cc623fc",
+  "sourceHashes": {
+    "deployments": "33bf8f8fab0df70fd1dcd638369823540afcae81af66df5f66a7493ab45118b1",
+    "whitelist": "efc37803fe606e3b8f0af82959ad9a0fb370da5f9c4e713adb2c0c3af7078407"
+  },
+  "observations": [
+    {
+      "endpoint": "https://eth.rpc.blxrbdn.com",
+      "block": "0x191a566",
+      "blockHash": "0x5e7a61735b75f93aeb4e283ab95c1e58e51921438c6cf715f2b047a30dc4fc02",
+      "pins": {
+        "diamond": {
+          "address": "0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE",
+          "codeHash": "0x828f8a0694bfba25c80a406283f149d701cdc944acbbc18b57315cf157db9220"
+        },
+        "facet": {
+          "address": "0x02Db8a1c2170AEE6cd17715EcD1c567C9B296E2c",
+          "codeHash": "0xe014807aa0af9c5f735ccb002e1a54ae9152986b5f17143ba7c0c52899545040"
+        },
+        "feeForwarder": {
+          "address": "0xCE40449B773a3E6E5e769ADb4e567179d4828cbd",
+          "codeHash": "0x7ee455a6853068874bfd201f93d6383ed6d88934a922316db5575b057e2ebe74"
+        },
+        "oneInch": {
+          "address": "0x111111125421cA6dc452d289314280a0f8842A65",
+          "codeHash": "0xa5a286be4b80006cc547d7e899871aa01a0e0551e2a509233375405f92098c2f"
+        },
+        "executor": {
+          "address": "0x111116058b9828CdCDD810c502B925c14F34CA11",
+          "codeHash": "0x2745fc61ad27554b0c6862415d2840379d8168e07c59b31871989048a0947bc1"
+        }
+      },
+      "selectors": [
+        "0x736eac0b",
+        "0x2c57e884"
+      ]
+    },
+    {
+      "endpoint": "https://0xrpc.io/eth",
+      "block": "0x191a566",
+      "blockHash": "0x5e7a61735b75f93aeb4e283ab95c1e58e51921438c6cf715f2b047a30dc4fc02",
+      "pins": {
+        "diamond": {
+          "address": "0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE",
+          "codeHash": "0x828f8a0694bfba25c80a406283f149d701cdc944acbbc18b57315cf157db9220"
+        },
+        "facet": {
+          "address": "0x02Db8a1c2170AEE6cd17715EcD1c567C9B296E2c",
+          "codeHash": "0xe014807aa0af9c5f735ccb002e1a54ae9152986b5f17143ba7c0c52899545040"
+        },
+        "feeForwarder": {
+          "address": "0xCE40449B773a3E6E5e769ADb4e567179d4828cbd",
+          "codeHash": "0x7ee455a6853068874bfd201f93d6383ed6d88934a922316db5575b057e2ebe74"
+        },
+        "oneInch": {
+          "address": "0x111111125421cA6dc452d289314280a0f8842A65",
+          "codeHash": "0xa5a286be4b80006cc547d7e899871aa01a0e0551e2a509233375405f92098c2f"
+        },
+        "executor": {
+          "address": "0x111116058b9828CdCDD810c502B925c14F34CA11",
+          "codeHash": "0x2745fc61ad27554b0c6862415d2840379d8168e07c59b31871989048a0947bc1"
+        }
+      },
+      "selectors": [
+        "0x736eac0b",
+        "0x2c57e884"
+      ]
+    }
+  ]
+}

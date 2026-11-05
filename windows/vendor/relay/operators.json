@@ -1,0 +1,20 @@
+{
+  "source": "https://api.relay.link/chains",
+  "readOnly": true,
+  "ethereum": [
+    "0xf70da97812cb96acdf810712aa562db8dfa3dbef",
+    "0x56c262027e0de4aea31d2489529cb25d23e58a8b",
+    "0xabb2acd3be814a80e502575d6c1dc5f789e9cd10",
+    "0xa67d7eb4dc68fa6ce8e34ef8cadaf075b9893fbb",
+    "0xada5bb90d0de0bd1b6f3938708f49295a8d1f7cb",
+    "0xa5a5491bca93dd4c076e4906e79e7673f4a5a142",
+    "0x370a7e2d300c14d79d4a7ee07aaca46c4b3012cf",
+    "0xca7ded7e4f4ba8ab3b10009236ae6d1b95094589",
+    "0x331d9a049d496385998067abf6cbb6371c8d2466",
+    "0x18dd3c14e34c1bc379f7538068c59160d9f68e25"
+  ],
+  "solana": [
+    "F7p3dFrjRTbtRp8FRF6qHLomXbKRBzpvBLjtQcfcgmNe",
+    "DNLbQ4t95LLPevvLdcFzN8RHNN83ntQJLt26E8VTnE7p"
+  ]
+}

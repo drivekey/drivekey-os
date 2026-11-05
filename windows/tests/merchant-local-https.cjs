@@ -1,0 +1,19 @@
+// Real loopback HTTPS receiver; payment evidence remains an explicit local fixture.
+const {createRequire}=require('node:module'),https=require('node:https'),fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),{randomBytes,createHash}=require('node:crypto');
+const forge=createRequire(require.resolve('@hinkal/common'))('node-forge'),{PGlite}=require('@electric-sql/pglite'),{Wallet}=require('ethers');
+const {CheckoutService,deliverWebhook,verifyWebhook}=require('../dist/checkout-service.cjs');
+async function run(){const root=path.resolve(__dirname,'..'),keys=forge.pki.rsa.generateKeyPair(2048),cert=forge.pki.createCertificate();cert.publicKey=keys.publicKey;cert.serialNumber='01';cert.validity.notBefore=new Date(Date.now()-60000);cert.validity.notAfter=new Date(Date.now()+3600000);cert.setSubject([{name:'commonName',value:'localhost'}]);cert.setIssuer(cert.subject.attributes);cert.setExtensions([{name:'basicConstraints',cA:true},{name:'subjectAltName',altNames:[{type:7,ip:'127.0.0.1'},{type:2,value:'localhost'}]}]);cert.sign(keys.privateKey,forge.md.sha256.create());const ca=forge.pki.certificateToPem(cert),secret=randomBytes(48).toString('base64'),received=[];
+ const server=https.createServer({key:forge.pki.privateKeyToPem(keys.privateKey),cert:ca},(req,res)=>{let body='';req.on('data',b=>body+=b);req.on('end',()=>{const valid=verifyWebhook(secret,req.headers['x-drivekey-timestamp']||'',body,req.headers['x-drivekey-signature']||'');received.push({body,event:req.headers['x-drivekey-event'],valid});res.statusCode=valid?(received.length===1?503:200):401;res.end();});});
+ const db=new PGlite();try{
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const url='https://127.0.0.1:'+server.address().port+'/webhook';
+  await db.exec(fs.readFileSync(path.join(root,'merchant/schema.sql'),'utf8'));const checkout=new CheckoutService(db,async i=>[{chain:i.chain,asset:i.asset,recipient:i.address,amount:i.amount,transactionHash:'0x'+'a'.repeat(64),eventIndex:0,chainTime:new Date().toISOString(),canonical:true,proof:{fixtureOnly:true}}]);
+  await checkout.provision('ethereum',[Wallet.createRandom().address]);const invoice=await checkout.create({chain:'ethereum',asset:'ETH',amount:'1000',expiresInSeconds:600},'local-https-invoice-0001');await checkout.observe(invoice.public_token,'0x'+'a'.repeat(64));
+  const send=(target,init)=>new Promise((resolve,reject)=>{assert.equal(target,url);const req=https.request(target,{method:'POST',headers:init.headers,ca},res=>{res.resume();res.on('end',()=>resolve(new Response('',{status:res.statusCode})));});req.on('error',reject);req.end(init.body);});
+  await deliverWebhook(db,url,secret,send);assert.equal(received.length,1);assert.equal(received[0].valid,true);
+  await db.query("UPDATE webhook_outbox SET available_at=now()-interval '1 second'");await deliverWebhook(db,url,secret,send);
+  assert.equal(received.length,2);assert.equal(received[1].valid,true);assert.equal(received[0].event,received[1].event);assert.equal(received[0].body,received[1].body);
+  const row=(await db.query('SELECT attempts,delivered_at FROM webhook_outbox')).rows[0];assert.equal(row.attempts,2);assert.ok(row.delivered_at);
+  assert.equal((await send(url,{headers:{},body:'altered'})).status,401);
+  const result={passed:true,checkedAt:new Date().toISOString(),evidenceLevel:'local-loopback-HTTPS-and-database',paymentEvidence:'fixture-only',mainnetTransactions:0,externalWebhooks:0,attempts:row.attempts,authenticationVerified:true,retryBodyStable:true,eventIdStable:true,alteredUnauthenticatedRejected:true,certificateSHA256:createHash('sha256').update(ca).digest('hex')};fs.writeFileSync(path.join(root,'verification/MERCHANT-LOCAL-HTTPS.json'),JSON.stringify(result,null,2));console.log(JSON.stringify(result));
+ }finally{await db.close();await new Promise(resolve=>server.close(resolve));}}
+run().catch(e=>{console.error(e.message);process.exitCode=1;});

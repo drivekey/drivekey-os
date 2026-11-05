@@ -1,0 +1,21 @@
+const {test,before}=require('node:test'),assert=require('node:assert/strict'),{randomUUID}=require('node:crypto'),{spawnSync}=require('node:child_process'),{Transaction,Wallet}=require('ethers');
+const {UNISWAP_V3,SWAP_ROUTER,SWAP_TOKEN,swapCalldata,swapFingerprint,validateSwap,verifySwapResponse}=require('../dist/swap.cjs');
+let vault;const password='Local cryptography fixture, never fund this vault!';
+function worker(j){const p=spawnSync(process.execPath,['dist/worker.cjs'],{input:JSON.stringify(j),encoding:'utf8',windowsHide:true});const r=JSON.parse(p.stdout);if(!r.ok)throw Error(r.error);return r.result;}
+before(()=>{vault=worker({action:'create',password});});
+function request(tokenIn='ETH',action='swap'){
+ const now=Date.now(),r={version:9,action,provider:'uniswap-v3',chain:'ethereum',network:'ethereum',requestId:randomUUID(),deviceId:vault.public.deviceId,createdAt:new Date(now).toISOString(),expiresAt:new Date(now+300000).toISOString(),from:vault.public.evmAddress,recipient:action==='swap'?Wallet.createRandom().address:vault.public.evmAddress,tokenIn,tokenOut:tokenIn==='ETH'?'USDC':'ETH',amount:action==='revoke'?'0':tokenIn==='ETH'?'100000000000000':'100000',quotedOutput:action==='swap'?'100000':'0',minimumOutput:action==='swap'?'99000':'0',slippageBps:action==='swap'?100:0,poolFee:500,deadline:Math.floor((now+240000)/1000),maximumFee:'60000000000000',routerCodeHash:UNISWAP_V3.routerCodeHash};
+ r.unsignedTransaction=Transaction.from({type:2,chainId:1,nonce:0,to:action==='swap'?UNISWAP_V3.router:require('../dist/payment.cjs').CHAINS.ethereum.usdc,data:swapCalldata(r),value:action==='swap'&&tokenIn==='ETH'?r.amount:0,gasLimit:300000,maxFeePerGas:200000000,maxPriorityFeePerGas:100000000}).unsignedSerialized;r.fingerprint=swapFingerprint(r);return r;
+}
+test('same application worker signs and recovers ETH/USDC swaps, bounded approval and revocation',()=>{
+ for(const [token,action]of [['ETH','swap'],['USDC','swap'],['USDC','approve'],['USDC','revoke']]){const r=request(token,action),review=worker({action:'review',vault,request:r});assert.equal(review.spender,UNISWAP_V3.router);const s=worker({action:'sign',vault,password,request:r,fingerprint:r.fingerprint});assert.equal(verifySwapResponse(s,r,vault.public).transactionHash,s.transactionHash);assert.equal(worker({action:'verify-saved',vault,request:r,response:s}).response.transactionHash,s.transactionHash);assert.equal(verifySwapResponse(s,r,vault.public,Date.parse(r.expiresAt)+1,false).transactionHash,s.transactionHash);assert.throws(()=>verifySwapResponse(s,r,vault.public,Date.parse(r.expiresAt)+1,true));}
+});
+test('independent reconstruction rejects extra calls, changed recipients, spender, chain, tokens and excessive slippage',()=>{
+ const r=request('USDC');
+ for(const change of [{recipient:Wallet.createRandom().address},{minimumOutput:'98999'},{chain:'sepolia'},{routerCodeHash:'0x'+'0'.repeat(64)},{amount:'99999999999999999999999999999999999999'}]){const bad={...r,...change};bad.fingerprint=swapFingerprint(bad);assert.throws(()=>validateSwap(bad));}
+ const tx=Transaction.from(r.unsignedTransaction),calls=SWAP_ROUTER.decodeFunctionData('multicall',tx.data)[0];tx.data=SWAP_ROUTER.encodeFunctionData('multicall',[[...calls,SWAP_ROUTER.encodeFunctionData('unwrapWETH9',[0,Wallet.createRandom().address])]]);const bad={...r,unsignedTransaction:tx.unsignedSerialized};bad.fingerprint=swapFingerprint(bad);assert.throws(()=>validateSwap(bad),/Unreviewed/);
+ const approve=request('USDC','approve'),a=Transaction.from(approve.unsignedTransaction);a.data=SWAP_TOKEN.encodeFunctionData('approve',[UNISWAP_V3.router,2n**256n-1n]);const unlimited={...approve,unsignedTransaction:a.unsignedSerialized};unlimited.fingerprint=swapFingerprint(unlimited);assert.throws(()=>validateSwap(unlimited),/Unreviewed/);
+});
+test('wallet switching, altered signature context and stale signing are refused',()=>{
+ const r=request(),s=worker({action:'sign',vault,password,request:r,fingerprint:r.fingerprint});assert.throws(()=>verifySwapResponse(s,r,{...vault.public,evmAddress:Wallet.createRandom().address}),/wallet/);assert.throws(()=>verifySwapResponse({...s,requestId:randomUUID()},r,vault.public));assert.throws(()=>validateSwap(r,r.deadline*1000));
+});

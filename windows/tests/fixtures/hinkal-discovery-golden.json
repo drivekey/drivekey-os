@@ -1,0 +1,952 @@
+{
+  "baselineFingerprint": "2fb997882ea0a67d3e5ea8185adff3ca8d055f72632da8365aab2dcf1c5539c2",
+  "evidenceLevel": "real-SDK-functions-with-synthetic-HTTP-transport",
+  "networkRequests": 0,
+  "blockchainSignatures": 0,
+  "cases": [
+    {
+      "id": "ethereum-ETH-swap-quote",
+      "input": {
+        "chain": "ethereum",
+        "tokenIn": "ETH",
+        "action": "swap-quote",
+        "amount": "1000000000000000"
+      }
+    },
+    {
+      "id": "ethereum-ETH-swap-fee",
+      "input": {
+        "chain": "ethereum",
+        "tokenIn": "ETH",
+        "action": "swap-fee",
+        "amount": "1000000000000000"
+      }
+    },
+    {
+      "id": "ethereum-ETH-withdrawal-fee",
+      "input": {
+        "chain": "ethereum",
+        "tokenIn": "ETH",
+        "action": "withdrawal-fee",
+        "amount": "1000000000000000"
+      }
+    },
+    {
+      "id": "ethereum-USDC-swap-quote",
+      "input": {
+        "chain": "ethereum",
+        "tokenIn": "USDC",
+        "action": "swap-quote",
+        "amount": "100000"
+      }
+    },
+    {
+      "id": "ethereum-USDC-swap-fee",
+      "input": {
+        "chain": "ethereum",
+        "tokenIn": "USDC",
+        "action": "swap-fee",
+        "amount": "100000"
+      }
+    },
+    {
+      "id": "ethereum-USDC-withdrawal-fee",
+      "input": {
+        "chain": "ethereum",
+        "tokenIn": "USDC",
+        "action": "withdrawal-fee",
+        "amount": "100000"
+      }
+    },
+    {
+      "id": "solana-SOL-swap-quote",
+      "input": {
+        "chain": "solana",
+        "tokenIn": "SOL",
+        "action": "swap-quote",
+        "amount": "1000000"
+      }
+    },
+    {
+      "id": "solana-SOL-swap-fee",
+      "input": {
+        "chain": "solana",
+        "tokenIn": "SOL",
+        "action": "swap-fee",
+        "amount": "1000000"
+      }
+    },
+    {
+      "id": "solana-SOL-withdrawal-fee",
+      "input": {
+        "chain": "solana",
+        "tokenIn": "SOL",
+        "action": "withdrawal-fee",
+        "amount": "1000000"
+      }
+    },
+    {
+      "id": "solana-USDC-swap-quote",
+      "input": {
+        "chain": "solana",
+        "tokenIn": "USDC",
+        "action": "swap-quote",
+        "amount": "100000"
+      }
+    },
+    {
+      "id": "solana-USDC-swap-fee",
+      "input": {
+        "chain": "solana",
+        "tokenIn": "USDC",
+        "action": "swap-fee",
+        "amount": "100000"
+      }
+    },
+    {
+      "id": "solana-USDC-withdrawal-fee",
+      "input": {
+        "chain": "solana",
+        "tokenIn": "USDC",
+        "action": "withdrawal-fee",
+        "amount": "100000"
+      }
+    },
+    {
+      "id": "ethereum-quote-error",
+      "mode": "quote-error",
+      "input": {
+        "chain": "ethereum",
+        "tokenIn": "ETH",
+        "action": "swap-quote",
+        "amount": "1000000"
+      }
+    },
+    {
+      "id": "ethereum-missing-token",
+      "mode": "missing-token",
+      "input": {
+        "chain": "ethereum",
+        "tokenIn": "ETH",
+        "action": "swap-quote",
+        "amount": "1000000"
+      }
+    },
+    {
+      "id": "solana-quote-error",
+      "mode": "quote-error",
+      "input": {
+        "chain": "solana",
+        "tokenIn": "SOL",
+        "action": "swap-quote",
+        "amount": "1000000"
+      }
+    },
+    {
+      "id": "solana-missing-token",
+      "mode": "missing-token",
+      "input": {
+        "chain": "solana",
+        "tokenIn": "SOL",
+        "action": "swap-quote",
+        "amount": "1000000"
+      }
+    },
+    {
+      "id": "invalid-chain",
+      "input": {
+        "chain": "bitcoin",
+        "tokenIn": "BTC",
+        "action": "swap-quote",
+        "amount": "1"
+      }
+    },
+    {
+      "id": "invalid-asset",
+      "input": {
+        "chain": "solana",
+        "tokenIn": "ETH",
+        "action": "swap-quote",
+        "amount": "1"
+      }
+    },
+    {
+      "id": "zero-amount",
+      "input": {
+        "chain": "ethereum",
+        "tokenIn": "ETH",
+        "action": "swap-quote",
+        "amount": "0"
+      }
+    }
+  ],
+  "expected": [
+    {
+      "id": "ethereum-ETH-swap-quote",
+      "ok": true,
+      "result": {
+        "provider": "hinkal",
+        "pin": {
+          "sdk": "0.4.1",
+          "ethereumChainId": 1,
+          "solanaChainId": 501,
+          "ethereumContract": "0x7cb60446d7635C68EDf1c568cac74A1f98c1Cfa4",
+          "ethereumCodeHash": "0xba5c6b85f6446750eca69239ef88931d952e004bde704822c13d836c9cd4680a",
+          "solanaProgram": "8LLNFE62Lr9rJLvmPsTsFttrcmwYrEykZwvpyYDW4Nc2",
+          "proofEndpoint": "https://enclave-server.hinkal.io",
+          "proofResponseSigner": "0x655C3Aa937530E06A336458D1CF168d297B597A2",
+          "sdkLoginMessage": "Sign to deterministically derive your Hinkal shielded account keys."
+        },
+        "request": {
+          "chain": "ethereum",
+          "action": "swap-quote",
+          "tokenIn": "ETH",
+          "amount": "1000000000000000"
+        },
+        "result": {
+          "outSwapAmountValue": "123456",
+          "lifiDataValue": "0x1234"
+        },
+        "evidenceLevel": "live-public-provider-read",
+        "executionEnabled": false,
+        "remaining": "Proof intent, contract/program decoding, bounded source signing, independent private-balance/destination settlement and recovery qualification"
+      },
+      "calls": [
+        {
+          "endpoint": "/server/get-tokens-info",
+          "body": {
+            "chainId": 1,
+            "tokenAddresses": [
+              "0x0000000000000000000000000000000000000000",
+              "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+            ],
+            "waitForOffsetUpdate": false
+          }
+        },
+        {
+          "endpoint": "/server/LifiBridgeData",
+          "body": {
+            "fromChain": 1,
+            "toChain": 1,
+            "fromToken": "0x0000000000000000000000000000000000000000",
+            "toToken": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+            "fromAddress": "0xfF0b792E9833B8aFb8BDE1f6695717e1A87968A3",
+            "order": "FASTEST",
+            "slippage": 0.007,
+            "fromAmount": "1000000000000000"
+          }
+        }
+      ],
+      "solanaSwapperBindingVerified": false
+    },
+    {
+      "id": "ethereum-ETH-swap-fee",
+      "ok": true,
+      "result": {
+        "provider": "hinkal",
+        "pin": {
+          "sdk": "0.4.1",
+          "ethereumChainId": 1,
+          "solanaChainId": 501,
+          "ethereumContract": "0x7cb60446d7635C68EDf1c568cac74A1f98c1Cfa4",
+          "ethereumCodeHash": "0xba5c6b85f6446750eca69239ef88931d952e004bde704822c13d836c9cd4680a",
+          "solanaProgram": "8LLNFE62Lr9rJLvmPsTsFttrcmwYrEykZwvpyYDW4Nc2",
+          "proofEndpoint": "https://enclave-server.hinkal.io",
+          "proofResponseSigner": "0x655C3Aa937530E06A336458D1CF168d297B597A2",
+          "sdkLoginMessage": "Sign to deterministically derive your Hinkal shielded account keys."
+        },
+        "request": {
+          "chain": "ethereum",
+          "action": "swap-fee",
+          "tokenIn": "ETH",
+          "amount": "1000000000000000"
+        },
+        "result": {
+          "feeToken": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          "flatFee": "7",
+          "variableRate": "35"
+        },
+        "evidenceLevel": "live-public-provider-read",
+        "executionEnabled": false,
+        "remaining": "Proof intent, contract/program decoding, bounded source signing, independent private-balance/destination settlement and recovery qualification"
+      },
+      "calls": [
+        {
+          "endpoint": "/server/get-tokens-info",
+          "body": {
+            "chainId": 1,
+            "tokenAddresses": [
+              "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+            ],
+            "waitForOffsetUpdate": false
+          }
+        },
+        {
+          "endpoint": "/data-server/gas-estimation/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48/3/Lifi/undefined",
+          "body": {
+            "calls": [],
+            "chainId": 1
+          }
+        }
+      ],
+      "solanaSwapperBindingVerified": false
+    },
+    {
+      "id": "ethereum-ETH-withdrawal-fee",
+      "ok": true,
+      "result": {
+        "provider": "hinkal",
+        "pin": {
+          "sdk": "0.4.1",
+          "ethereumChainId": 1,
+          "solanaChainId": 501,
+          "ethereumContract": "0x7cb60446d7635C68EDf1c568cac74A1f98c1Cfa4",
+          "ethereumCodeHash": "0xba5c6b85f6446750eca69239ef88931d952e004bde704822c13d836c9cd4680a",
+          "solanaProgram": "8LLNFE62Lr9rJLvmPsTsFttrcmwYrEykZwvpyYDW4Nc2",
+          "proofEndpoint": "https://enclave-server.hinkal.io",
+          "proofResponseSigner": "0x655C3Aa937530E06A336458D1CF168d297B597A2",
+          "sdkLoginMessage": "Sign to deterministically derive your Hinkal shielded account keys."
+        },
+        "request": {
+          "chain": "ethereum",
+          "action": "withdrawal-fee",
+          "tokenIn": "ETH",
+          "amount": "1000000000000000"
+        },
+        "result": {
+          "feeToken": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          "flatFee": "7",
+          "variableRate": "25"
+        },
+        "evidenceLevel": "live-public-provider-read",
+        "executionEnabled": false,
+        "remaining": "Proof intent, contract/program decoding, bounded source signing, independent private-balance/destination settlement and recovery qualification"
+      },
+      "calls": [
+        {
+          "endpoint": "/server/get-tokens-info",
+          "body": {
+            "chainId": 1,
+            "tokenAddresses": [
+              "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+            ],
+            "waitForOffsetUpdate": false
+          }
+        },
+        {
+          "endpoint": "/data-server/gas-estimation/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48/1/Transact/undefined",
+          "body": {
+            "calls": [],
+            "chainId": 1
+          }
+        }
+      ],
+      "solanaSwapperBindingVerified": false
+    },
+    {
+      "id": "ethereum-USDC-swap-quote",
+      "ok": true,
+      "result": {
+        "provider": "hinkal",
+        "pin": {
+          "sdk": "0.4.1",
+          "ethereumChainId": 1,
+          "solanaChainId": 501,
+          "ethereumContract": "0x7cb60446d7635C68EDf1c568cac74A1f98c1Cfa4",
+          "ethereumCodeHash": "0xba5c6b85f6446750eca69239ef88931d952e004bde704822c13d836c9cd4680a",
+          "solanaProgram": "8LLNFE62Lr9rJLvmPsTsFttrcmwYrEykZwvpyYDW4Nc2",
+          "proofEndpoint": "https://enclave-server.hinkal.io",
+          "proofResponseSigner": "0x655C3Aa937530E06A336458D1CF168d297B597A2",
+          "sdkLoginMessage": "Sign to deterministically derive your Hinkal shielded account keys."
+        },
+        "request": {
+          "chain": "ethereum",
+          "action": "swap-quote",
+          "tokenIn": "USDC",
+          "amount": "100000"
+        },
+        "result": {
+          "outSwapAmountValue": "123456",
+          "lifiDataValue": "0x1234"
+        },
+        "evidenceLevel": "live-public-provider-read",
+        "executionEnabled": false,
+        "remaining": "Proof intent, contract/program decoding, bounded source signing, independent private-balance/destination settlement and recovery qualification"
+      },
+      "calls": [
+        {
+          "endpoint": "/server/get-tokens-info",
+          "body": {
+            "chainId": 1,
+            "tokenAddresses": [
+              "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+              "0x0000000000000000000000000000000000000000"
+            ],
+            "waitForOffsetUpdate": false
+          }
+        },
+        {
+          "endpoint": "/server/LifiBridgeData",
+          "body": {
+            "fromChain": 1,
+            "toChain": 1,
+            "fromToken": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+            "toToken": "0x0000000000000000000000000000000000000000",
+            "fromAddress": "0xfF0b792E9833B8aFb8BDE1f6695717e1A87968A3",
+            "order": "FASTEST",
+            "slippage": 0.007,
+            "fromAmount": "100000"
+          }
+        }
+      ],
+      "solanaSwapperBindingVerified": false
+    },
+    {
+      "id": "ethereum-USDC-swap-fee",
+      "ok": true,
+      "result": {
+        "provider": "hinkal",
+        "pin": {
+          "sdk": "0.4.1",
+          "ethereumChainId": 1,
+          "solanaChainId": 501,
+          "ethereumContract": "0x7cb60446d7635C68EDf1c568cac74A1f98c1Cfa4",
+          "ethereumCodeHash": "0xba5c6b85f6446750eca69239ef88931d952e004bde704822c13d836c9cd4680a",
+          "solanaProgram": "8LLNFE62Lr9rJLvmPsTsFttrcmwYrEykZwvpyYDW4Nc2",
+          "proofEndpoint": "https://enclave-server.hinkal.io",
+          "proofResponseSigner": "0x655C3Aa937530E06A336458D1CF168d297B597A2",
+          "sdkLoginMessage": "Sign to deterministically derive your Hinkal shielded account keys."
+        },
+        "request": {
+          "chain": "ethereum",
+          "action": "swap-fee",
+          "tokenIn": "USDC",
+          "amount": "100000"
+        },
+        "result": {
+          "feeToken": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          "flatFee": "7",
+          "variableRate": "35"
+        },
+        "evidenceLevel": "live-public-provider-read",
+        "executionEnabled": false,
+        "remaining": "Proof intent, contract/program decoding, bounded source signing, independent private-balance/destination settlement and recovery qualification"
+      },
+      "calls": [
+        {
+          "endpoint": "/server/get-tokens-info",
+          "body": {
+            "chainId": 1,
+            "tokenAddresses": [
+              "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+            ],
+            "waitForOffsetUpdate": false
+          }
+        },
+        {
+          "endpoint": "/data-server/gas-estimation/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48/3/Lifi/undefined",
+          "body": {
+            "calls": [],
+            "chainId": 1
+          }
+        }
+      ],
+      "solanaSwapperBindingVerified": false
+    },
+    {
+      "id": "ethereum-USDC-withdrawal-fee",
+      "ok": true,
+      "result": {
+        "provider": "hinkal",
+        "pin": {
+          "sdk": "0.4.1",
+          "ethereumChainId": 1,
+          "solanaChainId": 501,
+          "ethereumContract": "0x7cb60446d7635C68EDf1c568cac74A1f98c1Cfa4",
+          "ethereumCodeHash": "0xba5c6b85f6446750eca69239ef88931d952e004bde704822c13d836c9cd4680a",
+          "solanaProgram": "8LLNFE62Lr9rJLvmPsTsFttrcmwYrEykZwvpyYDW4Nc2",
+          "proofEndpoint": "https://enclave-server.hinkal.io",
+          "proofResponseSigner": "0x655C3Aa937530E06A336458D1CF168d297B597A2",
+          "sdkLoginMessage": "Sign to deterministically derive your Hinkal shielded account keys."
+        },
+        "request": {
+          "chain": "ethereum",
+          "action": "withdrawal-fee",
+          "tokenIn": "USDC",
+          "amount": "100000"
+        },
+        "result": {
+          "feeToken": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          "flatFee": "7",
+          "variableRate": "25"
+        },
+        "evidenceLevel": "live-public-provider-read",
+        "executionEnabled": false,
+        "remaining": "Proof intent, contract/program decoding, bounded source signing, independent private-balance/destination settlement and recovery qualification"
+      },
+      "calls": [
+        {
+          "endpoint": "/server/get-tokens-info",
+          "body": {
+            "chainId": 1,
+            "tokenAddresses": [
+              "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+            ],
+            "waitForOffsetUpdate": false
+          }
+        },
+        {
+          "endpoint": "/data-server/gas-estimation/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48/2/Transact/undefined",
+          "body": {
+            "calls": [],
+            "chainId": 1
+          }
+        }
+      ],
+      "solanaSwapperBindingVerified": false
+    },
+    {
+      "id": "solana-SOL-swap-quote",
+      "ok": true,
+      "result": {
+        "provider": "hinkal",
+        "pin": {
+          "sdk": "0.4.1",
+          "ethereumChainId": 1,
+          "solanaChainId": 501,
+          "ethereumContract": "0x7cb60446d7635C68EDf1c568cac74A1f98c1Cfa4",
+          "ethereumCodeHash": "0xba5c6b85f6446750eca69239ef88931d952e004bde704822c13d836c9cd4680a",
+          "solanaProgram": "8LLNFE62Lr9rJLvmPsTsFttrcmwYrEykZwvpyYDW4Nc2",
+          "proofEndpoint": "https://enclave-server.hinkal.io",
+          "proofResponseSigner": "0x655C3Aa937530E06A336458D1CF168d297B597A2",
+          "sdkLoginMessage": "Sign to deterministically derive your Hinkal shielded account keys."
+        },
+        "request": {
+          "chain": "solana",
+          "action": "swap-quote",
+          "tokenIn": "SOL",
+          "amount": "1000000"
+        },
+        "result": {
+          "outSwapAmountValue": "123456",
+          "okxDataValue": "{\"code\":\"0\",\"data\":{\"routerResult\":{\"toTokenAmount\":\"123456\"}},\"swapperAccountSalt\":\"<fresh-public-salt>\"}"
+        },
+        "evidenceLevel": "live-public-provider-read",
+        "executionEnabled": false,
+        "remaining": "Proof intent, contract/program decoding, bounded source signing, independent private-balance/destination settlement and recovery qualification"
+      },
+      "calls": [
+        {
+          "endpoint": "/server/get-tokens-info",
+          "body": {
+            "chainId": 501,
+            "tokenAddresses": [
+              "11111111111111111111111111111111",
+              "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+            ],
+            "waitForOffsetUpdate": false
+          }
+        },
+        {
+          "endpoint": "/server/OkxSwapData",
+          "body": {
+            "quote": {
+              "amount": "1000000",
+              "chainIndex": "501",
+              "fromTokenAddress": "11111111111111111111111111111111",
+              "toTokenAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+              "userWalletAddress": "<derived-swapper-account>",
+              "slippagePercent": "0.5",
+              "directRoute": true
+            }
+          }
+        }
+      ],
+      "solanaSwapperBindingVerified": true
+    },
+    {
+      "id": "solana-SOL-swap-fee",
+      "ok": true,
+      "result": {
+        "provider": "hinkal",
+        "pin": {
+          "sdk": "0.4.1",
+          "ethereumChainId": 1,
+          "solanaChainId": 501,
+          "ethereumContract": "0x7cb60446d7635C68EDf1c568cac74A1f98c1Cfa4",
+          "ethereumCodeHash": "0xba5c6b85f6446750eca69239ef88931d952e004bde704822c13d836c9cd4680a",
+          "solanaProgram": "8LLNFE62Lr9rJLvmPsTsFttrcmwYrEykZwvpyYDW4Nc2",
+          "proofEndpoint": "https://enclave-server.hinkal.io",
+          "proofResponseSigner": "0x655C3Aa937530E06A336458D1CF168d297B597A2",
+          "sdkLoginMessage": "Sign to deterministically derive your Hinkal shielded account keys."
+        },
+        "request": {
+          "chain": "solana",
+          "action": "swap-fee",
+          "tokenIn": "SOL",
+          "amount": "1000000"
+        },
+        "result": {
+          "feeToken": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "flatFee": "7",
+          "variableRate": "35"
+        },
+        "evidenceLevel": "live-public-provider-read",
+        "executionEnabled": false,
+        "remaining": "Proof intent, contract/program decoding, bounded source signing, independent private-balance/destination settlement and recovery qualification"
+      },
+      "calls": [
+        {
+          "endpoint": "/server/get-tokens-info",
+          "body": {
+            "chainId": 501,
+            "tokenAddresses": [
+              "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+            ],
+            "waitForOffsetUpdate": false
+          }
+        },
+        {
+          "endpoint": "/data-server/gas-estimation/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/3/Okx/undefined",
+          "body": {
+            "calls": [],
+            "chainId": 501
+          }
+        }
+      ],
+      "solanaSwapperBindingVerified": false
+    },
+    {
+      "id": "solana-SOL-withdrawal-fee",
+      "ok": true,
+      "result": {
+        "provider": "hinkal",
+        "pin": {
+          "sdk": "0.4.1",
+          "ethereumChainId": 1,
+          "solanaChainId": 501,
+          "ethereumContract": "0x7cb60446d7635C68EDf1c568cac74A1f98c1Cfa4",
+          "ethereumCodeHash": "0xba5c6b85f6446750eca69239ef88931d952e004bde704822c13d836c9cd4680a",
+          "solanaProgram": "8LLNFE62Lr9rJLvmPsTsFttrcmwYrEykZwvpyYDW4Nc2",
+          "proofEndpoint": "https://enclave-server.hinkal.io",
+          "proofResponseSigner": "0x655C3Aa937530E06A336458D1CF168d297B597A2",
+          "sdkLoginMessage": "Sign to deterministically derive your Hinkal shielded account keys."
+        },
+        "request": {
+          "chain": "solana",
+          "action": "withdrawal-fee",
+          "tokenIn": "SOL",
+          "amount": "1000000"
+        },
+        "result": {
+          "feeToken": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "flatFee": "7",
+          "variableRate": "25"
+        },
+        "evidenceLevel": "live-public-provider-read",
+        "executionEnabled": false,
+        "remaining": "Proof intent, contract/program decoding, bounded source signing, independent private-balance/destination settlement and recovery qualification"
+      },
+      "calls": [
+        {
+          "endpoint": "/server/get-tokens-info",
+          "body": {
+            "chainId": 501,
+            "tokenAddresses": [
+              "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+            ],
+            "waitForOffsetUpdate": false
+          }
+        },
+        {
+          "endpoint": "/data-server/gas-estimation/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/1/Transact/undefined",
+          "body": {
+            "calls": [],
+            "chainId": 501
+          }
+        }
+      ],
+      "solanaSwapperBindingVerified": false
+    },
+    {
+      "id": "solana-USDC-swap-quote",
+      "ok": true,
+      "result": {
+        "provider": "hinkal",
+        "pin": {
+          "sdk": "0.4.1",
+          "ethereumChainId": 1,
+          "solanaChainId": 501,
+          "ethereumContract": "0x7cb60446d7635C68EDf1c568cac74A1f98c1Cfa4",
+          "ethereumCodeHash": "0xba5c6b85f6446750eca69239ef88931d952e004bde704822c13d836c9cd4680a",
+          "solanaProgram": "8LLNFE62Lr9rJLvmPsTsFttrcmwYrEykZwvpyYDW4Nc2",
+          "proofEndpoint": "https://enclave-server.hinkal.io",
+          "proofResponseSigner": "0x655C3Aa937530E06A336458D1CF168d297B597A2",
+          "sdkLoginMessage": "Sign to deterministically derive your Hinkal shielded account keys."
+        },
+        "request": {
+          "chain": "solana",
+          "action": "swap-quote",
+          "tokenIn": "USDC",
+          "amount": "100000"
+        },
+        "result": {
+          "outSwapAmountValue": "123456",
+          "okxDataValue": "{\"code\":\"0\",\"data\":{\"routerResult\":{\"toTokenAmount\":\"123456\"}},\"swapperAccountSalt\":\"<fresh-public-salt>\"}"
+        },
+        "evidenceLevel": "live-public-provider-read",
+        "executionEnabled": false,
+        "remaining": "Proof intent, contract/program decoding, bounded source signing, independent private-balance/destination settlement and recovery qualification"
+      },
+      "calls": [
+        {
+          "endpoint": "/server/get-tokens-info",
+          "body": {
+            "chainId": 501,
+            "tokenAddresses": [
+              "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+              "11111111111111111111111111111111"
+            ],
+            "waitForOffsetUpdate": false
+          }
+        },
+        {
+          "endpoint": "/server/OkxSwapData",
+          "body": {
+            "quote": {
+              "amount": "100000",
+              "chainIndex": "501",
+              "fromTokenAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+              "toTokenAddress": "11111111111111111111111111111111",
+              "userWalletAddress": "<derived-swapper-account>",
+              "slippagePercent": "0.5",
+              "directRoute": true
+            }
+          }
+        }
+      ],
+      "solanaSwapperBindingVerified": true
+    },
+    {
+      "id": "solana-USDC-swap-fee",
+      "ok": true,
+      "result": {
+        "provider": "hinkal",
+        "pin": {
+          "sdk": "0.4.1",
+          "ethereumChainId": 1,
+          "solanaChainId": 501,
+          "ethereumContract": "0x7cb60446d7635C68EDf1c568cac74A1f98c1Cfa4",
+          "ethereumCodeHash": "0xba5c6b85f6446750eca69239ef88931d952e004bde704822c13d836c9cd4680a",
+          "solanaProgram": "8LLNFE62Lr9rJLvmPsTsFttrcmwYrEykZwvpyYDW4Nc2",
+          "proofEndpoint": "https://enclave-server.hinkal.io",
+          "proofResponseSigner": "0x655C3Aa937530E06A336458D1CF168d297B597A2",
+          "sdkLoginMessage": "Sign to deterministically derive your Hinkal shielded account keys."
+        },
+        "request": {
+          "chain": "solana",
+          "action": "swap-fee",
+          "tokenIn": "USDC",
+          "amount": "100000"
+        },
+        "result": {
+          "feeToken": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "flatFee": "7",
+          "variableRate": "35"
+        },
+        "evidenceLevel": "live-public-provider-read",
+        "executionEnabled": false,
+        "remaining": "Proof intent, contract/program decoding, bounded source signing, independent private-balance/destination settlement and recovery qualification"
+      },
+      "calls": [
+        {
+          "endpoint": "/server/get-tokens-info",
+          "body": {
+            "chainId": 501,
+            "tokenAddresses": [
+              "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+            ],
+            "waitForOffsetUpdate": false
+          }
+        },
+        {
+          "endpoint": "/data-server/gas-estimation/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/3/Okx/undefined",
+          "body": {
+            "calls": [],
+            "chainId": 501
+          }
+        }
+      ],
+      "solanaSwapperBindingVerified": false
+    },
+    {
+      "id": "solana-USDC-withdrawal-fee",
+      "ok": true,
+      "result": {
+        "provider": "hinkal",
+        "pin": {
+          "sdk": "0.4.1",
+          "ethereumChainId": 1,
+          "solanaChainId": 501,
+          "ethereumContract": "0x7cb60446d7635C68EDf1c568cac74A1f98c1Cfa4",
+          "ethereumCodeHash": "0xba5c6b85f6446750eca69239ef88931d952e004bde704822c13d836c9cd4680a",
+          "solanaProgram": "8LLNFE62Lr9rJLvmPsTsFttrcmwYrEykZwvpyYDW4Nc2",
+          "proofEndpoint": "https://enclave-server.hinkal.io",
+          "proofResponseSigner": "0x655C3Aa937530E06A336458D1CF168d297B597A2",
+          "sdkLoginMessage": "Sign to deterministically derive your Hinkal shielded account keys."
+        },
+        "request": {
+          "chain": "solana",
+          "action": "withdrawal-fee",
+          "tokenIn": "USDC",
+          "amount": "100000"
+        },
+        "result": {
+          "feeToken": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "flatFee": "7",
+          "variableRate": "25"
+        },
+        "evidenceLevel": "live-public-provider-read",
+        "executionEnabled": false,
+        "remaining": "Proof intent, contract/program decoding, bounded source signing, independent private-balance/destination settlement and recovery qualification"
+      },
+      "calls": [
+        {
+          "endpoint": "/server/get-tokens-info",
+          "body": {
+            "chainId": 501,
+            "tokenAddresses": [
+              "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+            ],
+            "waitForOffsetUpdate": false
+          }
+        },
+        {
+          "endpoint": "/data-server/gas-estimation/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/2/Transact/undefined",
+          "body": {
+            "calls": [],
+            "chainId": 501
+          }
+        }
+      ],
+      "solanaSwapperBindingVerified": false
+    },
+    {
+      "id": "ethereum-quote-error",
+      "ok": false,
+      "error": "No Hinkal quote or fee is available at this input.",
+      "calls": [
+        {
+          "endpoint": "/server/get-tokens-info",
+          "body": {
+            "chainId": 1,
+            "tokenAddresses": [
+              "0x0000000000000000000000000000000000000000",
+              "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+            ],
+            "waitForOffsetUpdate": false
+          }
+        },
+        {
+          "endpoint": "/server/LifiBridgeData",
+          "body": {
+            "fromChain": 1,
+            "toChain": 1,
+            "fromToken": "0x0000000000000000000000000000000000000000",
+            "toToken": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+            "fromAddress": "0xfF0b792E9833B8aFb8BDE1f6695717e1A87968A3",
+            "order": "FASTEST",
+            "slippage": 0.007,
+            "fromAmount": "1000000"
+          }
+        }
+      ]
+    },
+    {
+      "id": "ethereum-missing-token",
+      "ok": false,
+      "error": "Token not found: 0x0000000000000000000000000000000000000000 on chain 1",
+      "calls": [
+        {
+          "endpoint": "/server/get-tokens-info",
+          "body": {
+            "chainId": 1,
+            "tokenAddresses": [
+              "0x0000000000000000000000000000000000000000",
+              "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+            ],
+            "waitForOffsetUpdate": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "solana-quote-error",
+      "ok": false,
+      "error": "No Hinkal quote or fee is available at this input.",
+      "calls": [
+        {
+          "endpoint": "/server/get-tokens-info",
+          "body": {
+            "chainId": 501,
+            "tokenAddresses": [
+              "11111111111111111111111111111111",
+              "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+            ],
+            "waitForOffsetUpdate": false
+          }
+        },
+        {
+          "endpoint": "/server/OkxSwapData",
+          "body": {
+            "quote": {
+              "amount": "1000000",
+              "chainIndex": "501",
+              "fromTokenAddress": "11111111111111111111111111111111",
+              "toTokenAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+              "userWalletAddress": "<derived-swapper-account>",
+              "slippagePercent": "0.5",
+              "directRoute": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "solana-missing-token",
+      "ok": false,
+      "error": "Token not found: 11111111111111111111111111111111 on chain 501",
+      "calls": [
+        {
+          "endpoint": "/server/get-tokens-info",
+          "body": {
+            "chainId": 501,
+            "tokenAddresses": [
+              "11111111111111111111111111111111",
+              "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+            ],
+            "waitForOffsetUpdate": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "invalid-chain",
+      "ok": false,
+      "error": "[\n  {\n    \"code\": \"invalid_value\",\n    \"values\": [\n      \"ethereum\",\n      \"solana\"\n    ],\n    \"path\": [\n      \"chain\"\n    ],\n    \"message\": \"Invalid option: expected one of \\\"ethereum\\\"|\\\"solana\\\"\"\n  },\n  {\n    \"code\": \"invalid_value\",\n    \"values\": [\n      \"ETH\",\n      \"SOL\",\n      \"USDC\"\n    ],\n    \"path\": [\n      \"tokenIn\"\n    ],\n    \"message\": \"Invalid option: expected one of \\\"ETH\\\"|\\\"SOL\\\"|\\\"USDC\\\"\"\n  }\n]",
+      "calls": []
+    },
+    {
+      "id": "invalid-asset",
+      "ok": false,
+      "error": "Hinkal chain/asset mismatch.",
+      "calls": []
+    },
+    {
+      "id": "zero-amount",
+      "ok": false,
+      "error": "[\n  {\n    \"origin\": \"string\",\n    \"code\": \"invalid_format\",\n    \"format\": \"regex\",\n    \"pattern\": \"/^[1-9][0-9]*$/\",\n    \"path\": [\n      \"amount\"\n    ],\n    \"message\": \"Invalid string: must match pattern /^[1-9][0-9]*$/\"\n  }\n]",
+      "calls": []
+    }
+  ]
+}

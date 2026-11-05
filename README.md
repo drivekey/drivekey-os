@@ -1,5 +1,7 @@
 # DriveKey OS
 
+[Windows desktop wallet source and verification results](windows/README.md)
+
 ### Your keys. Your rules. Your approval.
 
 **An offline wallet operating system built for self-custody and agentic finance.**

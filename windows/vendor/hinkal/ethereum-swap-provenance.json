@@ -1,0 +1,82 @@
+{
+  "checkedAt": "2026-11-01T21:57:11.535Z",
+  "evidenceLevel": "official-SDK-source-and-independent-mainnet-code-and-registration-reads",
+  "mainnetSubmissions": 0,
+  "sdk": "@hinkal/common@0.4.1",
+  "actionId": "10026689658807089592696157518906879930533768443024619118129355301502772572126",
+  "sources": [
+    {
+      "repository": "https://github.com/Hinkal-Protocol/Hinkal-Contracts-Circuits",
+      "file": "contracts/external-actions/swaps/LifiExternalAction.sol",
+      "gitBlobSHA1": "cef238d8bce52c56df04520386488e6c34bb5133",
+      "sha256": "09ef3fbe57aff5211bb3c2c8a0e3a76d8c6812fc36776e152632eb66feb8a4a3",
+      "license": "BUSL-1.1",
+      "verifiedDeploymentSourceMatch": false
+    },
+    {
+      "repository": "https://github.com/Hinkal-Protocol/Hinkal-Contracts-Circuits",
+      "file": "contracts/external-actions/swaps/ExternalActionSwap.sol",
+      "gitBlobSHA1": "9f8bf4c3c1957f4b7aecf6d686ff7f90db97c6b5",
+      "sha256": "e44fbed8e2db4103028ea3f6859e1e02f04cec04f7072c2f960686c72242ae5c",
+      "license": "BUSL-1.1",
+      "verifiedDeploymentSourceMatch": false
+    }
+  ],
+  "sourcifyVerifiedDeploymentAvailable": false,
+  "observations": [
+    {
+      "endpoint": "https://eth.rpc.blxrbdn.com",
+      "block": "0x191a740",
+      "blockHash": "0x76af68ef1c7e9a08dc6af403bb3af749b6712d3363874a02b5777805993c573f",
+      "pins": {
+        "hinkal": {
+          "address": "0x7cb60446d7635C68EDf1c568cac74A1f98c1Cfa4",
+          "codeHash": "0xba5c6b85f6446750eca69239ef88931d952e004bde704822c13d836c9cd4680a"
+        },
+        "external": {
+          "address": "0xfF0b792E9833B8aFb8BDE1f6695717e1A87968A3",
+          "codeHash": "0x994615feb4b1ed1b7c74da2980e55efbb2fa58e103486b9ee251db85b7834402"
+        },
+        "helper": {
+          "address": "0x5f912cBBB7F14E4524faAe8559666e7C79227C1b",
+          "codeHash": "0x3900a5b9e2a01d5f697c4902c4c42fb28c3403527cdf50102fbf2d2dd097dc7b"
+        }
+      },
+      "registration": "0xfF0b792E9833B8aFb8BDE1f6695717e1A87968A3",
+      "router": "0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE",
+      "helper": "0x5f912cBBB7F14E4524faAe8559666e7C79227C1b",
+      "swapDeadlineSeconds": "600"
+    },
+    {
+      "endpoint": "https://0xrpc.io/eth",
+      "block": "0x191a740",
+      "blockHash": "0x76af68ef1c7e9a08dc6af403bb3af749b6712d3363874a02b5777805993c573f",
+      "pins": {
+        "hinkal": {
+          "address": "0x7cb60446d7635C68EDf1c568cac74A1f98c1Cfa4",
+          "codeHash": "0xba5c6b85f6446750eca69239ef88931d952e004bde704822c13d836c9cd4680a"
+        },
+        "external": {
+          "address": "0xfF0b792E9833B8aFb8BDE1f6695717e1A87968A3",
+          "codeHash": "0x994615feb4b1ed1b7c74da2980e55efbb2fa58e103486b9ee251db85b7834402"
+        },
+        "helper": {
+          "address": "0x5f912cBBB7F14E4524faAe8559666e7C79227C1b",
+          "codeHash": "0x3900a5b9e2a01d5f697c4902c4c42fb28c3403527cdf50102fbf2d2dd097dc7b"
+        }
+      },
+      "registration": "0xfF0b792E9833B8aFb8BDE1f6695717e1A87968A3",
+      "router": "0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE",
+      "helper": "0x5f912cBBB7F14E4524faAe8559666e7C79227C1b",
+      "swapDeadlineSeconds": "600"
+    }
+  ],
+  "executionProfile": {
+    "input": "private native ETH",
+    "output": "private canonical USDC",
+    "router": "LI.FI with pinned 1inch path",
+    "walletTokenApproval": false,
+    "erc20InputEnabled": false,
+    "externalContractInternalApprovalOnErc20Input": "Published implementation uses unlimited internal token approval; this native-input profile does not exercise that branch."
+  }
+}

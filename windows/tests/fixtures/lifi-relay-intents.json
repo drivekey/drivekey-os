@@ -1,0 +1,205 @@
+{
+  "fixtureOnly": true,
+  "livePass": false,
+  "cases": [
+    {
+      "checkedAt": "2026-11-02T02:02:44.987Z",
+      "evidenceLevel": "public-provider-order-and-local-unsigned-composition",
+      "financialSignature": false,
+      "executionVerified": false,
+      "request": {
+        "version": 25,
+        "provider": "lifi-relay-depository",
+        "composition": "new-canonical-lifi-execution-with-independent-relay-order",
+        "action": "bridge",
+        "requestId": "cc91bc92-a203-4574-9ee8-a2827d951432",
+        "deviceId": "c70ff202-48e8-4de0-8bff-74432b3bae40",
+        "createdAt": "2026-11-02T02:02:44.987Z",
+        "expiresAt": "2026-11-02T02:05:44.987Z",
+        "from": "6dQSVENnX8qBxY5UE8K6cwjf4zdt3RBgZ4QmWJ9P7jnc",
+        "recipient": "0xA6A5Cf9964339Fd68dAEc84b32326e9B607B92d9",
+        "chain": "solana",
+        "network": "solana",
+        "destinationChain": "ethereum",
+        "asset": "USDC",
+        "tokenOut": "USDC",
+        "amount": "500000",
+        "protocolFee": "1250",
+        "quotedOutput": "452818",
+        "minimumOutput": "448335",
+        "slippageBps": 100,
+        "maximumFee": "47451",
+        "lifiQuoteHash": "0x36ba9277c40531601a41de72c356ba059ef4c23f7e6fa426b2ebc8687ff5975e",
+        "relayRequestId": "0x1793584964e1e5efac1889dba8f481c694888757622dbd8272a4683b3a205e0d",
+        "relayProtocol": {
+          "orderId": "0xeed43f89821a285456cb506cfbe64d6fa723b1f98a2aa9fcf0f8b37e220866d6",
+          "hubType": "onchain",
+          "orderData": {
+            "version": "v1",
+            "solverChainId": "base",
+            "solver": "0xf70da97812cb96acdf810712aa562db8dfa3dbef",
+            "salt": "0x956d4a78ca6a6aeaeace90ef0d22982ae24188701f8969c286a5c9224fba80cf",
+            "inputs": [
+              {
+                "payment": {
+                  "chainId": "solana",
+                  "currency": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+                  "amount": "498750",
+                  "weight": "1"
+                },
+                "refunds": [
+                  {
+                    "chainId": "solana",
+                    "recipient": "6dQSVENnX8qBxY5UE8K6cwjf4zdt3RBgZ4QmWJ9P7jnc",
+                    "currency": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+                    "minimumAmount": "0",
+                    "deadline": 1794189764,
+                    "extraData": "0x"
+                  },
+                  {
+                    "chainId": "ethereum",
+                    "recipient": "0xA6A5Cf9964339Fd68dAEc84b32326e9B607B92d9",
+                    "currency": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+                    "minimumAmount": "0",
+                    "deadline": 1794189764,
+                    "extraData": "0x0000000000000000000000000729e2a4716d9f7dd17858d5d504426d228697f7"
+                  }
+                ]
+              }
+            ],
+            "output": {
+              "chainId": "ethereum",
+              "payments": [
+                {
+                  "recipient": "0xA6A5Cf9964339Fd68dAEc84b32326e9B607B92d9",
+                  "currency": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+                  "minimumAmount": "448335",
+                  "expectedAmount": "452818"
+                }
+              ],
+              "calls": [],
+              "deadline": 1794189764,
+              "extraData": "0x0000000000000000000000000729e2a4716d9f7dd17858d5d504426d228697f7"
+            },
+            "fees": []
+          },
+          "orderSignature": "0xa3e7b958846b0bc1a62596084709a1cbd46609c3a9b517451fe4d224b37925925e98453d4b91f7b85fc0f897f61163712350ff4d66b159c01e1a2cca902c23b61c",
+          "paymentDetails": {
+            "chainId": "solana",
+            "depository": "99vQwtBwYtrqqD9YSXbdum3KBdxPAVxYTaQ3cfnJSrN2",
+            "currency": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+            "amount": "498750"
+          }
+        },
+        "accountRent": "0",
+        "blockhash": "BQkzjKtYe9vQrRkTNC4WbANa5nVJ3ezVHQmXtD7VNPn3",
+        "lastValidBlockHeight": 1000,
+        "epoch": 1074,
+        "lookupTables": [
+          {
+            "address": "Hm9fUgcn7qwDaiNTFiGh6pNtVATgnaRcmK6Bbx6EMZfP",
+            "owner": "AddressLookupTab1e1111111111111111111111111",
+            "dataBase64": "AQAAAP//////////kGoUGAAAAAAZAUZBmkocMZxdYhY41mcK5e0b28hjahZq48O7Y6k2uTd3AAB5Jok3js1R2AQG6wyqO2J5W+sQtsXclrwuDfA8v+4av74+bShdLuljNRtt7rCh6WyIFDXM1FCyZF8kzCeWC+5HZpY7N+WB3BSg9XPu7ejlSiV9g9CCxUqyCMv/0dwqcMpOWFbGEZBy5VYpprmOZtPk1QWvAOuFuSwroW/KLztPZLf6K3eHRbE0zOLZykatQ5V+5eiGSPTViHw/bADWsPg3xvp6877brTo9ZfNqq8l0MbG75MLS9uDkfKYCA0UvXWHOAQ5gr+2yJxe9YxkvVBRaP5ZaM7uC0scCnrLOHiCCZDhWdSNEKBusX4l9AgnRQYhcIZp8XvrOY9r78MIkIa0LPXWMdf10wOpIdvNVl/dw/ceHMuurmfGxayQ9epLC0DjRwkvLLPL3h5Go5j0uUovk6SOUSQCvbYgm8AY+kdFRXwXoSsB3SBkF6AlB9oyrASH5Fx8F2qs54vrrlOsVPQSRhjO7WunpTrCT4W6k/JqAD/G8Neg9C4olOJDqId9EgTruCm72tiMVPCyd7BfTdD1svgNfx89kPpQRGMfDqP9yLViizbdF+xdU2TiHkW764JYvd8ny0ia3XPsMtJazsb4oAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqYyXJY9OJInxuz0QKRSODYMLWhOZ2v8QhASOe9jb6fhZBUpTWpkpIQZNJOhxYNo4fHw1td28kruB5B+oQEEFRI2140oU4rxzSGkO4fWvXe7WVThAo22quGCwUGBzvcA8EAbd9uHudY/eGEJdvORszdq2GvxNg7kNJ/69+SjYoYv8MqfUu3foflPQUlgmg468Xhbx2y3eKChCBDV5S8+z9XIF6ErAd0gZBegJQfaMqwEh+RcfBdqrOeL665TrFT0EkbXjShTivHNIaQ7h9a9d7tZVOECjbaq4YLBQYHO9wDwQBHnVW/IxwG7udMVuzmgVB/2xst6j9I5RArHNola8E48Gm4hX/quBhPtof2NGGMA12sQ53BrrO1WYoPAAAAAAAfFAxFLkW5/hugDrMDE0VpDCMtnR5HaqMlKGEiAjPJg6N1orFpMM1rOJAQV4ZXrDy5L1YK9cUSY2/6VMChEwblRszUHpEuro6mTgJSoUNf4Bu3YqoS7N5Qs8xnYTcQGy+KDJXQPX5L1tbg732s/naz111k/VfGrKDmA8DlPrWEd6",
+            "contextSlot": 464320562
+          }
+        ],
+        "unsignedTransaction": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAGCVOd2MgLtMl8pvxZNL6u19modiaqN991xBKumlFG9LRNrxSApAk+5Sx3HM9XC4Ql9bPiDEXwDJWp2e4Nil9T605y9EWzoZrASNKpKP4HdM97i176fGRXy8y8guzw6sk8eQMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAAKD0N0oI1T+8K47DiJ9N82JyiZvsX3fj3y3zO++Tr3FUGp9UXGMd0yShWY5hpHV62i164o5tLbVxzVVshAAAAAI4lPUHIcN2HYbg/uWbVFpvNWzvU9SvFvd7xQlzjCo3LBt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKl5Jok3js1R2AQG6wyqO2J5W+sQtsXclrwuDfA8v+4av5qq+TtjBY2s2MstmvJP/jubtsMAMjYAcQAE1Lzhk1SUBQMABQIQ6wkAAwAJAxz/AAAAAAAABAIFBgkAonxqXRJwTQAHBAEKAgAKDOIEAAAAAAAABggKCwAADAoBCQcNDjALnGDaJ6O0Ez6cBwAAAAAA7tQ/iYIaKFRWy1Bs++ZNb6cjsfmKKqn88PizfiIIZtYB+QpXl9KdVthNAcDQuuP5xYxGl07rlcoOT9Un+uH/7wIBBwUFAQIQDg==",
+        "fingerprint": "0x3c781f8c13b8e58231f6918afe7901f71bcd40acbe077c8a079e6445573eb650"
+      }
+    },
+    {
+      "checkedAt": "2026-11-02T02:34:06.577Z",
+      "evidenceLevel": "public-provider-order-and-local-unsigned-composition",
+      "financialSignature": false,
+      "executionVerified": false,
+      "request": {
+        "version": 26,
+        "provider": "lifi-relay-depository",
+        "composition": "new-canonical-lifi-execution-with-independent-relay-order",
+        "action": "bridge",
+        "requestId": "2d64f7d2-c368-4b84-8fbc-67a37920d7f6",
+        "deviceId": "9750bede-91b0-45a0-bb4d-8ad347c0a460",
+        "createdAt": "2026-11-02T02:34:06.577Z",
+        "expiresAt": "2026-11-02T02:37:06.577Z",
+        "from": "0xA6A5Cf9964339Fd68dAEc84b32326e9B607B92d9",
+        "recipient": "6dQSVENnX8qBxY5UE8K6cwjf4zdt3RBgZ4QmWJ9P7jnc",
+        "chain": "ethereum",
+        "network": "ethereum",
+        "destinationChain": "solana",
+        "asset": "ETH",
+        "tokenOut": "SOL",
+        "amount": "1300000000000000",
+        "protocolFee": "3250000000000",
+        "quotedOutput": "30929863",
+        "minimumOutput": "30623657",
+        "slippageBps": 100,
+        "maximumFee": "25000000000000",
+        "lifiQuoteHash": "0xe285e413d1d3c6a5b66d3d41706a16024d7ea5a9e776fdcfc30280060311ab2c",
+        "relayRequestId": "0x1793586844b82546900b0ab9baaf4feaae2c8d3908a084774e6fecbb60e4bda1",
+        "relayProtocol": {
+          "orderId": "0x6a0dcf7f5ed6a84763dd9b101ef617a0eed6c51402d59c771b5f67fc2a1766a7",
+          "hubType": "onchain",
+          "orderData": {
+            "version": "v1",
+            "solverChainId": "base",
+            "solver": "0xf70da97812cb96acdf810712aa562db8dfa3dbef",
+            "salt": "0x4d5695d7f1f6881864f4f67363dcc23355161c1b32ece7e53a87e1bc3d8c99a8",
+            "inputs": [
+              {
+                "payment": {
+                  "chainId": "ethereum",
+                  "currency": "0x0000000000000000000000000000000000000000",
+                  "amount": "1296750000000000",
+                  "weight": "1"
+                },
+                "refunds": [
+                  {
+                    "chainId": "ethereum",
+                    "recipient": "0xA6A5Cf9964339Fd68dAEc84b32326e9B607B92d9",
+                    "currency": "0x0000000000000000000000000000000000000000",
+                    "minimumAmount": "0",
+                    "deadline": 1794191646,
+                    "extraData": "0x0000000000000000000000000729e2a4716d9f7dd17858d5d504426d228697f7"
+                  },
+                  {
+                    "chainId": "solana",
+                    "recipient": "6dQSVENnX8qBxY5UE8K6cwjf4zdt3RBgZ4QmWJ9P7jnc",
+                    "currency": "11111111111111111111111111111111",
+                    "minimumAmount": "0",
+                    "deadline": 1794191646,
+                    "extraData": "0x"
+                  }
+                ]
+              }
+            ],
+            "output": {
+              "chainId": "solana",
+              "payments": [
+                {
+                  "recipient": "6dQSVENnX8qBxY5UE8K6cwjf4zdt3RBgZ4QmWJ9P7jnc",
+                  "currency": "11111111111111111111111111111111",
+                  "minimumAmount": "30623657",
+                  "expectedAmount": "30929863"
+                }
+              ],
+              "calls": [],
+              "deadline": 1794191646,
+              "extraData": "0x"
+            },
+            "fees": []
+          },
+          "orderSignature": "0xa35eefbbaae719962e3c5559764fe2796d73125f9e8d525f3eac88785982439c0ffa67d42b61d11b4f39cfe32bce0843a3b7a2ba0afec4764b29eac945e3183f1c",
+          "paymentDetails": {
+            "chainId": "ethereum",
+            "depository": "0x4cd00e387622c35bddb9b4c962c136462338bc31",
+            "currency": "0x0000000000000000000000000000000000000000",
+            "amount": "1296750000000000"
+          }
+        },
+        "transactionId": "0xeb1ea558534ef3e5f2f4babf6744995d0aa0a5f7c9e0c3df906d070535f7a455",
+        "unsignedTransaction": "0x02f9045501808405f5e1008405f5e1008303d090941231deb6f5749ef6ce6943a275a1d3e7486f4eae87049e57d6354000b90424a3443faa000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000002406a0dcf7f5ed6a84763dd9b101ef617a0eed6c51402d59c771b5f67fc2a1766a7000000000000000000000000a6a5cf9964339fd68daec84b32326e9b607b92d9eb1ea558534ef3e5f2f4babf6744995d0aa0a5f7c9e0c3df906d070535f7a455000000000000000000000000000000000000000000000000000000000000014000000000000000000000000000000000000000000000000000000000000001800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000011f111f111f111f111f111f111f111f111f111f100000000000000000000000000000000000000000000000000049b63231ccc00000000000000000000000000000000000000000000000000000416edef1601be00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f72656c61796465706f7369746f72790000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000844726976654b657900000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000020000000000000000000000000ce40449b773a3e6e5e769adb4e567179d4828cbd000000000000000000000000ce40449b773a3e6e5e769adb4e567179d4828cbd0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000049e57d635400000000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000840e8ae67f00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000001000000000000000000000000c06ebbefd94032b85424d51906e2a335efae264b000000000000000000000000000000000000000000000000000002f4b318740000000000000000000000000000000000000000000000000000000000c0",
+        "fingerprint": "0xb07cabb2b9253378ba0e61ccf95dbdfe71e4964242a3845d4241c49ed9e1eb1f"
+      }
+    }
+  ]
+}

@@ -1,0 +1,86 @@
+{
+  "sourceReferenceFingerprint": "c4939718298c5a68cfe4cc27ddfb1d7e796c06147115e275b5b2c44b469ef1c5",
+  "status": "Engineering preview. Current Windows mainnet SOL and USDC execution remains pending.",
+  "enabledTransactions": [
+    "Ethereum ETH",
+    "Ethereum USDC",
+    "Solana SOL",
+    "Solana USDC",
+    "Sepolia payments",
+    "Solana Devnet payments"
+  ],
+  "deferredNewTransactions": [
+    "Swaps",
+    "Bridges",
+    "Hinkal",
+    "Savings"
+  ],
+  "directPaymentRegressionChecks": 67,
+  "exactPackagedWorkerGroups": 2,
+  "broaderSuite": {
+    "tests": 492,
+    "passed": 466,
+    "failed": 26,
+    "notes": "Disabled-workflow expectations and a legacy extracted-handler test mismatch remain. The full suite is not a passing qualification."
+  },
+  "correctedNativeSolanaUsdcAccountCreation": {
+    "network": "isolated local LiteSVM",
+    "nativeDialogsExercised": true,
+    "backupVerified": true,
+    "restartRecovery": true,
+    "cancellationBeforeBroadcast": true,
+    "exactSettlement": true,
+    "canonicalReceiptClaims": 1
+  },
+  "currentMainnet": {
+    "unsignedPreflightPassedOnTwoRpcs": true,
+    "finalizedSolPaymentVerified": false,
+    "finalizedUsdcPaymentVerified": false
+  },
+  "externalGates": {
+    "independentReview": false,
+    "physicalSignerIsolation": false,
+    "publisherSigning": false,
+    "installedMsixLifecycle": false,
+    "wack": false,
+    "microsoftStoreCertification": false
+  },
+  "sourceExportModifications": [
+    {
+      "path": "tools/first-funding.cjs",
+      "originalSha256": "11bf7b1ed807e9233beda4d492865a6da72a7ddd30bcba62a01ae13eb7b6c725",
+      "exportedSha256": "225ceae40c83328c9639f371bbc060b9b1a5270d299a3912f2bfc5bc6fe96394",
+      "change": "Replaced machine-specific legacy funding directory with explicit local environment configuration."
+    },
+    {
+      "path": "tools/unlock-funding-source.cjs",
+      "originalSha256": "4d649459b0a7567c92e5014f9b658d03e2c78ea5567061c64483c0905b3c4cde",
+      "exportedSha256": "b2f96ba3f4312fcd9eec127cb5bde6091643cae1cc7bf4f56c10505397cdb9e7",
+      "change": "Replaced machine-specific legacy funding directory with explicit local environment configuration."
+    },
+    {
+      "path": "ui/assets/usb-pcb-detail.png",
+      "originalSha256": "c010dead756905b6b71cd665491abeddf406cba073a3ae01960b29da11461de9",
+      "exportedSha256": "274926032dc192df812d58a7c93edcc08b8505c7960d5253c15c5c4f5660b8a7",
+      "change": "Removed embedded metadata from the exported PNG. Compressed image data is identical.",
+      "removedMetadataChunks": 13
+    },
+    {
+      "path": "ui/assets/usb-pcb-hero.png",
+      "originalSha256": "fc1fa42c85639a7a58f1be9b6928027a5e61fa6e5a61556e7267db41f5b7c57e",
+      "exportedSha256": "a4101455ac0d9a786b2c03bd3fc182a50d870f241ed9ab2f5ba6d860eee6b9d7",
+      "change": "Removed embedded metadata from the exported PNG. Compressed image data is identical.",
+      "removedMetadataChunks": 13
+    }
+  ],
+  "qualificationReportsOmitted": true,
+  "credentialsAndFundedSessionRecordsIncluded": false,
+  "exportChecks": {
+    "buildPassed": true,
+    "typecheckPassed": true,
+    "directPaymentTests": 69,
+    "failed": 0,
+    "skipped": 0,
+    "pngCompressedImageDataPreserved": true
+  }
+}

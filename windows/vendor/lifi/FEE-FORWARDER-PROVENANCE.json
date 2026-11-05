@@ -1,0 +1,131 @@
+{
+  "version": 1,
+  "readOnly": true,
+  "mainnetSubmissions": 0,
+  "checkedAt": "2026-11-04T14:40:49.517Z",
+  "officialSources": {
+    "registry": "https://github.com/lifinance/contracts/blob/main/deployments/mainnet.json",
+    "allowlist": "https://github.com/lifinance/contracts/blob/main/src/Facets/WhitelistManagerFacet.sol",
+    "forwarder": "https://github.com/lifinance/contracts/blob/main/src/Periphery/FeeForwarder.sol",
+    "caller": "https://github.com/lifinance/contracts/blob/main/src/Helpers/SwapperV2.sol"
+  },
+  "observations": [
+    {
+      "endpoint": "https://eth.rpc.blxrbdn.com",
+      "blockNumber": "0x191f2dd",
+      "blockHash": "0xac13c09974e6d6a2246a4f3dfbf6032fde736ab9f6504b70aa29f1946e5fc982",
+      "currentRegistry": "0xDe2b920506EE931a6A2ABDF566526220214FBbAE",
+      "currentForwarder": {
+        "address": "0xDe2b920506EE931a6A2ABDF566526220214FBbAE",
+        "hash": "0x99a76627aece8903612e0246c10f13a46e511a0a074d9a4e68987a28c78ebd52",
+        "bytes": 4185
+      },
+      "legacyForwarder": {
+        "address": "0xCE40449B773a3E6E5e769ADb4e567179d4828cbd",
+        "hash": "0x7ee455a6853068874bfd201f93d6383ed6d88934a922316db5575b057e2ebe74",
+        "bytes": 3037
+      },
+      "activeWhitelist": {
+        "address": "0x1841044080E6872c90Ac5048F0D1954CC546e9B7",
+        "hash": "0xd0b2d60642c0f76a1e841282452a2294fbbf520282aceb0280e04e34b4bc6b9a",
+        "bytes": 6492
+      },
+      "activeRegistry": {
+        "address": "0x69cb467EfD8044ac9eDB88F363309ab1cbFA0A15",
+        "hash": "0x5068fef5966c4d02d282a5212f5c4e86d12c4c8c3eb504cef7f2fa4132faaa6b",
+        "bytes": 994
+      }
+    },
+    {
+      "endpoint": "https://ethereum-public.nodies.app",
+      "blockNumber": "0x191f2dd",
+      "blockHash": "0xac13c09974e6d6a2246a4f3dfbf6032fde736ab9f6504b70aa29f1946e5fc982",
+      "currentRegistry": "0xDe2b920506EE931a6A2ABDF566526220214FBbAE",
+      "currentForwarder": {
+        "address": "0xDe2b920506EE931a6A2ABDF566526220214FBbAE",
+        "hash": "0x99a76627aece8903612e0246c10f13a46e511a0a074d9a4e68987a28c78ebd52",
+        "bytes": 4185
+      },
+      "legacyForwarder": {
+        "address": "0xCE40449B773a3E6E5e769ADb4e567179d4828cbd",
+        "hash": "0x7ee455a6853068874bfd201f93d6383ed6d88934a922316db5575b057e2ebe74",
+        "bytes": 3037
+      },
+      "activeWhitelist": {
+        "address": "0x1841044080E6872c90Ac5048F0D1954CC546e9B7",
+        "hash": "0xd0b2d60642c0f76a1e841282452a2294fbbf520282aceb0280e04e34b4bc6b9a",
+        "bytes": 6492
+      },
+      "activeRegistry": {
+        "address": "0x69cb467EfD8044ac9eDB88F363309ab1cbFA0A15",
+        "hash": "0x5068fef5966c4d02d282a5212f5c4e86d12c4c8c3eb504cef7f2fa4132faaa6b",
+        "bytes": 994
+      }
+    }
+  ],
+  "selectorCheckedAt": "2026-11-04T14:42:38.882Z",
+  "selectorObservations": [
+    {
+      "endpoint": "https://eth.rpc.blxrbdn.com",
+      "blockNumber": "0x191f2e6",
+      "blockHash": "0x73193fed344f7c6129eb32803b3478d3f5608072dbf2af1767abdf4e8cf35834",
+      "pairs": [
+        {
+          "address": "0xCE40449B773a3E6E5e769ADb4e567179d4828cbd",
+          "name": "forwardNativeFees",
+          "selector": "0x0e8ae67f",
+          "allowed": false
+        },
+        {
+          "address": "0xDe2b920506EE931a6A2ABDF566526220214FBbAE",
+          "name": "forwardNativeFees",
+          "selector": "0x0e8ae67f",
+          "allowed": true
+        },
+        {
+          "address": "0xCE40449B773a3E6E5e769ADb4e567179d4828cbd",
+          "name": "forwardERC20Fees",
+          "selector": "0x332d746b",
+          "allowed": false
+        },
+        {
+          "address": "0xDe2b920506EE931a6A2ABDF566526220214FBbAE",
+          "name": "forwardERC20Fees",
+          "selector": "0x332d746b",
+          "allowed": true
+        }
+      ]
+    },
+    {
+      "endpoint": "https://ethereum-public.nodies.app",
+      "blockNumber": "0x191f2e6",
+      "blockHash": "0x73193fed344f7c6129eb32803b3478d3f5608072dbf2af1767abdf4e8cf35834",
+      "pairs": [
+        {
+          "address": "0xCE40449B773a3E6E5e769ADb4e567179d4828cbd",
+          "name": "forwardNativeFees",
+          "selector": "0x0e8ae67f",
+          "allowed": false
+        },
+        {
+          "address": "0xDe2b920506EE931a6A2ABDF566526220214FBbAE",
+          "name": "forwardNativeFees",
+          "selector": "0x0e8ae67f",
+          "allowed": true
+        },
+        {
+          "address": "0xCE40449B773a3E6E5e769ADb4e567179d4828cbd",
+          "name": "forwardERC20Fees",
+          "selector": "0x332d746b",
+          "allowed": false
+        },
+        {
+          "address": "0xDe2b920506EE931a6A2ABDF566526220214FBbAE",
+          "name": "forwardERC20Fees",
+          "selector": "0x332d746b",
+          "allowed": true
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "checkedAt": "2026-11-01T21:19:13.657Z",
+  "evidenceLevel": "public-independent-mainnet-deployment-reads",
+  "mainnetSubmissions": 0,
+  "sdk": {
+    "name": "@hinkal/common",
+    "version": "0.4.1",
+    "integrity": "sha512-lWVofNk2lxLppu2d5NUI/cJSs0gkghExk+M4QdhmNCty3MSvLDfXa1SHxSoXFIw5JrkJLdACSD2ms5nUkXlQgw==",
+    "source": "https://registry.npmjs.org/@hinkal/common/-/common-0.4.1.tgz"
+  },
+  "idl": {
+    "source": "Pinned official SDK deployment data",
+    "onchainAnchorIdlAvailable": false,
+    "sha256": "40253e65496a39991a27eb35d56150f1f1fbdd83216d8dad766d71130423ddf4",
+    "program": "8LLNFE62Lr9rJLvmPsTsFttrcmwYrEykZwvpyYDW4Nc2",
+    "originalDeployer": "8xzyYDbvfpqYEGekNsm6KDyNXJybTLJhBWBQwabsZN49"
+  },
+  "observations": [
+    {
+      "endpoint": "https://api.mainnet-beta.solana.com",
+      "slot": 464240676,
+      "pin": {
+        "address": "8LLNFE62Lr9rJLvmPsTsFttrcmwYrEykZwvpyYDW4Nc2",
+        "loader": "BPFLoaderUpgradeab1e11111111111111111111111",
+        "programData": "BBFt9q7SALreQTxmFP4uzvrzoMaWgoMmo3AmMK63kNvH",
+        "space": 1264725,
+        "deployedSlot": "462103705",
+        "programDataSha256": "278cdec51477235468fb6313ed524eafc7ca49721993923becd5c21025ff8f02"
+      }
+    },
+    {
+      "endpoint": "https://solana-rpc.publicnode.com",
+      "slot": 464240676,
+      "pin": {
+        "address": "8LLNFE62Lr9rJLvmPsTsFttrcmwYrEykZwvpyYDW4Nc2",
+        "loader": "BPFLoaderUpgradeab1e11111111111111111111111",
+        "programData": "BBFt9q7SALreQTxmFP4uzvrzoMaWgoMmo3AmMK63kNvH",
+        "space": 1264725,
+        "deployedSlot": "462103705",
+        "programDataSha256": "278cdec51477235468fb6313ed524eafc7ca49721993923becd5c21025ff8f02"
+      }
+    }
+  ]
+}
