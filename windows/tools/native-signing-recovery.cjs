@@ -4,7 +4,7 @@ const {isDeepStrictEqual}=require('node:util');
 function installSigningRecovery(c){
  let epoch=0;const clear=()=>{epoch++;};
  c.register('recover-signing-response',async p=>{
-  if(!p||Object.keys(p).sort().join(',')!=='authority,id'||!['transaction','private-proof'].includes(p.authority)||typeof p.id!=='string'||!/^(?:0x)?[a-f0-9]{64}$/.test(p.id))throw Error('Choose an existing signing attempt for recovery.');
+  if(!p||Object.keys(p).sort().join(',')!=='authority,id'||!['transaction','private-proof','private-view'].includes(p.authority)||typeof p.id!=='string'||!/^(?:0x)?[a-f0-9]{64}$/.test(p.id))throw Error('Choose an existing signing attempt for recovery.');
   c.clearPending();clear();const s={epoch,window:c.getWindow(),wallet:structuredClone(c.getPublic()),vault:c.getVault(),vaultHash:c.getVaultHash()},id=p.id.replace(/^0x/,'');
   const current=()=>{if(s.epoch!==epoch||!s.window||s.window.isDestroyed?.()||c.getWindow()!==s.window||c.getVault()!==s.vault||c.getVaultHash()!==s.vaultHash||!isDeepStrictEqual(c.getPublic(),s.wallet))throw Error('Signing-response recovery was canceled because the wallet, review or window changed.');};
   const original=await c.attempts.inspect(s.wallet.deviceId,id,p.authority);current();

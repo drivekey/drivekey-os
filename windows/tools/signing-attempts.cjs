@@ -7,7 +7,7 @@ const responseHash=response=>createHash('sha256').update('DriveKey retained sign
 const {SignatureStore}=require('../signature-store.cjs');
 const uncertain='Signing outcome is uncertain. New signing for this wallet is disabled. Preserve this profile and recover the original signed response; do not retry or replace it.';
 const activeWallets=new Set();
-const authorities=new Set(['transaction','private-proof']);
+const authorities=new Set(['transaction','private-proof','private-view']);
 function snapshot(value,limit=64*1024){const text=JSON.stringify(value);if(typeof text!=='string'||Buffer.byteLength(text)>limit)throw Error('Signing request exceeds its recovery limit.');return JSON.parse(text);}
 class SigningAttempts{
  constructor(directory,storage,primary){

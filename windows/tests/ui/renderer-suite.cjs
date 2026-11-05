@@ -9,7 +9,7 @@ const {auditVisuals}=require('./visual-audit.cjs');
 const {measurePixelContrast}=require('./pixel-contrast.cjs');
 const pixelMeasurements=[];
 const {createHash}=require('node:crypto');
-async function sourceSnapshot(){return Object.fromEntries(await Promise.all(['index.html','style.css','shell.js','routes.js','chooser.js','chooser.css','black.css','portfolio.js','workspace.js','assets.js'].map(async name=>[name,createHash('sha256').update(await fs.readFile(path.join(ui,name))).digest('hex')])));}
+async function sourceSnapshot(){return Object.fromEntries(await Promise.all(['index.html','style.css','shell.js','routes.js','chooser.js','chooser.css','black.css','portfolio.js','workspace.js','private-view.js','assets.js'].map(async name=>[name,createHash('sha256').update(await fs.readFile(path.join(ui,name))).digest('hex')])));}
 const output=path.resolve(process.env.DRIVEKEY_UI_TEST_OUTPUT||process.env.DRIVEKEY_TEST_OUTPUT||path.join(candidate,'verification/ui')),passphrase='Fixture-only UI passphrase 2026!';
 const suites=[],results=[];
 function test(name,screens,run,options={}){suites.push({name,screens,run,options});}
@@ -32,6 +32,14 @@ async function preparePayment(page){await fillPayment(page);await page.locator('
 async function text(page,selector='body'){return (await page.locator(selector).innerText()).replace(/\s+/g,' ');}
 async function screen(page,name){await page.evaluate(async()=>{await document.fonts.ready;document.querySelector('[data-page]:not([hidden]) h1')?.focus({preventScroll:true});window.scrollTo(0,0);await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));});await page.screenshot({path:path.join(output,'fixture-'+name+'.png'),fullPage:true});}
 async function ensureNoHorizontalOverflow(page){const dims=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,view:innerWidth}));assert.ok(dims.scroll<=dims.view+1,JSON.stringify(dims));}
+
+test('private-view-offline-review-and-recoverable-export',[20],async page=>{
+ await activate(page);await verifyBackup(page);await navigate(page,'review');await visible(page,'#private-view-panel');await page.click('#private-view-import');await visible(page,'#private-view-approval');assert.match(await text(page,'#private-view-terms'),/SYNTHETIC-PUBLIC-TRANSPORT-KEY/);await page.fill('#private-view-password',passphrase);await page.locator('#private-view-approval button[type=submit]').click();await page.waitForFunction(()=>document.querySelector('#private-view-status').textContent.includes('retained'));await page.locator('#private-view-list button').filter({hasText:'Export encrypted view'}).waitFor();assert.equal(await page.inputValue('#private-view-password'),'');const calls=(await snapshot(page)).calls;assert.equal(calls.filter(c=>c.method==='authorizePrivateView').length,1);assert.equal(calls.filter(c=>c.method==='sign'||c.method==='authorizeProductProof'||c.method==='submitPayment').length,0);await ensureNoHorizontalOverflow(page);await screen(page,'private-view-offline');
+},{offline:true,privateViews:true});
+
+test('private-view-online-preparation-and-request-export',[20],async page=>{
+ await activate(page);await navigate(page,'review');await visible(page,'#private-view-panel');await page.fill('#private-view-amount','100');await page.fill('#private-view-fee','100000');await page.locator('#private-view-draft button[type=submit]').click();await page.locator('#private-view-list article').waitFor();await page.click('#private-view-import');await page.locator('#private-view-list button').filter({hasText:'Prepare exact proof request'}).click();await page.locator('#private-view-list button').filter({hasText:'Export proof request'}).click();await page.waitForFunction(()=>document.querySelector('#private-view-status').textContent.includes('export finished'));const calls=(await snapshot(page)).calls;assert.equal(calls.filter(c=>c.method==='createPrivateView').length,1);assert.equal(calls.filter(c=>c.method==='preparePrivateViewJob').length,1);assert.equal(calls.filter(c=>c.method==='sign'||c.method==='authorizePrivateView'||c.method==='authorizeProductProof'||c.method==='submitPayment').length,0);await ensureNoHorizontalOverflow(page);await screen(page,'private-view-online');
+},{privateViews:true});
 
 test('store-market-source-attribution',[2],async page=>{
  await activate(page);await navigate(page,'home');

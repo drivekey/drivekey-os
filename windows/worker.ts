@@ -1,4 +1,6 @@
 import './engine/offline-signer/network-deny';
+import {authorizePrivateView} from './engine/offline-signer/hinkal-view';
+import {validateViewRequest,assertViewWallet,viewReview,verifyViewResponse} from './engine/core/hinkal-view';
 import {createVault, inspectVault, verifyVault, reviewRequest, signReviewed, verifySavedSignature} from './signer';
 import {reviewProductProof,authorizeProductProof} from './engine/offline-signer/hinkal-product-proof';
 import {verifyProductProofResponse} from './engine/core/hinkal-product-proof';
@@ -21,6 +23,9 @@ process.stdin.on('end', async () => {
     try { job = JSON.parse(raw.toString('utf8')); } finally { raw.fill(0); }
     let result: unknown;
     switch(job.action) {
+      case 'review-private-view': {const r=validateViewRequest(job.request);assertViewWallet(r,job.wallet);result=viewReview(r);break;}
+      case 'authorize-private-view': paymentPolicy.assertPrivateView(job.request);result=await authorizePrivateView(job.vault,job.password,job.request,job.fingerprint);break;
+      case 'verify-private-view': {const r=validateViewRequest(job.request,Date.now(),false);assertViewWallet(r,job.wallet||job.vault?.public);result={response:verifyViewResponse(r,job.response,Date.now(),false)};break;}
       case 'create': result = await createVault(job.password); break;
       case 'inspect': result = inspectVault(job.vault); break;
       case 'verify': result = await verifyVault(job.vault,job.password); break;

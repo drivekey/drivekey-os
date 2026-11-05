@@ -44,7 +44,7 @@ function installProductProofUi(c){
   await c.job({action:'verify',vault:s.vault,password});current(s);validateProductProof(r.request);
   const {response}=await c.signingAttempts.run({walletId:s.wallet.deviceId,request:r.request,authority:'private-proof',
    current:()=>{current(s);validateProductProof(r.request);},
-   verify:async(response,request,authority)=>(await c.job({action:authority==='private-proof'?'verify-product-proof':'verify-saved',vault:s.vault,request,response})).response,
+   verify:async(response,request,authority)=>(await c.job({action:authority==='private-view'?'verify-private-view':authority==='private-proof'?'verify-product-proof':'verify-saved',vault:s.vault,request,response})).response,
    sign:request=>c.job({action:'sign-product-proof',vault:s.vault,password,request,fingerprint:request.fingerprint})});
   current(s);
   const file=await c.saveJSON('Export private-proof authorization','drivekey-private-proof-response.json',response);current(s);

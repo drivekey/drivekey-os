@@ -1,0 +1,34 @@
+// Only public metadata crosses this UI. Transport/view keys stay in workers and
+// encrypted native journals. Native review remains authoritative.
+(()=>{
+ const byId=id=>document.getElementById(id),panel=byId('private-view-panel');if(!panel)return;
+ let mode,revision=0,pending,busy=false;
+ const status=text=>{byId('private-view-status').textContent=text;};
+ const reset=()=>{revision++;pending=undefined;byId('private-view-approval').hidden=true;byId('private-view-password').value='';byId('private-view-terms').replaceChildren();byId('private-view-list').replaceChildren();};
+ async function invoke(name,...args){const answer=await window.drivekey[name](...args);if(!answer?.ok)throw Error(answer?.error||'Private view operation failed.');return answer.result;}
+ async function operation(action){if(busy)return;busy=true;panel.querySelectorAll('button').forEach(button=>button.disabled=true);const started=revision;try{await action(started);}catch(error){if(started===revision)status(error.message);}finally{busy=false;panel.querySelectorAll('button').forEach(button=>button.disabled=false);byId('private-view-password').value='';}}
+ const current=started=>{if(started!==revision)throw Error('Private view display changed. Refresh the current wallet.');};
+ function terms(review){const list=byId('private-view-terms');list.replaceChildren();for(const [key,value]of Object.entries(review||{})){const row=document.createElement('div'),label=document.createElement('dt'),text=document.createElement('dd');label.textContent=key;text.textContent=String(value);row.append(label,text);list.append(row);}}
+ function button(text,action){const result=document.createElement('button');result.type='button';result.textContent=text;result.onclick=()=>operation(action);return result;}
+ async function refresh(started){const rows=await invoke('listPrivateViews');current(started);const list=byId('private-view-list');list.replaceChildren();for(const row of rows){const item=document.createElement('article'),title=document.createElement('strong'),detail=document.createElement('p'),actions=document.createElement('div');title.textContent=row.review.chain+' '+row.review.asset+' '+row.review.proofAction;detail.textContent=row.state+' · '+row.id;actions.className='actions';actions.append(button('Export original request',async captured=>{await invoke('exportPrivateViewRequest',row.id);current(captured);status('Original request export finished.');}));
+   if(row.hasResponse)actions.append(button('Export encrypted view',async captured=>{await invoke('exportPrivateViewResponse',row.id);current(captured);status('Encrypted response export finished.');}));
+   if(row.canRecoverOriginal)actions.append(button('Recover original response',async captured=>{await invoke('recoverSigningResponse',row.id,'private-view');current(captured);await refresh(captured);}));
+   if(!mode.offline&&row.hasResponse&&!row.hasPreparedJob&&row.state!=='provider-uncertain')actions.append(button('Prepare exact proof request',async captured=>{const result=await invoke('preparePrivateViewJob',row.id);current(captured);if(result.prepared)status('Proof request retained. Transfer it to the offline Companion for a separate proof authorization.');await refresh(captured);}));
+   if(row.hasPreparedJob)actions.append(button('Export proof request',async captured=>{await invoke('exportPrivateViewJob',row.id);current(captured);status('Unsigned proof request export finished.');}));
+   item.append(title,detail,actions);list.append(item);}
+  if(!rows.length)status('No private view requests for this wallet.');
+ }
+ byId('private-view-refresh').onclick=()=>operation(refresh);
+ byId('private-view-import').onclick=()=>operation(async started=>{reset();started=revision;const result=await invoke(mode.offline?'importPrivateViewRequest':'importPrivateViewResponse');current(started);if(result.cancelled)return;terms(result.review);if(mode.offline){pending={token:result.token,fingerprint:result.id};byId('private-view-approval').hidden=false;status('Compare the full request fingerprint and transport key with your online computer.');}else{status('Encrypted view retained. Prepare its exact proof request after native review.');await refresh(started);}});
+ byId('private-view-approval').onsubmit=event=>{event.preventDefault();operation(async started=>{const reviewed=pending,password=byId('private-view-password').value;if(!reviewed)throw Error('Import the original view request again.');pending=undefined;byId('private-view-approval').hidden=true;const result=await invoke('authorizePrivateView',reviewed.token,reviewed.fingerprint,password);current(started);status(result.cancelled?'Viewing approval canceled.':result.saved?'Encrypted view exported.':'Encrypted view retained. Export it from the history.');await refresh(started);});};
+ byId('private-view-draft').onsubmit=event=>{event.preventDefault();operation(async started=>{
+  const chain=byId('private-view-chain').value,action=byId('private-view-action').value,asset=byId('private-view-asset').value;
+  if(chain==='solana'&&action==='deposit')throw Error('Solana deposit preparation requires its separate deposit workflow; it is not qualified here.');
+  if(chain==='ethereum'&&asset==='SOL'||chain==='solana'&&asset==='ETH')throw Error('Choose the canonical asset for this chain.');
+  const receive=await invoke('receiveInfo',chain);current(started);const from=receive.address,notes=byId('private-view-notes').value.trim(),context={testOnly:true,chain,action,asset,amount:byId('private-view-amount').value.trim(),from,recipient:action==='deposit'?from:byId('private-view-recipient').value.trim(),inputNotes:notes?JSON.parse(notes):[],pendingLeaves:[]};
+  if(action==='transfer'){context.recipientInfo=byId('private-view-recipient-info').value.trim();context.recipientBindingSignature=byId('private-view-recipient-binding').value.trim();}
+  const result=await invoke('createPrivateView',{profile:chain==='ethereum'?13:15,context,nonce:chain==='ethereum'?Number(byId('private-view-nonce').value):null,maximumFee:byId('private-view-fee').value.trim(),maximumAccountRent:chain==='ethereum'?'0':byId('private-view-rent').value.trim()});current(started);terms(result.review);status(result.saved?'Public view request exported. Authorize it in your offline Companion.':'Public view request retained. Export it from the history.');await refresh(started);
+ });};
+ const wallet=document.getElementById('vault-pill');if(wallet)new MutationObserver(reset).observe(wallet,{childList:true,characterData:true,subtree:true});
+ (async()=>{mode=await invoke('applicationMode');panel.hidden=!mode.capabilities?.scopedPrivateView;if(panel.hidden)return;byId('private-view-draft').hidden=mode.offline;byId('private-view-import').textContent=mode.offline?'Import viewing request':'Import encrypted viewing response';status('Choose the matching wallet, then refresh private view history.');})().catch(()=>{panel.hidden=true;});
+})();

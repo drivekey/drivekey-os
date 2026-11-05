@@ -39,7 +39,7 @@ const {isDeepStrictEqual} = require('node:util');
 const {RequestExchange} = require('./tools/request-exchange.cjs');
 const requestExchange = new RequestExchange();
 const ROOT = __dirname, ENTRY = pathToFileURL(path.join(ROOT,'ui','index.html')).href;
-let win, encryptedVault, vaultFile, publicWallet, backupVerified=false, pendingReview, busy=false, activeWalletId=null, productProofUi, productAdmissionUi, signingRecoveryUi, requestLifecycleUi;
+let win, encryptedVault, vaultFile, publicWallet, backupVerified=false, pendingReview, busy=false, activeWalletId=null, productProofUi, productAdmissionUi, signingRecoveryUi, requestLifecycleUi, privateViewUi;
 const activeWorkers=new Set();
 const publicReadControllers = new Set();
 function cancelAccountReads() {
@@ -59,14 +59,15 @@ const transactionStore=new TransactionStore(path.join(app.getPath('userData'),'t
 const proofRequestStore=new TransactionStore(path.join(app.getPath('userData'),'proof-requests-v1'),recoveryStorage.forJournal('proof-requests'));
 const proofAuthorizationStore=new SignatureStore(path.join(app.getPath('userData'),'proofs-v1'),recoveryStorage.forJournal('proofs'));
 const proofResultStore=new SignatureStore(path.join(app.getPath('userData'),'proof-results-v1'),recoveryStorage.forJournal('proof-results'));
-const signingAttempts=new SigningAttempts(app.getPath('userData'),recoveryStorage,{'transaction':signatureStore,'private-proof':proofAuthorizationStore});
+const viewStores=Object.fromEntries(['view-sessions','view-requests','view-responses','view-job-attempts','view-preparations'].map(purpose=>[purpose,purpose==='view-requests'?new TransactionStore(path.join(app.getPath('userData'),purpose+'-v1'),recoveryStorage.forJournal(purpose)):new SignatureStore(path.join(app.getPath('userData'),purpose+'-v1'),recoveryStorage.forJournal(purpose))]));
+const signingAttempts=new SigningAttempts(app.getPath('userData'),recoveryStorage,{'transaction':signatureStore,'private-proof':proofAuthorizationStore,'private-view':viewStores['view-responses']});
 const OFFLINE=process.env.DRIVEKEY_OFFLINE==='1'||require('./package.json').drivekeyOffline===true;
 const rpcFile=path.join(app.getPath('userData'),'rpc-endpoints-v1.json');
 async function online(input,options={}){if(OFFLINE)throw Error('Networking is disabled in the offline companion.');paymentPolicy.assertOnlineJob(input);let endpoints;try{endpoints=await readJSON(rpcFile);}catch{throw Error('Import an RPC configuration first.');}return job({...input,endpoints},'online-worker.cjs',options);}
 const verifiedWallets=new Map();
 const digest = v => createHash('sha256').update(JSON.stringify(v)).digest('hex');
 function passwordOf(v) { if(typeof v!=='string'||v.length<16||v.length>256) throw Error('Use a passphrase of 16–256 characters.'); return v; }
-function clearPendingReview() {pendingReview=undefined;productProofUi?.clear();productAdmissionUi?.clear();signingRecoveryUi?.clear();requestLifecycleUi?.clear();requestExchange.clearBinding();}
+function clearPendingReview() {pendingReview=undefined;productProofUi?.clear();productAdmissionUi?.clear();signingRecoveryUi?.clear();requestLifecycleUi?.clear();privateViewUi?.clear();requestExchange.clearBinding();}
 function reset() { cancelAccountReads();requestExchange.clear();encryptedVault=undefined; vaultFile=undefined; publicWallet=undefined; backupVerified=false; clearPendingReview();activeWalletId=null; }
 function walletList(){const problem=walletStore.problem||watchStore.problem;return problem?{wallets:[],activeId:null,recoveryRequired:true,canRecover:problem.canRecover,error:problem.error}:{wallets:[...walletStore.list(activeWalletId,verifiedWallets).wallets,...watchStore.list(activeWalletId).wallets.map(w=>({...w,watchOnly:true}))],activeId:activeWalletId,recoveryRequired:false};}
 function selectedWallet(){const wallet=storeFor(activeWalletId).get(activeWalletId);return {public:publicWallet,backupVerified,watchOnly:!encryptedVault,wallet:{id:wallet.id,name:wallet.name},...walletList()};}
@@ -101,7 +102,7 @@ async function job(input,worker='worker.cjs',{signal,owner:expectedOwner}={}) {
     child.stdin.on('error',()=>{});
     signal?.addEventListener('abort',cancelRead,{once:true});
     if(signal?.aborted){cancelRead();return;}
-    child.stdin.end(JSON.stringify(input)); input.password=undefined;
+    child.stdin.end(JSON.stringify(input)); input.password=undefined;if(input.input&&typeof input.input==='object')input.input.transportPrivateKey=undefined;
   });
 }
 async function readJSON(file) {
@@ -221,7 +222,7 @@ register('sign-request',async p=>{
   const originalDraft=await transactionStore.load(signingWallet.deviceId,r.request.fingerprint);if(originalDraft?.state==='discarded')throw Error('This local draft was discarded and cannot be signed.');
   currentSigningScope();await job({action:'verify',vault:signingVault,password});currentSigningScope();
   const {response}=await signingAttempts.run({walletId:signingWallet.deviceId,request:r.request,authority:'transaction',current:currentSigningScope,
-    verify:async(response,request,authority)=>(await job({action:authority==='private-proof'?'verify-product-proof':'verify-saved',vault:signingVault,request,response})).response,
+    verify:async(response,request,authority)=>(await job({action:authority==='private-view'?'verify-private-view':authority==='private-proof'?'verify-product-proof':'verify-saved',vault:signingVault,request,response})).response,
     sign:request=>job({action:'sign',vault:signingVault,password,request,fingerprint:r.review.fingerprint})});
   currentSigningScope();
   const file=await saveJSON('Export signed response — return it to the dapp',(r.request.network||r.request.chain)==='ethereum'?'signed-trade-response.json':'signed-multi-response.json',response);
@@ -250,7 +251,7 @@ registerPublicRead('market-snapshot',p=>marketService.snapshot(p));
 const interfaceZoomLevels=Object.freeze([0.5,0.67,0.8,1,1.25,1.5,1.75,2]);
 register('interface-settings',async()=>({zoom:win.webContents.getZoomFactor()}));
 register('set-interface-zoom',async p=>{if(!p||Object.keys(p).length!==1||typeof p.zoom!=='number'||!interfaceZoomLevels.includes(p.zoom))throw Error('Choose a supported interface zoom level.');win.webContents.setZoomFactor(p.zoom);return {zoom:win.webContents.getZoomFactor()};});
-register('application-mode',async()=>({offline:OFFLINE,version:require('./package.json').version,fundingReady:false,networks:['ethereum','solana','sepolia','devnet'],capabilities:{publicPayments:true,uniswapV3:false,lifiSwaps:false,relayBridge:false,preparedPrivateImport:false,preparedMayanImport:false,privateProofCreation:false,productProofAdmission:false,privateBalanceDiscovery:false,savings:false}}));
+register('application-mode',async()=>({offline:OFFLINE,version:require('./package.json').version,fundingReady:false,networks:['ethereum','solana','sepolia','devnet'],capabilities:{publicPayments:true,uniswapV3:false,lifiSwaps:false,relayBridge:false,preparedPrivateImport:false,preparedMayanImport:false,privateProofCreation:false,productProofAdmission:false,privateBalanceDiscovery:false,scopedPrivateView:false,savings:false}}));
 register('payment-qr',async p=>{requirePublic();return scopedPaymentQR(publicWallet,p);});
 register('payment-balance',async p=>{requirePublic();if(!p||!['ethereum','sepolia','solana','devnet'].includes(p.chain)||!['ETH','SOL','USDC'].includes(p.asset)||Object.keys(p).some(k=>!['chain','asset'].includes(k)))throw Error('Invalid balance request.');const from=['ethereum','sepolia'].includes(p.chain)?publicWallet.evmAddress:publicWallet.solanaAddress;return online({action:'balance',chain:p.chain,asset:p.asset,from});});
 register('export-payment-receipt',async p=>{requirePublic();const r=await transactionStore.load(publicWallet.deviceId,p?.id);const receipt=createFinalReceipt(r);await verifyIntent(r.response,r.request,publicWallet,Date.now(),false);if(r.productProof!==undefined)await productAdmissionUi.verifyRecord(r,publicWallet,false);const f=await saveJSON('Save finalized payment receipt','drivekey-payment-receipt.json',receipt);return {saved:!!f};});
@@ -396,6 +397,10 @@ signingRecoveryUi=require('./tools/native-signing-recovery.cjs').installSigningR
  register,dialog,openJSON,attempts:signingAttempts,clearPending:clearPendingReview,
  getPublic:()=>{requirePublic();return publicWallet;},getVault:()=>{requireVault();return encryptedVault;},getWindow:()=>win,getVaultHash:()=>encryptedVault?digest(encryptedVault):null,
  verify:async(response,request,authority,s)=>{
+  if(authority==='private-view'){
+   const core=require('./dist/hinkal-view.cjs'),r=core.validateViewRequest(request,Date.now(),false);core.assertViewWallet(r,s.wallet);
+   const checked=await job({action:'verify-private-view',wallet:s.wallet,request,response},'worker.cjs',{owner:s.window});return {response:checked.response,review:core.viewReview(r,Date.now(),false)};
+  }
   if(authority==='private-proof'){
    require('./dist/hinkal-product-admission.cjs').assertProductPackageWallet(request,s.wallet);
    const checked=await job({action:'verify-product-proof',vault:s.vault,request,response},'worker.cjs',{owner:s.window});
@@ -408,6 +413,10 @@ requestLifecycleUi=require('./tools/request-lifecycle.cjs').installRequestLifecy
  register,dialog,store:transactionStore,attempts:signingAttempts,clearPending:clearPendingReview,
  getPublic:()=>{requirePublic();return publicWallet;},getWindow:()=>win,
  review:r=>require('./ui-routes-main.cjs').historicalReview(r,bridgeCodec)
+});
+privateViewUi=require('./tools/native-private-view.cjs').installPrivateView({
+ register,dialog,job,openJSON,saveJSON,passwordOf,policy:paymentPolicy,getWindow:()=>win,getPublic:()=>{requirePublic();return publicWallet;},getVault:()=>encryptedVault,isOffline:()=>OFFLINE,backupVerified:()=>backupVerified,clearPending:clearPendingReview,ready:()=>recoveryStorage.ready(),attempts:signingAttempts,
+ sessionStore:viewStores['view-sessions'],requestStore:viewStores['view-requests'],responseStore:viewStores['view-responses'],jobAttemptStore:viewStores['view-job-attempts'],preparationStore:viewStores['view-preparations'],proofRequestStore
 });
 app.whenReady().then(()=>{
   if(!primaryInstance)return;
