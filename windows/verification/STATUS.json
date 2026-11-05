@@ -1,5 +1,5 @@
 {
-  "sourceReferenceFingerprint": "4e0ccfe16d233289d2fd22c49036c948a77f79ddf98e103569c83d36767e55b7",
+  "sourceReferenceFingerprint": "597d14ef591846138900356277928f04349ebae00ec87b4f6c301c92c16fb396",
   "status": "Engineering preview. Current Windows mainnet SOL and USDC execution remains pending.",
   "enabledTransactions": [
     "Ethereum ETH",
@@ -18,11 +18,12 @@
   "directPaymentRegressionChecks": 67,
   "exactPackagedWorkerGroups": 2,
   "broaderSuite": {
-    "tests": 492,
-    "passed": 467,
+    "tests": 494,
+    "passed": 469,
     "failed": 25,
-    "sourceReferenceFingerprint": "be37a28c52551a5f3607e2ab1246b1b2c6b5766cdab1ae384bad6ed6fc09402e",
-    "notes": "Prior-source full suite. Remaining failures expect deferred Hinkal, swap or bridge operations to succeed. No tests were skipped. This is not a passing full-suite release qualification."
+    "skipped": 0,
+    "sourceReferenceFingerprint": "597d14ef591846138900356277928f04349ebae00ec87b4f6c301c92c16fb396",
+    "notes": "Remaining failures expect deferred Hinkal, swap or bridge operations to succeed. The full suite is not a passing release qualification."
   },
   "correctedNativeSolanaUsdcAccountCreation": {
     "network": "isolated local LiteSVM",
@@ -84,7 +85,7 @@
     "skipped": 0,
     "pngCompressedImageDataPreserved": true
   },
-  "previousSourceReferenceFingerprint": "c4939718298c5a68cfe4cc27ddfb1d7e796c06147115e275b5b2c44b469ef1c5",
+  "previousSourceReferenceFingerprint": "4e0ccfe16d233289d2fd22c49036c948a77f79ddf98e103569c83d36767e55b7",
   "testHarnessUpdates": [
     "tests/hinkal-solana-submit.test.cjs",
     "tests/ui/native-smoke.cjs"
@@ -97,10 +98,8 @@
     "fullHistoricalSuitePassed": false
   },
   "nativeDevelopmentSmoke": {
-    "checksPassed": 22,
-    "clipboardAvailable": true,
-    "qrIndependentlyDecoded": true,
-    "scope": "Development Electron, disposable local wallets, substituted native file dialogs. No signatures or broadcasts. Not installed-MSIX or physical-isolation evidence."
+    "checksPassed": 24,
+    "scope": "Development Electron, disposable wallets and substituted native file dialogs. No signing or broadcasts; not installed MSIX."
   },
   "nativeDevelopmentSigning": {
     "checksPassed": 11,
@@ -114,5 +113,33 @@
     "reportedAdvisories": 0,
     "dependencies": 399
   },
-  "submissionReady": false
+  "submissionReady": false,
+  "attributionUpdate": {
+    "fixedProviderLink": true,
+    "arbitraryDestinationsDenied": true,
+    "offlineOpeningDenied": true,
+    "boundaryTests": 2,
+    "rendererFixtureCases": 1,
+    "commercialRightsConfirmed": false
+  },
+  "exactPackagedPaymentChecks": {
+    "directRegressionTestsPassed": 67,
+    "packagedWorkerGroupsPassed": 2,
+    "syntheticChainAssetPairs": 8
+  },
+  "unsignedNativePackages": {
+    "launchPassed": true,
+    "integrityAndTamperPassed": true,
+    "originalPayloadFilesRehashed": 151
+  },
+  "localSettlement": {
+    "ethereumCases": 2,
+    "solanaCases": 3,
+    "scope": "Same-host Ganache/LiteSVM; not mainnet."
+  },
+  "interactivePackagedApproval": {
+    "verified": false,
+    "reason": "Additional local-vault and companion approval attempts timed out at native file dialogs before approval."
+  },
+  "productionUiAndLinkCodeChanged": true
 }

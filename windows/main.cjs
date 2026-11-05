@@ -232,7 +232,7 @@ register('export-signature',async p=>{
 register('clear-session',async()=>{reset();verifiedWallets.clear();return {cleared:true,...walletList()};});
 register('receive-info',async p=>{requirePublic();paymentPolicy.assertChain(p?.network);return makeReceiveInfo(publicWallet,p.network);});
 register('copy-address',async p=>{requirePublic();paymentPolicy.assertChain(p?.network);const info=receiveIdentity(publicWallet,p.network);try{await clipboard.writeText(info.address);if(await clipboard.readText()!==info.address)throw Error();}catch{throw Error('Clipboard unavailable. Use the displayed QR code or address.');}return {copied:true,network:info.network};});
-register('open-web',async p=>{if(OFFLINE)throw Error('External links are disabled in the offline companion.');if(p?.route!=='article')throw Error(paymentPolicy.notice);const destination=resolveWebRoute(p.route,p.option);await shell.openExternal(destination.url);return {opened:true,...destination};});
+register('open-web',async p=>{if(OFFLINE)throw Error('External links are disabled in the offline companion.');if(!['article','market-data'].includes(p?.route))throw Error(paymentPolicy.notice);const destination=resolveWebRoute(p.route,p.option);await shell.openExternal(destination.url);return {opened:true,...destination};});
 register('list-updates',async()=>updates);
 const marketService=require('./market-data.cjs').createMarketService({isOffline:()=>OFFLINE});
 registerPublicRead('market-snapshot',p=>marketService.snapshot(p));

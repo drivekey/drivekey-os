@@ -92,6 +92,15 @@ async function clipboardProbe(){
  for(const file of sourceFiles)sourceHashes[file]=createHash('sha256').update(await fs.readFile(path.join(candidate,file))).digest('hex');
  try{
   await record('online-isolated-startup',()=>launch());
+  await record('native-fixed-market-attribution-destination',async()=>{
+   await app.evaluate(({shell})=>{global.originalAttributionOpen=shell.openExternal;global.attributionOpened=[];shell.openExternal=async url=>global.attributionOpened.push(url);});
+   try{
+    const allowed=await api('openWeb','market-data','coingecko');assert.equal(allowed.ok,true);
+    for(const [route,option] of [['market-data','https://evil.invalid'],['swap','lifi'],['https://evil.invalid','coingecko']])assert.equal((await api('openWeb',route,option)).ok,false);
+    assert.deepEqual(await app.evaluate(()=>global.attributionOpened),['https://www.coingecko.com']);
+   }finally{await app.evaluate(({shell})=>{shell.openExternal=global.originalAttributionOpen;delete global.originalAttributionOpen;delete global.attributionOpened;});}
+   return {fixedDestinationVerified:true,arbitraryDestinationsDenied:true,browserOpeningSubstituted:true};
+  });
   await record('native-clipboard-diagnostic',clipboardProbe,true);
   await record('renderer-isolation-and-CSP',async()=>{assert.equal(await app.evaluate(({app})=>app.commandLine.hasSwitch('disable-lcd-text')),true);assert.equal(await page.evaluate(()=>typeof require),'undefined');assert.equal(await page.evaluate(()=>typeof process),'undefined');assert.equal(await page.evaluate(async()=>{try{await fetch('https://example.com');return true;}catch{return false;}}),false);return {nodeUnavailable:true,remoteFetchDenied:true};});
   let vault;await record('native-create-wallet-via-UI',async()=>{vault=await createWallet('Synthetic native wallet','online');return {walletCreated:true,secretInputsCleared:true};});
@@ -117,6 +126,7 @@ async function clipboardProbe(){
   await record('native-clear-and-reopen-preserves-wallet',async()=>{await page.click('#lock');await idle();assert.match(await page.textContent('#vault-pill'),/choose|wallet/i);await navigate('vault');assert.equal(await page.locator('.wallet-row').count(),1);await queue('open',vault);await page.click('#add-wallet-file');await idle();assert.match(await page.textContent('#vault-pill'),/Synthetic native wallet/);assert.match(await page.textContent('#backup-state'),/not verified|verify|verification/i);return {walletFilePreserved:true,backupSessionReset:true};});
   await app.close();app=null;
   await record('offline-isolated-startup',()=>launch(true));
+  await record('offline-market-attribution-denied',async()=>{const denied=await api('openWeb','market-data','coingecko');assert.equal(denied.ok,false);assert.match(denied.error,/offline/i);return {externalOpeningDenied:true};});
   await record('offline-wallet-create-via-UI',async()=>{await createWallet('Synthetic offline wallet','offline');return {walletCreated:true};});
   await record('offline-backup-via-UI',()=>verifyBackup('offline'));
   await record('offline-navigation-gating',async()=>{const allowed=['review','vault','signatures','security','settings'];for(const name of allowed){await navigate(name);await noOverflow(name);}for(const name of ['home','payments','receive','swap','private','activity'])assert.equal(await page.locator('.nav-item[data-view="'+name+'"]:visible').count(),0,name);return {allowed};});

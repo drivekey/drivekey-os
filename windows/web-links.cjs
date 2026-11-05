@@ -15,6 +15,7 @@ function resolveWebRoute(route,option){
   case 'hinkal-deposit':return {url:'https://drivekey.info/app/hinkal',hint:'In Hinkal, select Receive, then Deposit ETH.'};
   case 'savings':if(!['standard','strong'].includes(option))throw Error('Choose Standard or Strong.');return {url:'https://drivekey.info/app/savings',hint:'Choose '+(option==='strong'?'Strong':'Standard')+' in Savings to configure it.'};
   case 'article':{const post=updates.find(p=>p.id===option);if(!post)throw Error('Unknown update.');return {url:post.url,hint:'Opening the original DriveKey post.'};}
+  case 'market-data':if(option!=='coingecko')throw Error('Unknown market data source.');return {url:'https://www.coingecko.com',hint:'Opening the market data source.'};
   default:throw Error('Unsupported website action.');
  }
 }

@@ -1,35 +1,42 @@
 # DriveKey Windows payments candidate
 
-Standalone Windows wallet and Offline Companion source. This branch is an engineering preview. Solana mainnet preflights passed on two RPCs. Finalized SOL and USDC payments on these Windows binaries remain pending.
+Standalone Windows wallet and Offline Companion source. Final installed-package, mainnet and Microsoft Store qualification remain open. No installers are published by this source update.
 
-The candidate enables direct ETH, SOL and canonical USDC payments on Ethereum and Solana, plus Sepolia and Solana Devnet testing. Swaps, bridges, Hinkal and Savings are deferred for new transactions. Historical records remain readable and reconcilable.
+Direct ETH, SOL and canonical USDC payments are enabled on Ethereum and Solana, with Sepolia and Solana Devnet testing. Swaps, bridges, Hinkal and Savings are deferred for new transactions; historical records remain readable and reconcilable.
 
-Use the Offline Companion on a separate disconnected signing computer for the intended separation model. Software wallets can also sign locally. Independent security review, physical isolation, publisher signing, installed MSIX lifecycle, WACK and Store certification remain open.
+## Current local verification
+
+- Full historical suite: 469 passes, 25 deferred-workflow failures, no skipped tests. The standard full release command remains gated by that suite.
+- Exact unsigned package workers: 67 direct regressions plus two worker groups covering eight chain/asset pairs.
+- Both unsigned packages launched and passed integrity/tamper checks; all 151 original payload files were rehashed.
+- Five settlement cases passed on same-host Ganache/LiteSVM, including Solana recipient-account creation, exact fees/rent, invoice claims and recovery.
+- Development-native smoke: 24 checks with substituted file dialogs. Additional interactive packaged approval tests timed out before approval and remain unverified.
+- Fixed CoinGecko attribution: two boundary tests and one renderer fixture passed. Arbitrary external destinations and offline external opening remain denied.
+
+These are local test results. Historical mainnet transactions identify earlier builds. Finalized SOL/USDC mainnet payments on this package, installed MSIX lifecycle, physical signer separation, independent review, publisher signing and Microsoft certification are not established. See [verification/STATUS.json](verification/STATUS.json).
 
 ## Build and checks
 
-Run commands from this directory using the pinned pnpm and Node dependencies. The lockfile and vendor notices are included.
+Use the pinned dependencies. From this directory:
 
 ```powershell
 pnpm install --frozen-lockfile
 pnpm build
 pnpm typecheck
-node --test dist/signer.test.cjs tests/payment.test.cjs tests/merchant.test.cjs tests/merchant-solana-verifier.test.cjs tests/profile-evidence-class.test.cjs tests/recovery-storage.test.cjs tests/security-boundaries.test.cjs tests/signature-store.test.cjs tests/solana-adapter-height.test.cjs tests/solana-settlement-cost.test.cjs tests/transaction-store.test.cjs tests/wallet-recovery.test.cjs
+node --test tests/payment.test.cjs tests/merchant.test.cjs tests/merchant-solana-verifier.test.cjs tests/market-attribution.test.cjs
 node --test tests/store-payment-scope.test.cjs
 ```
 
-The local direct-payment checks passed 67 tests plus two exact packaged-worker groups. After fixing the extracted-handler policy binding, the broader legacy suite recorded 467 passes and 25 failures from deferred workflows (prior test snapshot `be37a28c5255`). No tests were skipped in that run. The standard full release command remains gated by that suite. See [verification/STATUS.json](verification/STATUS.json).
+Use the Offline Companion on a separate disconnected computer for the intended separation model. Local software-vault signing is also supported. Preserve unresolved signed transaction records; never automatically replace or rebroadcast them.
 
-The local native account-creation test exercised backup verification, offline approval, response import, cancellation, explicit submission, restart recovery and one canonical receipt. Its settlement used LiteSVM on the same host.
+## Market-data distribution
 
-The updated development-native smoke suite passed 22 checks, including supported navigation, explicit deferred-route denial, clipboard, independently decoded QR codes, backups and offline API denials. A separate native signing check passed 11 local cryptographic workflow checks; the merchant checkout UI passed six fixture checks. These are development and fixture results, not final installed-package or mainnet qualification. The registry audit reported zero advisories across 399 dependencies.
+The candidate provides a fixed, keyboard-accessible CoinGecko source link beside market data. Attribution alone does not establish commercial rights. A publisher commercial plan or written permission remains unconfirmed; do not infer distribution rights from this source or its local tests. [Attribution guide](https://brand.coingecko.com/resources/attribution-guide) · [Licensing guidance](https://support.coingecko.com/articles/1043089972-what-are-the-differences-between-commercial-and-custom-licenses)
 
 ## Source provenance
 
-The current reference local snapshot fingerprint is `4e0ccfe16d233289d2fd22c49036c948a77f79ddf98e103569c83d36767e55b7`. The changes since the previous snapshot affect only two test harnesses; all 88 generated bundles remain byte-for-byte identical. Two legacy funding helpers in this export now require `DRIVEKEY_LEGACY_FUNDING_DIRECTORY` instead of an embedded developer-machine path. Embedded metadata was also removed from two PCB images while preserving their compressed image data. All export changes are listed in the status file. Generate fresh qualification and package evidence for any build made from this branch.
+Reference local source fingerprint: `597d14ef591846138900356277928f04349ebae00ec87b4f6c301c92c16fb396`. Two legacy funding helpers require `DRIVEKEY_LEGACY_FUNDING_DIRECTORY` instead of an embedded developer-machine path. Metadata was removed from two PCB images without changing compressed image data. Export changes are recorded in the status file. Generate fresh qualification and package evidence for builds from this branch.
 
 The source checksum inventory records Git blob bytes. Git may convert text line endings in a Windows working copy; use the repository blob contents when verifying this inventory.
 
-Encrypted vaults, DPAPI credentials, funded-session records, transferable signed responses, generated binaries and local qualification grants are excluded. The repository contains source and assets. Windows installers and Store packages require a separately verified release.
-
-Dependency licenses are recorded in [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt). The repository license applies as described in [../LICENSE](../LICENSE).
+Encrypted vaults, DPAPI credentials, funded-session records, transferable signed responses, generated binaries and local qualification grants are excluded. Dependency notices are in [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt); see the repository [LICENSE](../LICENSE).

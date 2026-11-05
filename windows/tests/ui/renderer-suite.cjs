@@ -33,6 +33,21 @@ async function text(page,selector='body'){return (await page.locator(selector).i
 async function screen(page,name){await page.evaluate(async()=>{await document.fonts.ready;document.querySelector('[data-page]:not([hidden]) h1')?.focus({preventScroll:true});window.scrollTo(0,0);await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));});await page.screenshot({path:path.join(output,'fixture-'+name+'.png'),fullPage:true});}
 async function ensureNoHorizontalOverflow(page){const dims=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,view:innerWidth}));assert.ok(dims.scroll<=dims.view+1,JSON.stringify(dims));}
 
+test('store-market-source-attribution',[2],async page=>{
+ await activate(page);await navigate(page,'home');
+ const data={currency:'usd',source:'CoinGecko',fetchedAt:new Date().toISOString(),stale:false,prices:[]};
+ await queue(page,'marketSnapshot',{result:data});await page.click('#refresh-data');
+ const link=page.locator('#market-source-link');await link.waitFor({state:'visible'});
+ assert.equal(await link.getAttribute('href'),'https://www.coingecko.com');
+ assert.match(await text(page,'#market-status'),/Data provided by CoinGecko/);
+ await link.focus();await page.keyboard.press('Enter');await idle(page);
+ assert.deepEqual((await snapshot(page)).calls.filter(call=>call.method==='openWeb').at(-1).args,['market-data','coingecko']);
+ await queue(page,'marketSnapshot',{result:{...data,source:'Synthetic alternate source',stale:true}});await page.click('#refresh-data');
+ await page.waitForFunction(()=>document.querySelector('#market-status').textContent.includes('Synthetic alternate source'));
+ assert.equal(await page.locator('#market-source-link').count(),0);
+ assert.match(await text(page,'#market-status'),/Stale prices/);
+});
+
 test('exchange-folder-controls',[7],async page=>{
  await activate(page);await navigate(page,'review');
  assert.equal(await page.locator('#exchange-folder-controls').isVisible(),false);
