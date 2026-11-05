@@ -55,9 +55,20 @@ tests. Missing, changed or redirected files fail the gate rather than skip it.
 Provisioning downloads only public pinned SDK artifacts; it does not establish
 distribution rights or final release qualification.
 
+The online proof-package importer now validates the selected public wallet,
+original authorization, genuine proof, exact proof bytes in the chain payload,
+and the narrower product deadline before admitting a separately reviewed chain
+request. Original authorization/result records remain encrypted in their own
+journals. An immutable transaction binding points to them and is rechecked for
+saved review, signature import, submission, history and receipt export.
+Reimport reopens the same unsigned transaction. Signed/submitted history and
+overlapping private inputs prevent a new preparation; no automatic replacement
+or broadcast is available. Duplicate JSON keys and malformed UTF-8 fail closed.
+The `productProofAdmission` capability and privileged IPC/online job stay closed
+until qualified. Local adapter-callback tests do not prove provider preflight.
+
 Remaining integration includes narrowly scoped private-view discovery and job
-preparation, provider proof finalization, admission of the linked chain request,
-and independent note/proof settlement
+preparation, provider proof finalization, and independent note/proof settlement
 and restart reconciliation. Ethereum and Solana cases still need their real
 native approvals, separate-device exchange and intended-mainnet qualification
 on the final identity-bound release. None of these requirements is waived.

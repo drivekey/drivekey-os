@@ -72,8 +72,9 @@ function installRouteUi(c){
     if(!record||record.state!=='prepared'||record.response)throw Error('Only an unsigned prepared request can be reviewed again.');
     paymentPolicy.assertIntent(record.request);
     c.validateIntent(record.request);c.assertIntentWallet(record.request,s.wallet);
+    if(c.verifyPreparedBinding)await c.verifyPreparedBinding(record,s.wallet,true);assertScope(s);
     const review=c.reviewIntent(record.request);assertScope(s);
-    const token=randomUUID();c.setPending({token,request:record.request,review,vaultHash:c.getVaultHash()});
+    const token=randomUUID();c.setPending({token,request:record.request,review,...(record.productProof===undefined?{}:{productProof:record.productProof}),vaultHash:c.getVaultHash()});
     return {token,review};
   });
   c.register('copy-payment-request',async input=>{
@@ -86,6 +87,7 @@ function installRouteUi(c){
     const wallet=structuredClone(c.getPublic()),record=await c.transactionStore.load(wallet.deviceId,input.id);
     if(!record)throw Error('Transaction is unavailable for the selected wallet.');
     if(record.response)c.verifyIntent(record.response,record.request,wallet,Date.now(),false);
+    if(c.verifyPreparedBinding)await c.verifyPreparedBinding(record,wallet,false);
     const review=historicalReview(record.request,c.bridgeCodec);
     if(c.getPublic().deviceId!==wallet.deviceId)throw Error('Selected wallet changed.');
     return {...transactionDetail(record,wallet,review),paymentWritable:paymentPolicy.allowedIntent(record.request)};

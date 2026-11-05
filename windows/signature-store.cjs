@@ -40,7 +40,8 @@ class SignatureStore{
   // Validate the wallet before constructing its directory.
   this.location(walletId,'0'.repeat(64));let names;
   try{names=await this.fs.readdir(path.join(this.directory,walletId));}catch(error){if(error.code==='ENOENT')return [];throw error;}
-  const ids=names.filter(name=>/^[0-9a-f]{64}\.bin$/.test(name)).map(name=>name.slice(0,-4));
+  const ids=names.filter(name=>/^[0-9a-f]{64}\.bin$/i.test(name)).map(name=>name.slice(0,-4).toLowerCase());
+  if(new Set(ids).size!==ids.length)throw Error('Ambiguous saved signature filenames. Preserve this profile.');
   if(ids.length>1000)throw Error('Too many saved signatures. Keep this profile and contact support.');
   const records=[];for(const id of ids){const record=await this.load(walletId,id);if(!record)throw Error('Saved signature changed while loading.');records.push(record);}
   return records.sort((a,b)=>String(b.response.signedAt).localeCompare(String(a.response.signedAt)));

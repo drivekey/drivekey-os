@@ -5,6 +5,7 @@ import {LifiMayanEvmSourceAdapter} from './lifi-mayan-evm-source';
 import {MayanEvmRedeemAdapter} from './mayan-evm-redeem';
 import {MayanSolanaSourceAdapter} from './mayan-solana-source';
 import {HinkalSolanaSwapAdapter} from './hinkal-solana-swap';
+import {prepareProductProofPackage} from './hinkal-product-admission';
 import {HinkalEvmSwapAdapter} from './hinkal-evm-swap';
 import {HinkalSolanaSpendAdapter} from './hinkal-solana-spend';
 import {HinkalSolanaAdapter} from './hinkal-solana';
@@ -24,6 +25,7 @@ process.stdin.on('end',async()=>{
   paymentPolicy.assertOnlineJob(j);
   const adapter=new OnlineAdapter(j.endpoints);let result;
   switch(j.action){
+   case 'hinkal-product-proof-prepare':result=await prepareProductProofPackage(adapter,j.input,j.wallet);break;
    case 'lifi-relay-destination-reconcile':result=await new LifiRelayDestinationAdapter(adapter).reconcile(j.request,j.response);break;
    case 'lifi-relay-source-reconcile':result=await new LifiRelaySourceAdapter(adapter).reconcile(j.request,j.response);break;
    case 'lifi-mayan-solana-destination-reconcile':result=await new LifiMayanSolanaDestinationAdapter(adapter).reconcile(j.request,j.response);break;

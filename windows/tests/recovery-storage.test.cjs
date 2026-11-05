@@ -150,3 +150,19 @@ test('product proof results alone preserve the original records when their journ
  const bytes=await storage.forJournal('proof-results').seal('Unfunded completed proof fixture');await fs.mkdir(recordDirectory,{recursive:true});const file=path.join(recordDirectory,'f'.repeat(64)+'.bin');await fs.writeFile(file,bytes);await fs.unlink(path.join(directory,'journal-key-v1.dpapi'));
  await assert.rejects(()=>createRecoveryStorage(directory,{}).ready(),/journal key is missing/);assert.deepEqual(await fs.readFile(file),bytes);await assert.rejects(()=>fs.stat(path.join(directory,'journal-key-v1.dpapi')),{code:'ENOENT'});
 });
+test('cached journal keys cannot authorize reads after the protected key is removed, corrupted or replaced', {skip:process.platform!=='win32'}, async t=>{
+ const directory=await profile(t),storage=createRecoveryStorage(directory,{}),scope=storage.forJournal('proof-results'),ciphertext=await scope.seal('cached-key read fixture'),keyFile=path.join(directory,'journal-key-v1.dpapi'),key=await fs.readFile(keyFile),other=await profile(t);await createRecoveryStorage(other,{}).ready();const unrelated=await fs.readFile(path.join(other,'journal-key-v1.dpapi')),damaged=Buffer.from(key);damaged[damaged.length-1]^=1;
+ const records=path.join(directory,'proof-results-v1',randomUUID());await fs.mkdir(records,{recursive:true});const file=path.join(records,'a'.repeat(64)+'.bin');await fs.writeFile(file,ciphertext);assert.equal(await scope.unseal(ciphertext),'cached-key read fixture');
+ for(const replacement of [null,damaged,unrelated]){
+  if(replacement===null)await fs.unlink(keyFile);else await fs.writeFile(keyFile,replacement);
+  await assert.rejects(scope.unseal(ciphertext));assert.deepEqual(await fs.readFile(file),ciphertext);
+  if(replacement===null)await assert.rejects(fs.access(keyFile),{code:'ENOENT'});else assert.deepEqual(await fs.readFile(keyFile),replacement);
+  await fs.writeFile(keyFile,key,{flag:replacement===null?'wx':'w'});assert.equal(await scope.unseal(ciphertext),'cached-key read fixture');
+ }
+});
+test('Windows case-only journal restores remain listed and cannot bypass missing-key preservation', {skip:process.platform!=='win32'}, async t=>{
+ const directory=await profile(t),wallet=randomUUID(),storage=createRecoveryStorage(directory,{}),signatures=new(require('../signature-store.cjs').SignatureStore)(path.join(directory,'signatures-v1'),storage.forJournal('signatures')),transactions=new TransactionStore(path.join(directory,'transactions-v1'),storage.forJournal('transactions'));
+ const a={deviceId:wallet,requestId:randomUUID(),fingerprint:'0x'+'a'.repeat(64)},b={version:8,deviceId:wallet,requestId:randomUUID(),fingerprint:'0x'+'b'.repeat(64)};await signatures.save(wallet,a,{deviceId:wallet,requestId:a.requestId,fingerprint:a.fingerprint,signedAt:new Date().toISOString()});await transactions.put({version:1,request:b,state:'prepared'});
+ const files=[];for(const original of [signatures.location(wallet,a.fingerprint.slice(2)),transactions.file(wallet,b.fingerprint)]){const upper=path.join(path.dirname(original),path.basename(original).toUpperCase()),bytes=await fs.readFile(original);await fs.rename(original,upper);files.push({file:upper,bytes});}
+ assert.equal((await signatures.list(wallet)).length,1);assert.equal((await transactions.list(wallet)).length,1);const keyFile=path.join(directory,'journal-key-v1.dpapi'),key=await fs.readFile(keyFile);await fs.unlink(keyFile);await assert.rejects(createRecoveryStorage(directory,{}).ready(),/journal key is missing/);await assert.rejects(fs.access(keyFile),{code:'ENOENT'});for(const f of files)assert.deepEqual(await fs.readFile(f.file),f.bytes);await fs.writeFile(keyFile,key,{flag:'wx'});assert.equal((await signatures.list(wallet)).length,1);
+});

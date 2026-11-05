@@ -296,6 +296,12 @@ test('product-private-proof-review-and-recovery',[20,21],async page=>{
  assert.equal((await snapshot(page)).calls.filter(c=>c.method==='authorizeProductProof').length,1);assert.equal((await snapshot(page)).calls.filter(c=>c.method==='sign').length,0);
 },{productProofs:true});
 
+test('product-proof-package-watch-only-chain-review',[18,20],async page=>{
+ await navigate(page,'vault');await page.click('#import-watch');await idle(page);await navigate(page,'review');await page.click('#import-product-proof-package');await idle(page);await visible(page,'#review-loaded');
+ assert.match(await text(page,'#terms'),/hinkal-swap/);assert.match(await text(page,'#toast-message'),/separate unsigned chain transaction/);assert.equal(await page.locator('#sign-submit').isDisabled(),true);assert.equal(await page.locator('#export-payment').isEnabled(),true);
+ await page.click('#export-payment');await idle(page);const calls=(await snapshot(page)).calls;assert.equal(calls.filter(c=>c.method==='importProductProofPackage').length,1);assert.equal(calls.filter(c=>c.method==='sign'||c.method==='authorizeProductProof'||c.method==='submitPayment').length,0);
+},{productAdmission:true});
+
 async function main(){
   if(process.argv.includes('--list')){console.log(JSON.stringify(suites.map(s=>({name:s.name,screens:s.screens})),null,2));return;}
   await fs.mkdir(output,{recursive:true});

@@ -75,7 +75,7 @@ async function* protectedJournals(profile) {
       for (const file of await fs.readdir(scope)) {
         // An interrupted exclusive publication can leave the only copy of a
         // signature in its temporary file. It still depends on this profile key.
-        if (!/^[a-f0-9]{64}\.bin(?:\.[a-f0-9-]{36}\.tmp)?$/.test(file)) continue;
+        if (!/^[a-f0-9]{64}\.bin(?:\.[a-f0-9-]{36}\.tmp)?$/i.test(file)) continue;
         const handle = await fs.open(path.join(scope, file), 'r');
         try {
           // Never use an unauthenticated header as a reason to omit a record.
@@ -182,18 +182,22 @@ function createRecoveryStorage(profile, safeStorage) {
     return pendingKey;
   }
 
-  async function keyForWrite() {
-    const {key, protectedDigest} = await loadKey(true);
-    // DPAPI proves that this user can open the key, not that it belongs to this profile.
-    // Recheck before each write batch, rather than caching success forever.
-    // Corruption discovered after a prior successful write must still stop signing.
-    writeCheck ??= authenticateExistingJournals(profile, key, safeStorage).finally(() => {writeCheck=undefined;});
-    await writeCheck;
+  async function checkedPersistentKey({key, protectedDigest}) {
     const wrapped = await readProtectedKey(file).catch(() => {throw Error(storageError);});
     try {
       if (digest(wrapped) !== protectedDigest) throw Error(storageError);
       return key;
     } finally {wrapped.fill(0);}
+  }
+
+  async function keyForWrite() {
+    const loaded = await loadKey(true), {key} = loaded;
+    // DPAPI proves that this user can open the key, not that it belongs to this profile.
+    // Recheck before each write batch, rather than caching success forever.
+    // Corruption discovered after a prior successful write must still stop signing.
+    writeCheck ??= authenticateExistingJournals(profile, key, safeStorage).finally(() => {writeCheck=undefined;});
+    await writeCheck;
+    return checkedPersistentKey(loaded);
   }
 
   function forJournal(purpose) {
@@ -212,7 +216,9 @@ function createRecoveryStorage(profile, safeStorage) {
         if (!bytes.subarray(0, format.length).equals(format)) {
           return legacyPlaintext(bytes, safeStorage);
         }
-        const {key} = await loadKey(false);
+        // Cached key bytes do not authorize access after the persisted key is
+        // lost or replaced. Never provision or silently rebind during a read.
+        const key = await checkedPersistentKey(await loadKey(false));
         const body = decryptJournal(bytes, key, aad);
         try {return body.toString('utf8');}
         finally {body.fill(0);}

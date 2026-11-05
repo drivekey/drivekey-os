@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld('drivekey', Object.freeze({
   marketSnapshot: currency => ipcRenderer.invoke('market-snapshot',{currency}),
   applicationMode: () => ipcRenderer.invoke('application-mode'),
   importProductProof: () => ipcRenderer.invoke('import-product-proof'),
+  importProductProofPackage: () => ipcRenderer.invoke('import-product-proof-package'),
   reviewProductProof: id => ipcRenderer.invoke('review-product-proof',{id}),
   authorizeProductProof: (token,fingerprint,password) => ipcRenderer.invoke('sign-product-proof',{token,fingerprint,password}),
   listProductProofs: () => ipcRenderer.invoke('list-product-proofs'),

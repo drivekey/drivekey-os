@@ -16,7 +16,7 @@ const reconciliation = new Set([
   'hinkal-evm-swap-reconcile', 'hinkal-solana-swap-reconcile',
 ]);
 const blockedIpc = new Set(['import-prepared-private', 'import-prepared-bridge', 'hinkal-discover',
-  'import-product-proof','review-product-proof','sign-product-proof','export-product-proof','prove-product-proof','export-product-proof-result']);
+  'import-product-proof','review-product-proof','sign-product-proof','export-product-proof','prove-product-proof','export-product-proof-result','import-product-proof-package']);
 
 function assertChain(chain) {
   if (!chains.has(chain)) throw Error(notice);
@@ -46,6 +46,7 @@ function assertProductProof() { throw Error(notice); }
 
 function assertOnlineJob(job) {
   switch (job?.action) {
+    case 'hinkal-product-proof-prepare': assertProductProof(job.input?.request); return;
     case 'prepare': assertPaymentInput(job.input); return;
     case 'balance':
     case 'observed-balance': assertPaymentInput(job); return;

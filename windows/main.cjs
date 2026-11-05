@@ -35,7 +35,7 @@ const {isDeepStrictEqual} = require('node:util');
 const {RequestExchange} = require('./tools/request-exchange.cjs');
 const requestExchange = new RequestExchange();
 const ROOT = __dirname, ENTRY = pathToFileURL(path.join(ROOT,'ui','index.html')).href;
-let win, encryptedVault, vaultFile, publicWallet, backupVerified=false, pendingReview, busy=false, activeWalletId=null, productProofUi;
+let win, encryptedVault, vaultFile, publicWallet, backupVerified=false, pendingReview, busy=false, activeWalletId=null, productProofUi, productAdmissionUi;
 const activeWorkers=new Set();
 const publicReadControllers = new Set();
 function cancelAccountReads() {
@@ -61,7 +61,7 @@ async function online(input,options={}){if(OFFLINE)throw Error('Networking is di
 const verifiedWallets=new Map();
 const digest = v => createHash('sha256').update(JSON.stringify(v)).digest('hex');
 function passwordOf(v) { if(typeof v!=='string'||v.length<16||v.length>256) throw Error('Use a passphrase of 16–256 characters.'); return v; }
-function clearPendingReview() {pendingReview=undefined;productProofUi?.clear();requestExchange.clearBinding();}
+function clearPendingReview() {pendingReview=undefined;productProofUi?.clear();productAdmissionUi?.clear();requestExchange.clearBinding();}
 function reset() { cancelAccountReads();requestExchange.clear();encryptedVault=undefined; vaultFile=undefined; publicWallet=undefined; backupVerified=false; clearPendingReview();activeWalletId=null; }
 function walletList(){const problem=walletStore.problem||watchStore.problem;return problem?{wallets:[],activeId:null,recoveryRequired:true,canRecover:problem.canRecover,error:problem.error}:{wallets:[...walletStore.list(activeWalletId,verifiedWallets).wallets,...watchStore.list(activeWalletId).wallets.map(w=>({...w,watchOnly:true}))],activeId:activeWalletId,recoveryRequired:false};}
 function selectedWallet(){const wallet=storeFor(activeWalletId).get(activeWalletId);return {public:publicWallet,backupVerified,watchOnly:!encryptedVault,wallet:{id:wallet.id,name:wallet.name},...walletList()};}
@@ -203,6 +203,7 @@ register('sign-request',async p=>{
   paymentPolicy.assertIntent(r.request);
   clearPendingReview(); // An approval token can be consumed only once.
   await recoveryStorage.ready();
+  if(r.productProof!==undefined)await productAdmissionUi.verifyPending(r,publicWallet,true);
   const refreshed=await job({action:'review',request:r.request,vault:encryptedVault});
   const terms=Object.entries(refreshed).map(([key,value])=>key+': '+(typeof value==='object'?JSON.stringify(value):value)).join('\n');
   const confirm=await dialog.showMessageBox(win,{type:'warning',title:'Approve this exact transaction?',message:'Create a transferable signature?',detail:terms+'\n\nLocal software signing trusts the running computer. No transaction is broadcast here.',buttons:['Cancel','Approve exact transaction'],defaultId:0,cancelId:0,noLink:true});
@@ -242,10 +243,10 @@ registerPublicRead('market-snapshot',p=>marketService.snapshot(p));
 const interfaceZoomLevels=Object.freeze([0.5,0.67,0.8,1,1.25,1.5,1.75,2]);
 register('interface-settings',async()=>({zoom:win.webContents.getZoomFactor()}));
 register('set-interface-zoom',async p=>{if(!p||Object.keys(p).length!==1||typeof p.zoom!=='number'||!interfaceZoomLevels.includes(p.zoom))throw Error('Choose a supported interface zoom level.');win.webContents.setZoomFactor(p.zoom);return {zoom:win.webContents.getZoomFactor()};});
-register('application-mode',async()=>({offline:OFFLINE,version:require('./package.json').version,fundingReady:false,networks:['ethereum','solana','sepolia','devnet'],capabilities:{publicPayments:true,uniswapV3:false,lifiSwaps:false,relayBridge:false,preparedPrivateImport:false,preparedMayanImport:false,privateProofCreation:false,privateBalanceDiscovery:false,savings:false}}));
+register('application-mode',async()=>({offline:OFFLINE,version:require('./package.json').version,fundingReady:false,networks:['ethereum','solana','sepolia','devnet'],capabilities:{publicPayments:true,uniswapV3:false,lifiSwaps:false,relayBridge:false,preparedPrivateImport:false,preparedMayanImport:false,privateProofCreation:false,productProofAdmission:false,privateBalanceDiscovery:false,savings:false}}));
 register('payment-qr',async p=>{requirePublic();return scopedPaymentQR(publicWallet,p);});
 register('payment-balance',async p=>{requirePublic();if(!p||!['ethereum','sepolia','solana','devnet'].includes(p.chain)||!['ETH','SOL','USDC'].includes(p.asset)||Object.keys(p).some(k=>!['chain','asset'].includes(k)))throw Error('Invalid balance request.');const from=['ethereum','sepolia'].includes(p.chain)?publicWallet.evmAddress:publicWallet.solanaAddress;return online({action:'balance',chain:p.chain,asset:p.asset,from});});
-register('export-payment-receipt',async p=>{requirePublic();const r=await transactionStore.load(publicWallet.deviceId,p?.id);const receipt=createFinalReceipt(r);verifyIntent(r.response,r.request,publicWallet,Date.now(),false);const f=await saveJSON('Save finalized payment receipt','drivekey-payment-receipt.json',receipt);return {saved:!!f};});
+register('export-payment-receipt',async p=>{requirePublic();const r=await transactionStore.load(publicWallet.deviceId,p?.id);const receipt=createFinalReceipt(r);verifyIntent(r.response,r.request,publicWallet,Date.now(),false);if(r.productProof!==undefined)await productAdmissionUi.verifyRecord(r,publicWallet,false);const f=await saveJSON('Save finalized payment receipt','drivekey-payment-receipt.json',receipt);return {saved:!!f};});
 register('configure-rpc',async()=>{
  if(OFFLINE)throw Error('Offline companion has no networking.');const picked=await openJSON('Import RPC configuration');if(!picked)return {cancelled:true};
  const entries=Object.entries(picked.data);if(!entries.length||entries.length>4)throw Error('Invalid RPC configuration.');
@@ -295,6 +296,7 @@ register('export-payment-request',async()=>{
  requirePublic();
  if(!pendingReview)throw Error('Prepare an intent first.');
  paymentPolicy.assertIntent(pendingReview.request);
+ if(pendingReview.productProof!==undefined)await productAdmissionUi.verifyPending(pendingReview,publicWallet,true);
  if(!OFFLINE&&!encryptedVault&&requestExchange.available(exchangeScope())){
   const request=validateIntent(pendingReview.request);assertIntentWallet(request,publicWallet);
   return requestExchange.export(request,pendingReview.token,exchangeScope());
@@ -305,6 +307,7 @@ async function ingestResponse(data,scope,expected) {
  assertImportScope(scope);
  const record=await transactionStore.load(scope.wallet.deviceId,data?.fingerprint);assertImportScope(scope);
  if(!record)throw Error('No matching prepared intent for this wallet.');
+ if(record.productProof!==undefined)await productAdmissionUi.verifyRecord(record,scope.wallet,false);assertImportScope(scope);
  paymentPolicy.assertIntent(record.request);
  if(expected&&!isDeepStrictEqual(record.request,expected))throw Error('Response differs from the current reviewed request.');
  const response=verifyIntent(data,record.request,scope.wallet,Date.now(),Boolean(expected));
@@ -336,6 +339,7 @@ register('submit-payment',async p=>{
  if(!record?.response||record.state!=='signed')throw Error('Only a signed, never-submitted intent can be submitted. Reconcile prior submissions.');
  paymentPolicy.assertIntent(record.request);
  const r=validateIntent(record.request);verifyIntent(record.response,r,publicWallet,Date.now(),false);
+ if(record.productProof!==undefined)await productAdmissionUi.verifyRecord(record,publicWallet,false);
  const confirmation=await dialog.showMessageBox(win,{type:'warning',title:'Submit transaction?',message:'Broadcast the approved transaction?',detail:Object.entries(reviewIntent(r)).map(([k,v])=>k+': '+v).join('\n'),buttons:['Cancel','Broadcast exact transaction'],defaultId:0,cancelId:0,noLink:true});
  if(confirmation.response!==1)return {cancelled:true};
  // V14 broadcasts perform the full preflight in the same worker that sends.
@@ -346,14 +350,15 @@ register('submit-payment',async p=>{
 });
 register('reconcile-payment',async p=>{
  requirePublic();const record=await transactionStore.load(publicWallet.deviceId,p?.id);if(!record?.response||record.state==='prepared')throw Error('No signed transaction to reconcile.');verifyIntent(record.response,record.request,publicWallet,Date.now(),false);
- const result=await online({action:[25,26].includes(record.request.version)?'lifi-relay-destination-reconcile':intentAction(record.request,'reconcile'),request:record.request,response:record.response});if(!['confirmed','failed','pending','uncertain','conflict','expired-unresolved','destination-pending'].includes(result?.state)||[25,26].includes(record.request.version)&&result.state==='confirmed'&&result.completeRoute!==true)throw Error('Invalid reconciliation response.');
+ if(record.productProof!==undefined)await productAdmissionUi.verifyRecord(record,publicWallet,false);const result=await online({action:[25,26].includes(record.request.version)?'lifi-relay-destination-reconcile':intentAction(record.request,'reconcile'),request:record.request,response:record.response});if(!['confirmed','failed','pending','uncertain','conflict','expired-unresolved','destination-pending'].includes(result?.state)||[25,26].includes(record.request.version)&&result.state==='confirmed'&&result.completeRoute!==true)throw Error('Invalid reconciliation response.');
  await transactionStore.put(reconcileRecord(record,result));return result;
 });
 require('./ui-routes-main.cjs').installRouteUi({
  register,dialog,clipboard,transactionStore,bridgeCodec,validateIntent,reviewIntent,assertIntentWallet,verifyIntent,online,makePaymentQR:scopedPaymentQR,
  getPublic:()=>{requirePublic();return publicWallet;},getWindow:()=>win,isOffline:()=>OFFLINE,
  clearPending:clearPendingReview,setPending:value=>{pendingReview=value;},
- getVaultHash:()=>encryptedVault?digest(encryptedVault):null
+ getVaultHash:()=>encryptedVault?digest(encryptedVault):null,
+ verifyPreparedBinding:(record,wallet,expiry)=>productAdmissionUi.verifyRecord(record,wallet,expiry)
 });
 productProofUi=require('./tools/native-product-proof.cjs').installProductProofUi({
  register,dialog,job,openJSON,saveJSON,passwordOf,policy:paymentPolicy,
@@ -361,6 +366,12 @@ productProofUi=require('./tools/native-product-proof.cjs').installProductProofUi
  backupVerified:()=>backupVerified,clearOtherReview:clearPendingReview,ready:()=>recoveryStorage.ready(),
  requestStore:proofRequestStore,authorizationStore:proofAuthorizationStore,resultStore:proofResultStore,
  artifactDirectory:()=>app.isPackaged?path.join(process.resourcesPath,'hinkal-prover'):process.env.DRIVEKEY_HINKAL_ARTIFACTS
+});
+productAdmissionUi=require('./tools/native-product-admission.cjs').installProductAdmission({
+ register,dialog,online,policy:paymentPolicy,transactionStore,authorizationStore:proofAuthorizationStore,resultStore:proofResultStore,
+ getPublic:()=>{requirePublic();return publicWallet;},getWindow:()=>win,isOffline:()=>OFFLINE,
+ getVaultHash:()=>encryptedVault?digest(encryptedVault):null,clearPending:clearPendingReview,
+ setPending:value=>{pendingReview=value;},validateIntent,assertIntentWallet,reviewIntent
 });
 app.whenReady().then(()=>{
   if(!primaryInstance)return;

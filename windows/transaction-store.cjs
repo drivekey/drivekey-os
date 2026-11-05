@@ -46,6 +46,7 @@ class TransactionStore{
   validateRecord(record,wallet,id);
   const old=await this.load(wallet,id);
   if(old){
+   if(canonical(old.productProof)!==canonical(record.productProof))throw Error('The original product proof binding is immutable.');
    if(canonical(old.request)!==canonical(record.request)||old.response&&canonical(old.response)!==canonical(record.response))throw Error('Approved transaction is immutable.');
    if(old.state!=='prepared'&&record.state==='prepared'||!['prepared','signed'].includes(old.state)&&['prepared','signed'].includes(record.state)||old.state!=='signed'&&old.state!=='submitting'&&record.state==='submitting')throw Error('Transaction submission state cannot be reset.');
   }
@@ -57,6 +58,11 @@ class TransactionStore{
   }finally{await fs.rm(tmp,{force:true}).catch(()=>{});}
   return record;
  }
- async list(wallet){this.file(wallet,'0x'+'0'.repeat(64));let files;try{files=await fs.readdir(path.join(this.directory,wallet));}catch(e){if(e.code==='ENOENT')return [];throw e;}const records=[];if(files.length>2000)throw Error('Transaction journal limit exceeded.');for(const f of files.filter(f=>/^[0-9a-f]{64}\.bin$/.test(f)))records.push(await this.load(wallet,'0x'+f.slice(0,-4)));return records;}
+ async list(wallet){
+  this.file(wallet,'0x'+'0'.repeat(64));let files;try{files=await fs.readdir(path.join(this.directory,wallet));}catch(e){if(e.code==='ENOENT')return [];throw e;}
+  if(files.length>2000)throw Error('Transaction journal limit exceeded.');const ids=files.filter(f=>/^[0-9a-f]{64}\.bin$/i.test(f)).map(f=>'0x'+f.slice(0,-4).toLowerCase());
+  if(new Set(ids).size!==ids.length)throw Error('Ambiguous transaction journal filenames. Preserve this profile.');
+  const records=[];for(const id of ids){const record=await this.load(wallet,id);if(!record)throw Error('Transaction journal changed while loading.');records.push(record);}return records;
+ }
 }
 module.exports={TransactionStore,reconcileRecord};

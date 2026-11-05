@@ -2,6 +2,7 @@ import {createVault, inspectVault, verifyVault, reviewRequest, signReviewed, ver
 import {reviewProductProof,authorizeProductProof} from './engine/offline-signer/hinkal-product-proof';
 import {verifyProductProofResponse} from './engine/core/hinkal-product-proof';
 import {verifyProductProofResult} from './engine/core/hinkal-product-result';
+import {verifyProductPackageChain} from './engine/core/hinkal-product-admission';
 const paymentPolicy = require('./tools/store-payment-policy.cjs');
 const MAX = 1024 * 1024;
 let bytes = 0, chunks: Buffer[] = [];
@@ -28,6 +29,7 @@ process.stdin.on('end', async () => {
       case 'sign-product-proof': paymentPolicy.assertProductProof(job.request); result = await authorizeProductProof(job.vault,job.password,job.request,job.fingerprint); break;
       case 'verify-product-proof': reviewProductProof(job.request,job.vault,Date.now(),false); result = {response:await verifyProductProofResponse(job.request,job.response,Date.now(),false)}; break;
       case 'verify-product-proof-result': reviewProductProof(job.request,job.vault,Date.now(),false); result = {result:await verifyProductProofResult(job.request,job.response,job.result,Date.now(),false)}; break;
+      case 'verify-product-proof-chain': result=await verifyProductPackageChain(job.package,job.wallet,job.request,Date.now(),false); break;
       default: throw Error('Unsupported operation.');
     }
     job.password = undefined; job = undefined;
