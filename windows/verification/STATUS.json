@@ -1,5 +1,5 @@
 {
-  "sourceReferenceFingerprint": "c4939718298c5a68cfe4cc27ddfb1d7e796c06147115e275b5b2c44b469ef1c5",
+  "sourceReferenceFingerprint": "4e0ccfe16d233289d2fd22c49036c948a77f79ddf98e103569c83d36767e55b7",
   "status": "Engineering preview. Current Windows mainnet SOL and USDC execution remains pending.",
   "enabledTransactions": [
     "Ethereum ETH",
@@ -19,9 +19,10 @@
   "exactPackagedWorkerGroups": 2,
   "broaderSuite": {
     "tests": 492,
-    "passed": 466,
-    "failed": 26,
-    "notes": "Disabled-workflow expectations and a legacy extracted-handler test mismatch remain. The full suite is not a passing qualification."
+    "passed": 467,
+    "failed": 25,
+    "sourceReferenceFingerprint": "be37a28c52551a5f3607e2ab1246b1b2c6b5766cdab1ae384bad6ed6fc09402e",
+    "notes": "Prior-source full suite. Remaining failures expect deferred Hinkal, swap or bridge operations to succeed. No tests were skipped. This is not a passing full-suite release qualification."
   },
   "correctedNativeSolanaUsdcAccountCreation": {
     "network": "isolated local LiteSVM",
@@ -82,5 +83,36 @@
     "failed": 0,
     "skipped": 0,
     "pngCompressedImageDataPreserved": true
-  }
+  },
+  "previousSourceReferenceFingerprint": "c4939718298c5a68cfe4cc27ddfb1d7e796c06147115e275b5b2c44b469ef1c5",
+  "testHarnessUpdates": [
+    "tests/hinkal-solana-submit.test.cjs",
+    "tests/ui/native-smoke.cjs"
+  ],
+  "runtimeBundlesChanged": false,
+  "paymentsOnlyLocalScope": {
+    "namedTestsPassed": 467,
+    "explicitExcludedLegacyPositiveTests": 25,
+    "sourceReferenceFingerprint": "be37a28c52551a5f3607e2ab1246b1b2c6b5766cdab1ae384bad6ed6fc09402e",
+    "fullHistoricalSuitePassed": false
+  },
+  "nativeDevelopmentSmoke": {
+    "checksPassed": 22,
+    "clipboardAvailable": true,
+    "qrIndependentlyDecoded": true,
+    "scope": "Development Electron, disposable local wallets, substituted native file dialogs. No signatures or broadcasts. Not installed-MSIX or physical-isolation evidence."
+  },
+  "nativeDevelopmentSigning": {
+    "checksPassed": 11,
+    "scope": "Real local cryptography and Windows DPAPI, separate same-host profiles, substituted native dialogs and synthetic Sepolia RPC. No mainnet execution."
+  },
+  "merchantCheckoutFixture": {
+    "checksPassed": 6,
+    "liveSettlementVerified": false
+  },
+  "dependencyRegistryAudit": {
+    "reportedAdvisories": 0,
+    "dependencies": 399
+  },
+  "submissionReady": false
 }

@@ -174,6 +174,8 @@ function rpcFixture(request, response, control, checkSend = async () => {}) {
 }
 
 function installSubmit(bindings) {
+  // The extracted native handler uses the same policy dependency as the app.
+  bindings.paymentPolicy = require("../tools/store-payment-policy.cjs");
   const begin = main.indexOf("register('submit-payment',");
   const end = main.indexOf("register('reconcile-payment',", begin);
   assert.ok(begin >= 0 && end > begin);
