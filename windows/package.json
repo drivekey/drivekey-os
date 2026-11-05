@@ -17,7 +17,8 @@
     "typecheck": "tsc --noEmit",
     "test:ui": "node tests/ui/renderer-suite.cjs",
     "test:smoke": "node tests/ui/native-smoke.cjs",
-    "check:store": "node tools/check-store-payments.mjs"
+    "check:store": "node tools/check-store-payments.mjs",
+    "check:full-product": "node tools/check-full-product.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.14",
