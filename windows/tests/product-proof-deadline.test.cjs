@@ -9,7 +9,7 @@ let api,f,active;
 const waitUntil=async deadline=>{while(Date.now()<=deadline)await new Promise(resolve=>setTimeout(resolve,Math.min(50,deadline-Date.now()+1)));};
 before(async()=>{
  const directory=await fs.mkdtemp(path.join(root,'verification/proof-deadline-'));
- const result=await esbuild.build({stdin:{contents:"export * from './tests/helpers/hinkal-product-proof-fixture';export * from './engine/offline-signer/hinkal-product-proof';export * from './engine/core/hinkal-product-proof';",resolveDir:sourceRoot,loader:'ts'},bundle:true,packages:'external',platform:'node',format:'cjs',write:false,
+ const result=await esbuild.build({stdin:{contents:"export * from './tests/helpers/hinkal-product-proof-fixture';export * from './engine/offline-signer/hinkal-product-proof';export * from './engine/core/hinkal-product-proof';export * from './engine/offline-signer/private-note-manifest';",resolveDir:sourceRoot,loader:'ts'},bundle:true,packages:'external',platform:'node',format:'cjs',write:false,
   plugins:[{name:'real-crypto-delivery-delays',setup(build){
    build.onResolve({filter:/node_modules\/@hinkal\//},args=>({path:path.resolve(args.resolveDir,args.path),external:true}));
    build.onResolve({filter:/^\.\/multi-vault$/},args=>args.importer.includes('offline-signer')?{path:'delayed-unlock',namespace:'proof-deadline-test'}:undefined);
@@ -24,7 +24,7 @@ before(async()=>{
  const file=path.join(directory,'signer.cjs');await fs.writeFile(file,result.outputFiles[0].contents);api=require(file);f=await api.productProofFixture();
  globalThis[hook]=async keys=>{
   active.unlocks++;const approve=keys.evm.signMessage.bind(keys.evm);
-  keys.evm.signMessage=async message=>{const signature=await approve(message);if(active.mode==='wallet'&&String(message).startsWith('DriveKey product private-proof response'))await waitUntil(active.deadline);return signature;};
+  keys.evm.signMessage=async message=>{const signature=await approve(message);if(active.mode==='wallet'&&String(message).startsWith('DriveKey product private-proof response')||active.mode==='note-inspection'&&message===require('../dist/hinkal.cjs').HINKAL_PIN.sdkLoginMessage)await waitUntil(active.deadline);return signature;};
   if(active.mode==='inner-unlock'&&active.unlocks===2)await waitUntil(active.deadline);
   return keys;
  };
@@ -41,4 +41,7 @@ for(const mode of ['circuit','wallet'])test(`retains original product authorizat
 test('original outer expiry is enforced at the circuit boundary even while the inner seed remains current',async()=>{
  const r=request('inner-unlock');assert.ok(Date.parse(r.seed.expiresAt)>active.deadline);
  await assert.rejects(api.authorizeProductProof(f.vault,f.password,r,r.fingerprint),/lifetime|scope|expired/);assert.equal(active.authorizations,0);
+});
+test('private note inspection crossing the original deadline returns no manifest or circuit authorization',async()=>{
+ const r=request('note-inspection');await assert.rejects(api.inspectProductNotes(f.vault,f.password,r),/expired|lifetime|scope/);assert.equal(active.authorizations,0);assert.equal(active.unlocks,1);
 });

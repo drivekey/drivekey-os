@@ -10,7 +10,7 @@ const activeWallets=new Set();
 const authorities=new Set(['transaction','private-proof','private-view']);
 function snapshot(value,limit=64*1024){const text=JSON.stringify(value);if(typeof text!=='string'||Buffer.byteLength(text)>limit)throw Error('Signing request exceeds its recovery limit.');return JSON.parse(text);}
 class SigningAttempts{
- constructor(directory,storage,primary,{assertExternalResolved}={}){this.assertExternalResolved=assertExternalResolved;
+ constructor(directory,storage,primary,{assertExternalResolved,noteClaims}={}){this.assertExternalResolved=assertExternalResolved;this.noteClaims=noteClaims;
   this.primary=primary;this.busy=activeWallets;this.lockPrefix=path.resolve(directory)+(process.platform==='win32'?'':':');
   if(process.platform==='win32')this.lockPrefix=this.lockPrefix.toLowerCase();
   this.attempts=new SignatureStore(path.join(directory,'signing-attempts-v1'),storage.forJournal('signing-attempts'));
@@ -68,24 +68,28 @@ class SigningAttempts{
   if(await this.attempts.load(walletId,id)||await this.results.load(walletId,id)||await this.commitments.load(walletId,id)||await this.store(authority).load(walletId,id))throw Error('This request has signing authority or an uncertain signing attempt. Preserve its original records.');
  }
  async assertResolved(walletId,verify){
+  if(this.noteClaims)await this.noteClaims.assertIntegrity(walletId,this);
   if(this.assertExternalResolved)await this.assertExternalResolved(walletId);
   for(const record of await this.attempts.list(walletId)){
    const marker=this.checkedMarker(record);
    if(!await this.existing(walletId,record.request,marker.authority,verify))throw Error(uncertain);
   }
  }
- async run({walletId,request:input,authority,verify,sign,current=()=>{}}){
+ async run({walletId,request:input,authority,verify,sign,current=()=>{},privateNoteManifest}){
   const lock=this.lockPrefix+walletId;if(this.busy.has(lock))throw Error('Finish the current signing operation for this wallet first.');
   this.busy.add(lock);let claimed=false;
   try{
-   this.store(authority);const request=snapshot(input,authority==='private-proof'?96*1024:64*1024);if(walletId!==request.deviceId)throw Error('Signing wallet differs.');
+   this.store(authority);const request=snapshot(input,authority==='private-proof'?96*1024:64*1024),noteManifest=privateNoteManifest===undefined?undefined:snapshot(privateNoteManifest,16*1024);if(walletId!==request.deviceId)throw Error('Signing wallet differs.');
    const unsigned=request.chainRequest?.unsignedTransaction||request.unsignedTransaction||'',responseCeiling=authority==='private-proof'?4096:Math.max(10240,Buffer.byteLength(unsigned)+2048);
    if(Buffer.byteLength(JSON.stringify(request))+responseCeiling+4096>128*1024)throw Error('This request leaves insufficient encrypted recovery capacity. No signature was created.');
    let saved=await this.existing(walletId,request,authority,verify);if(saved){await this.ensureCommitment(walletId,request,authority,saved.response);return {...saved,reused:true};}
    // Unresolved attempts block different requests and authority types as well.
    await this.assertResolved(walletId,verify);
+   if(this.noteClaims)await this.noteClaims.assertSigningHistory(walletId,this,request,authority);
+   if(this.noteClaims)await this.noteClaims.check(walletId,request,authority,noteManifest);
    current();const claim=await this.attempts.claim(walletId,request,this.marker(request,authority));
    if(!claim.created)throw Error(uncertain);claimed=true;this.checkedMarker(claim.record);current();
+   if(this.noteClaims){await this.noteClaims.reserve(walletId,request,authority,noteManifest);await this.noteClaims.assertUnlocked(walletId);}current();
    // From here no exception, timeout, cancellation or process death permits a
    // new signature. No reset/delete/retry endpoint exists for these records.
    const response=snapshot(await sign(structuredClone(request)),128*1024);

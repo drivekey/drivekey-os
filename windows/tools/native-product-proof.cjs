@@ -4,6 +4,7 @@
 const {randomUUID,createHash}=require('node:crypto');
 const {productProofReview,validateProductProof}=require('../dist/hinkal-product-proof.cjs');
 const {localProductProvingSupported}=require('../dist/hinkal-product-result.cjs');
+const {privateNoteReview}=require('../dist/private-note-manifest.cjs');
 const digest=value=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
 function installProductProofUi(c){
  let pending,epoch=0;
@@ -35,17 +36,23 @@ function installProductProofUi(c){
   c.policy.assertProductProof(r.request);clear();c.clearOtherReview();s.epoch=epoch;
   const password=c.passwordOf(p?.password);await c.ready();current(s);
   const review=await c.job({action:'review-product-proof',request:r.request,vault:s.vault});current(s);
+  if(!c.signingAttempts.noteClaims)throw Error('Private-note reservation storage is unavailable. No proof authorization was created.');
+  await c.job({action:'verify',vault:s.vault,password});current(s);validateProductProof(r.request);
+  const privateNoteManifest=await c.job({action:'inspect-product-notes',vault:s.vault,password,request:r.request});current(s);validateProductProof(r.request);
+  const noteManifestFingerprint=privateNoteManifest.fingerprint,ownedReview=privateNoteReview(r.request,privateNoteManifest);
+  await c.signingAttempts.noteClaims.check(s.wallet.deviceId,r.request,'private-proof',privateNoteManifest);current(s);
   const approval=await c.dialog.showMessageBox(s.window,{type:'warning',title:'Authorize this exact private proof?',
-   message:'Create a private-proof authorization?',detail:Object.entries(review).map(([k,v])=>k+': '+v).join('\n')+
-   '\n\nThis does not sign or broadcast a blockchain transaction. Review the resulting transaction separately.',
+   message:'Create a private-proof authorization?',detail:Object.entries({...review,...ownedReview}).map(([k,v])=>k+': '+v).join('\n')+
+   '\n\nA new authorization durably reserves these private inputs before signing. Expiry or cancellation after authorization does not release them. This does not sign or broadcast a blockchain transaction. Review the resulting transaction separately.',
    buttons:['Cancel','Authorize exact private proof'],defaultId:0,cancelId:0,noLink:true});current(s);
   if(approval.response!==1)return {cancelled:true,reviewConsumed:true};
   // Recheck the monotonic expiry and exact request in the one-use offline child.
-  await c.job({action:'verify',vault:s.vault,password});current(s);validateProductProof(r.request);
+  validateProductProof(r.request);
   const {response}=await c.signingAttempts.run({walletId:s.wallet.deviceId,request:r.request,authority:'private-proof',
+   privateNoteManifest,
    current:()=>{current(s);validateProductProof(r.request);},
    verify:async(response,request,authority)=>(await c.job({action:authority==='private-view'?'verify-private-view':authority==='private-proof'?'verify-product-proof':'verify-saved',vault:s.vault,request,response})).response,
-   sign:request=>c.job({action:'sign-product-proof',vault:s.vault,password,request,fingerprint:request.fingerprint})});
+   sign:request=>c.job({action:'sign-product-proof',vault:s.vault,password,request,fingerprint:request.fingerprint,noteManifestFingerprint})});
   current(s);
   const file=await c.saveJSON('Export private-proof authorization','drivekey-private-proof-response.json',response);current(s);
   return {kind:'private-proof',saved:!!file,reviewConsumed:true,recoverable:true,authorizationFingerprint:r.request.fingerprint,

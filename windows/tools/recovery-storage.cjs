@@ -10,7 +10,7 @@ const nonceLength = 12;
 const tagLength = 16;
 const wrappedLimit = 4096;
 const journalLimit = 256 * 1024;
-const journalPurposes = Object.freeze(['signatures', 'transactions', 'proofs', 'proof-requests', 'proof-results', 'signing-attempts', 'signing-results', 'signing-commitments', 'view-sessions', 'view-requests', 'view-responses', 'view-job-attempts', 'view-preparations', 'proof-finalizations']);
+const journalPurposes = Object.freeze(['signatures', 'transactions', 'proofs', 'proof-requests', 'proof-results', 'signing-attempts', 'signing-results', 'signing-commitments', 'view-sessions', 'view-requests', 'view-responses', 'view-job-attempts', 'view-preparations', 'proof-finalizations', 'private-note-claims', 'private-note-chains', 'private-note-locks']);
 const storageError = 'Windows encrypted recovery storage is unavailable. Signing is disabled.';
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const journalContext = purpose => Buffer.from('DriveKey journal v1: ' + purpose);
@@ -66,17 +66,23 @@ async function readProtectedKey(file) {
 async function* protectedJournals(profile) {
   for (const purpose of journalPurposes) {
     const root = path.join(profile, purpose + '-v1');
+    const rootInfo=await fs.lstat(root).catch(error=>{if(error.code==='ENOENT')return null;throw error;});
+    if(!rootInfo)continue;
+    if(!rootInfo.isDirectory()||rootInfo.isSymbolicLink())throw Error('Redirected protected journal directory.');
     const wallets = await fs.readdir(root, {withFileTypes:true}).catch(error => {
       if (error.code === 'ENOENT') return [];
       throw error;
     });
+    if(wallets.some(entry=>entry.isSymbolicLink()))throw Error('Redirected protected wallet journal.');
+    if(purpose==='private-note-locks')for(const entry of wallets.filter(entry=>!entry.isDirectory())){const handle=await fs.open(path.join(root,entry.name),'r');try{yield {handle,purpose};}finally{await handle.close();}}
     for (const wallet of wallets.filter(entry => entry.isDirectory())) {
       const scope = path.join(root, wallet.name);
       for (const file of await fs.readdir(scope)) {
         // An interrupted exclusive publication can leave the only copy of a
         // signature in its temporary file. It still depends on this profile key.
-        if (!/^[a-f0-9]{64}\.bin(?:\.[a-f0-9-]{36}\.tmp)?$/i.test(file)) continue;
-        const handle = await fs.open(path.join(scope, file), 'r');
+        if (purpose!=='private-note-locks'&&!/^[a-f0-9]{64}\.bin(?:\.[a-f0-9-]{36}\.tmp)?$/i.test(file)) continue;
+        const location=path.join(scope,file);if((await fs.lstat(location)).isSymbolicLink())throw Error('Redirected protected journal record.');
+        const handle = await fs.open(location, 'r');
         try {
           // Never use an unauthenticated header as a reason to omit a record.
           // Damaged protected ciphertext must not masquerade as an empty profile.

@@ -9,6 +9,7 @@ import {signLocalHinkalSwap} from './hinkal-local-evm-swap';
 import {signLocalHinkalSolanaSwap} from './hinkal-local-solana-swap';
 import {unlockMultiVault} from './multi-vault';
 import {retainedSolSecret,wipeSolSecret} from './sol-secret';
+import {inspectProductNotesWithKeys} from './private-note-manifest';
 
 export function reviewProductProof(input:unknown,vault:any,now=Date.now(),expiry=true){
  const r=validateProductProof(input,now,expiry);
@@ -17,7 +18,7 @@ export function reviewProductProof(input:unknown,vault:any,now=Date.now(),expiry
  return productProofReview(r,now,expiry);
 }
 
-export async function authorizeProductProof(vault:any,password:string,input:unknown,fingerprint:string,now=Date.now()){
+export async function authorizeProductProof(vault:any,password:string,input:unknown,fingerprint:string,now=Date.now(),noteManifestFingerprint?:string){
  // Snapshot before unlock, then advance time monotonically across expensive crypto.
  const r=validateProductProof(JSON.parse(JSON.stringify(input)),now);reviewProductProof(r,vault,now);
  if(r.fingerprint!==fingerprint)throw Error('Product proof review changed.');
@@ -28,6 +29,7 @@ export async function authorizeProductProof(vault:any,password:string,input:unkn
  // earlier than the seed deadline. Neither request nor clock is rewritten.
  const keys=await unlockMultiVault(vault,password);
  try{
+  if(noteManifestFingerprint!==undefined){const notes=await inspectProductNotesWithKeys(r,keys,clock());if(notes.fingerprint!==noteManifestFingerprint)throw Error('Reserved private-note manifest differs from the independently owned inputs.');}
   validateProductProof(r,clock());let signingAt:number|undefined;
   const proofAuthorization=await authorize(vault,password,seed,seed.fingerprint,clock(),at=>{validateProductProof(r,at);signingAt=at;});
   if(signingAt===undefined||proofAuthorization.signedAt!==new Date(signingAt).toISOString())throw Error('Product proof signing boundary differs.');

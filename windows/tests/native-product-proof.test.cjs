@@ -6,6 +6,7 @@ const {randomUUID}=require('node:crypto');
 const {SigningAttempts}=require('../tools/signing-attempts.cjs');
 const {productProofFixture}=require('../dist/hinkal-product-proof-fixture.cjs'),{reviewProductProof,authorizeProductProof}=require('../dist/hinkal-product-proof-signer.cjs'),{verifyProductProofResponse}=require('../dist/hinkal-product-proof.cjs');
 const {installProductProofUi}=require('../tools/native-product-proof.cjs'),{SignatureStore}=require('../signature-store.cjs'),{TransactionStore}=require('../transaction-store.cjs'),{createRecoveryStorage}=require('../tools/recovery-storage.cjs');
+const {PrivateNoteClaims}=require('../tools/private-note-claims.cjs'),{inspectProductNotes}=require('../dist/private-note-manifest-signer.cjs');
 let fixture;
 before(async()=>{fixture=await productProofFixture();});
 async function controller(profile){
@@ -21,11 +22,12 @@ async function controller(profile){
   artifactDirectory:()=>path.join(directory,'pinned-prover-fixture'),
   job:async job=>{calls.push(job.action);if(job.action==='review-product-proof')return reviewProductProof(job.request,job.vault);
    if(job.action==='verify')return {verified:true};
+   if(job.action==='inspect-product-notes')return inspectProductNotes(job.vault,job.password,job.request);
    if(job.action==='verify-product-proof'){reviewProductProof(job.request,job.vault,Date.now(),false);return {response:await verifyProductProofResponse(job.request,job.response,Date.now(),false)};}
-   if(job.action==='sign-product-proof'){state.signs++;return authorizeProductProof(job.vault,job.password,job.request,job.fingerprint);}
+   if(job.action==='sign-product-proof'){const held=await c.signingAttempts.noteClaims.claims.load(job.request.deviceId,job.request.fingerprint.slice(2));assert.equal(held.response.manifest.fingerprint,job.noteManifestFingerprint);state.signs++;return authorizeProductProof(job.vault,job.password,job.request,job.fingerprint,Date.now(),job.noteManifestFingerprint);}
    throw Error('Unexpected fixture worker action');}
  };
- c.signingAttempts=new SigningAttempts(directory,storage,{'private-proof':c.authorizationStore});
+ c.signingAttempts=new SigningAttempts(directory,storage,{'private-proof':c.authorizationStore},{noteClaims:new PrivateNoteClaims(directory,storage)});
  const ui=installProductProofUi(c),invoke=(name,p)=>handlers.get(name)(p);
  return {directory,c,state,calls,ui,invoke};
 }
