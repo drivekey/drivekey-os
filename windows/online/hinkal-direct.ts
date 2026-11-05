@@ -5,6 +5,7 @@ import {OnlineAdapter} from './adapter';
 import {CHAINS,ERC20_PAYMENT} from '../engine/core/payment-intent';
 import {HINKAL_PIN,HINKAL_ABI,HinkalIntent,decodeHinkalData,hinkalFingerprint,validateHinkal,verifyHinkalResponse} from '../engine/core/hinkal-intent';
 import {SWAP_TOKEN} from '../engine/core/swap-intent';
+import {verifyProviderEvmVerifier} from './hinkal-provider-verifier';
 export class HinkalDirectAdapter{
  constructor(readonly adapter:OnlineAdapter){}
  rpc(m:string,p:any[]){return this.adapter.rpc('ethereum',m,p);}
@@ -18,12 +19,13 @@ export class HinkalDirectAdapter{
   if(p.proofNonce!==undefined&&nonce!==p.proofNonce)throw Error('Nonce changed after proof authorization; reconcile without replacing it.');r.maximumFee=(gas*maxFee).toString();if(p.proofMaximumFee&&BigInt(r.maximumFee)>BigInt(p.proofMaximumFee))throw Error('Proof authorization fee ceiling would be exceeded.');r.unsignedTransaction=Transaction.from({type:2,chainId:1,nonce,to:call.to,data:call.data,value:call.value,gasLimit:gas,maxFeePerGas:maxFee,maxPriorityFeePerGas:priority}).unsignedSerialized;r.fingerprint=hinkalFingerprint(r);validateHinkal(r,now);await this.preflight(r);return r as HinkalIntent;
  }
  async preflight(input:unknown){const r=validateHinkal(input),tx=Transaction.from(r.unsignedTransaction);await this.identity();const balance=await this.adapter.balance('ethereum',r.from,r.asset);
+  if(!['hinkal-approve','hinkal-revoke'].includes(r.action))await verifyProviderEvmVerifier(this.adapter,tx.data);
   if(BigInt(await this.rpc('eth_getTransactionCount',[r.from,'pending']))!==BigInt(tx.nonce))throw Error('Hinkal nonce conflict.');
   if(BigInt(balance.native)<BigInt(r.maximumFee)+tx.value||(r.action==='hinkal-deposit'&&BigInt(balance.amount)<BigInt(r.amount)))throw Error('Insufficient Hinkal public funds.');
   if(r.action==='hinkal-approve'||(r.action==='hinkal-deposit'&&r.asset==='USDC')){const allowance=SWAP_TOKEN.decodeFunctionResult('allowance',await this.rpc('eth_call',[{to:CHAINS.ethereum.usdc,data:SWAP_TOKEN.encodeFunctionData('allowance',[r.from,HINKAL_PIN.ethereumContract])},'pending']))[0];if(r.action==='hinkal-approve'?allowance!==0n:allowance!==BigInt(r.amount))throw Error('Hinkal approval must start at zero and deposit must have the exact-amount allowance.');}
   const simulated=await this.rpc('eth_call',[{from:r.from,to:tx.to,data:tx.data,value:'0x'+tx.value.toString(16),gas:'0x'+tx.gasLimit.toString(16)},'pending']);if(['hinkal-approve','hinkal-revoke'].includes(r.action)&&SWAP_TOKEN.decodeFunctionResult('approve',simulated)[0]!==true)throw Error('Hinkal approval simulation failed.');
  }
- async broadcast(r:HinkalIntent,s:any){verifyHinkalResponse(s,r,{deviceId:r.deviceId,evmAddress:r.from});await this.identity();const hash=await this.rpc('eth_sendRawTransaction',[s.rawSignedTransaction]);if(hash!==s.transactionHash)throw Error('Uncertain Hinkal submission; reconcile exact hash only.');return hash;}
+ async broadcast(r:HinkalIntent,s:any){verifyHinkalResponse(s,r,{deviceId:r.deviceId,evmAddress:r.from});await this.preflight(r);validateHinkal(r);const hash=await this.rpc('eth_sendRawTransaction',[s.rawSignedTransaction]);if(hash!==s.transactionHash)throw Error('Uncertain Hinkal submission; reconcile exact hash only.');return hash;}
  async reconcile(r:HinkalIntent,s:any){verifyHinkalResponse(s,r,{deviceId:r.deviceId,evmAddress:r.from},Date.now(),false);await this.adapter.identity('ethereum');
   const receipt=await this.rpc('eth_getTransactionReceipt',[s.transactionHash]),approved=Transaction.from(s.rawSignedTransaction);if(!receipt){const tx=await this.rpc('eth_getTransactionByHash',[s.transactionHash]);if(tx)return {state:'pending'};return {state:BigInt(await this.rpc('eth_getTransactionCount',[r.from,'latest']))>BigInt(approved.nonce)?'conflict':'uncertain',reason:'No receipt; no replacement or automatic rebroadcast.'};}
   const block=await this.rpc('eth_getBlockByNumber',[receipt.blockNumber,false]),finalized=await this.rpc('eth_getBlockByNumber',['finalized',false]);if(!block||block.hash!==receipt.blockHash)return {state:'uncertain',reason:'Hinkal receipt block is noncanonical.'};await this.identity(receipt.blockNumber);if(!finalized||BigInt(finalized.number)<BigInt(receipt.blockNumber))return {state:'pending',receipt};

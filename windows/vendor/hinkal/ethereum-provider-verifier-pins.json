@@ -1,0 +1,43 @@
+{
+  "sourceCommit": "61b6839aa80fc0c33bfdcde0323753c83cb2ce67",
+  "snapshotBlock": "0x1921544",
+  "snapshotBlockHash": "0x0b6f81b13c45ba5ee46de831feadd6b29566142256ed62b7f5529d122ca51571",
+  "rows": [
+    {
+      "profile": "1x2x1",
+      "verifierId": "0xfa58fbc6150e7cec624278debd2b857592af7a4fcc66cc8d7fa82152c51cfd30",
+      "wrapper": "0x8c16D510bD236479bc4a61819599338bebe26c36",
+      "wrapperCodeHash": "0x3dc3f663dc12b4a5616e8fcf1ffcf1f798698eaf21d4994630429fb711863e38",
+      "verifier": "0x2cd65aC8E4bF2Ac3d21fDb0b9330CF6233b1Ca4d",
+      "verifierCodeHash": "0x4a3e53d449766f37fcb4ef6bec9d3062eb813c97223e3092032fbb5fc4971b8c",
+      "canonicalKeySha256": "e17b887c10689e7f4988c7a91a5f406baea6b9a63cce7980047d635133e3b171"
+    },
+    {
+      "profile": "1x2x2",
+      "verifierId": "0xfdd792837fdc39009c8aa21f72e64fc95df92f3246b4385713f28c833383937f",
+      "wrapper": "0xd7d9eBEDb36C80265B83FC69A83134C90352a091",
+      "wrapperCodeHash": "0xa4701c00987fb540ec4b2a12bf421371ff1171acb91857c9f4066d2854064bab",
+      "verifier": "0x6Fc16639da7bd937E283eE8d460D4DbB57fBAB79",
+      "verifierCodeHash": "0xbb87dfe094223be2fc84188054895c6a21d620b1557d596b142a9e40b193e447",
+      "canonicalKeySha256": "7b1c32c5bd677bac8ea7747f64e52a7e6695cca34b3b6e0d996e5a16b2b2d2ca"
+    },
+    {
+      "profile": "1x6x1",
+      "verifierId": "0xce3314a38cd904b368c4da2a1dbc5b406ee27ddc7e219b7516165ecd78a79cca",
+      "wrapper": "0xE64C0Ee4fB95621203151bEf3c9e58737CdBC126",
+      "wrapperCodeHash": "0x39a9639796a22443f76c0f9fa54222767804338e8f5e4c60333fa29b1ac540a2",
+      "verifier": "0x7DEDDE9C37c81a6d30D3934933b73B8E42DeB14D",
+      "verifierCodeHash": "0x8585068fc96770530a1e83a883ee147b0d7bdff3677a6007ae3c24f964e2298c",
+      "canonicalKeySha256": "64c057fd4e64faa735cc6fd26fbe12e01fe613d5af07759deaad831c299c607e"
+    },
+    {
+      "profile": "1x6x2",
+      "verifierId": "0x8d9fcbb58ce400753dd6ba6fd03cd4763693e52462e08a61391a2ddfbb433c41",
+      "wrapper": "0x7B723617244a925c6fC723CF8d705Db2dc3654f6",
+      "wrapperCodeHash": "0x7aefb0ff033d831282090e1acf56ab58c681e7f77ca6a1bf7f8fd6435b20c882",
+      "verifier": "0xc0291cCc4e8E86C88106B4ABb194812C7191fc4A",
+      "verifierCodeHash": "0x2c0158b6be6f33189a35f108c4808f5b5547e3d0e2c0a719543c2b9aef6e7dff",
+      "canonicalKeySha256": "bc8290229878fa75c2b740881aed104c138ae7bbbac8095ea6cc12742c8fd694"
+    }
+  ]
+}

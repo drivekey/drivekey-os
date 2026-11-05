@@ -14,7 +14,8 @@
       "nPublic": 15,
       "source": "https://github.com/Hinkal-Protocol/Hinkal-Contracts-Circuits/blob/61b6839aa80fc0c33bfdcde0323753c83cb2ce67/contracts/verifiers/mainEVMCircuit1x2x1v4.sol",
       "sourceSha256": "6c88fc02802e626534970b1a4f3ffce5ff474c14bc8bb5b39a3da46c3f690b60",
-      "deployedMatchVerified": false
+      "deployedMatchVerified": true,
+      "deploymentSnapshotCheckedAt": "2026-11-05T20:21:30.595Z"
     },
     {
       "chain": "ethereum",
@@ -25,7 +26,8 @@
       "nPublic": 16,
       "source": "https://github.com/Hinkal-Protocol/Hinkal-Contracts-Circuits/blob/61b6839aa80fc0c33bfdcde0323753c83cb2ce67/contracts/verifiers/mainEVMCircuit1x2x2v4.sol",
       "sourceSha256": "63d8b8d66156e9840dff02f287e7412c4bc4a151265a69d213d9f35eafa3f758",
-      "deployedMatchVerified": false
+      "deployedMatchVerified": true,
+      "deploymentSnapshotCheckedAt": "2026-11-05T20:21:30.595Z"
     },
     {
       "chain": "ethereum",
@@ -36,7 +38,8 @@
       "nPublic": 19,
       "source": "https://github.com/Hinkal-Protocol/Hinkal-Contracts-Circuits/blob/61b6839aa80fc0c33bfdcde0323753c83cb2ce67/contracts/verifiers/mainEVMCircuit1x6x1v4.sol",
       "sourceSha256": "41cacb0cdc47c48a78d85b7cbd2d966d134d694879ae0179857e6d57fe3d3304",
-      "deployedMatchVerified": false
+      "deployedMatchVerified": true,
+      "deploymentSnapshotCheckedAt": "2026-11-05T20:21:30.595Z"
     },
     {
       "chain": "ethereum",
@@ -47,7 +50,8 @@
       "nPublic": 20,
       "source": "https://github.com/Hinkal-Protocol/Hinkal-Contracts-Circuits/blob/61b6839aa80fc0c33bfdcde0323753c83cb2ce67/contracts/verifiers/mainEVMCircuit1x6x2v4.sol",
       "sourceSha256": "481b6538115e645a28f589104a7bd7bf5779ac7aedbec3f85b9e96fa8140febf",
-      "deployedMatchVerified": false
+      "deployedMatchVerified": true,
+      "deploymentSnapshotCheckedAt": "2026-11-05T20:21:30.595Z"
     },
     {
       "chain": "solana",
@@ -61,7 +65,8 @@
       "artifactBytes": 36512418,
       "artifactSha256": "f29f4c27e19468ecdea3e25b63971133beb45ff03172d4b5146de5d822eb3531",
       "sdkManifestSha256": "abb11c808cf9aa4f48c9309647d0bb1d45604886f834b55b7201d0e844cbff13",
-      "deployedMatchVerified": false
+      "deployedMatchVerified": true,
+      "deploymentSnapshotCheckedAt": "2026-11-05T20:21:30.595Z"
     },
     {
       "chain": "solana",
@@ -75,7 +80,8 @@
       "artifactBytes": 37006966,
       "artifactSha256": "6c822e1d5268d3b10496451129aa35dfa3624bf41951b9e27c2961dc2d5696b2",
       "sdkManifestSha256": "abb11c808cf9aa4f48c9309647d0bb1d45604886f834b55b7201d0e844cbff13",
-      "deployedMatchVerified": false
+      "deployedMatchVerified": true,
+      "deploymentSnapshotCheckedAt": "2026-11-05T20:21:30.595Z"
     },
     {
       "chain": "solana",
@@ -89,7 +95,8 @@
       "artifactBytes": 81154546,
       "artifactSha256": "c0eac1e9a42617aa32837f056d4317cdf1459e09a0df00808eb35067ab0ac6d3",
       "sdkManifestSha256": "abb11c808cf9aa4f48c9309647d0bb1d45604886f834b55b7201d0e844cbff13",
-      "deployedMatchVerified": false
+      "deployedMatchVerified": true,
+      "deploymentSnapshotCheckedAt": "2026-11-05T20:21:30.595Z"
     },
     {
       "chain": "solana",
@@ -103,7 +110,8 @@
       "artifactBytes": 81649094,
       "artifactSha256": "54878df6c7a0316a6f0ed2aafc6ebdde071d250c5dfdb86b2ef1cb4f348b9fd8",
       "sdkManifestSha256": "abb11c808cf9aa4f48c9309647d0bb1d45604886f834b55b7201d0e844cbff13",
-      "deployedMatchVerified": false
+      "deployedMatchVerified": true,
+      "deploymentSnapshotCheckedAt": "2026-11-05T20:21:30.595Z"
     }
   ],
   "deployments": {

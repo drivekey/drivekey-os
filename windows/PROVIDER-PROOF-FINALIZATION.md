@@ -42,8 +42,8 @@ artifact manifest. Deployment evidence compares all four registered Ethereum
 wrapper/verifier runtimes at one common finalized block through two independent
 RPCs, including repeated registration reads. Two independent Solana program-data
 reads match the pinned deployment and all four keys' complete public point/IC
-arrays. Initial extraction rows retain their earlier `deployedMatchVerified:false`
-status; the later `deployments` evidence records the completed cross-check. This
+arrays. Source extraction rows record their completed deployment match at the
+stated snapshot; the initial extraction evidence remains preserved externally. This
 snapshot does not replace fresh preflight or establish distribution licensing.
 
 One fresh unfunded Ethereum deposit proof passed actual provider preparation,
@@ -56,8 +56,9 @@ password or viewing/spending key and is excluded from application packages.
 Historical fixture tests explicitly use recovery verification or a fixed local
 fixture clock; they never contact a provider or claim fresh/mainnet success.
 
-Fresh Solana provider finalization, provider-to-chain v29 admission for legacy
-10/16 transactions, complete native note discovery/reservation/settlement,
+Provider-to-chain v29 admission now supports legacy 10/16 transactions, preserving
+the complete authenticated result and original approval. Fresh Solana provider
+finalization, complete native note discovery/reservation/settlement,
 recipient handoffs, installed-mainnet qualification and all release gates remain
 unfinished. Existing local swap proofs follow their separate local proving path.
 

@@ -2,6 +2,8 @@ import {ownHinkalEvmNote} from '../core/hinkal-evm-note';
 import {Transaction,getBytes} from 'ethers';
 import {unlockMultiVault} from './multi-vault';
 import {wipeSolSecret} from './sol-secret';
+import {verifyProviderEvmGroth16} from '../core/hinkal-provider-proof';
+import {providerEvmSignedMessageHash} from '../core/hinkal-provider-evm-hash';
 import {HINKAL_PIN,validateHinkal,assertHinkalWallet,decodeHinkalData,hinkalApproval,verifyHinkalResponse} from '../core/hinkal-intent';
 // Cryptography-only SDK modules; no SDK provider, HTTP client or relayer is imported.
 const {preProcessing}=require('../../node_modules/@hinkal/common/common/src/crypto/preProcessing.cjs');
@@ -14,6 +16,9 @@ export async function signHinkal(vault:any,password:string,input:unknown,fingerp
  try{
   if(['hinkal-deposit','hinkal-withdraw','hinkal-transfer'].includes(r.action)){await preProcessing();validateHinkal(r,clock());const {circomData:d,token}=decodeHinkalData(Transaction.from(r.unsignedTransaction).data,r);
   const identity=new UserKeys(await keys.evm.signMessage(HINKAL_PIN.sdkLoginMessage)),nk=identity.getShieldedPrivateKey(),pub=identity.getSpendingKeyPair().pubSpendingBJJPoint;
+  const h0=[d.stealthAddressStructure.H0x,d.stealthAddressStructure.H0y],h1=UserKeys.getH1FromH0(h0,nk),stealth=UserKeys.getStealthAddress(h0,nk,pub);
+  if(h1[0]!==d.stealthAddressStructure.H1x||h1[1]!==d.stealthAddressStructure.H1y||BigInt(stealth)!==d.stealthAddressStructure.stealthAddress)throw Error('Ethereum private proof spending identity differs from the loaded wallet.');
+  const signedHash=await providerEvmSignedMessageHash(Transaction.from(r.unsignedTransaction).data);await verifyProviderEvmGroth16(Transaction.from(r.unsignedTransaction).data,signedHash.toString());
   const ownNote=(ciphertext:string)=>ownHinkalEvmNote(ciphertext,identity,token);
   let inputTotal=0n;const nullifiers:string[]=[];
   for(const ciphertext of r.inputNotes){const note=ownNote(ciphertext);inputTotal+=note.amount;nullifiers.push(BigInt(note.getNullifier()).toString());}

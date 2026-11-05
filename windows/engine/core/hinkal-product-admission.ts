@@ -5,6 +5,7 @@ import {multiPublicSchema} from './multi-protocol';
 import {validateProductProof,verifyProductProofChainLink} from './hinkal-product-proof';
 import {productAuthorizationHash,verifyProductProofResult} from './hinkal-product-result';
 import {inspectHinkalSolanaSwap} from './hinkal-solana-swap';
+import {providerSolanaArgsFromSpend} from './hinkal-solana-spend';
 const hash=z.string().regex(/^0x[0-9a-f]{64}$/);
 const packageSchema=z.object({version:z.literal(28),kind:z.literal('drivekey-hinkal-product-proof-package'),request:z.unknown(),response:z.unknown(),result:z.unknown()}).strict();
 export const productBindingSchema=z.object({version:z.literal(28),requestFingerprint:hash,authorizationHash:hash,proofResultHash:hash,chainFingerprint:hash}).strict();
@@ -28,10 +29,12 @@ export async function verifyProductPackageChain(input:unknown,wallet:unknown,cha
  if(r.deviceId!==p.request.deviceId||r.chain!==p.request.chain||Date.parse(r.createdAt)<Date.parse(p.result.createdAt)||Date.parse(r.expiresAt)>Date.parse(p.request.expiresAt))
   throw Error('Chain request exceeds the approved product proof lifetime or identity.');
  if(p.request.chain==='ethereum'){
-  if(r.version!==18||Transaction.from(r.unsignedTransaction).data!==(p.result.proof as any).data)throw Error('Chain request substituted the exported Ethereum proof bytes.');
+  const provider=(p.request.seed as any).version===13,tx=Transaction.from(r.unsignedTransaction),proof:any=p.result.proof;
+  if(r.version!==(provider?10:18)||tx.data!==(provider?proof.transaction.data:proof.data)||provider&&(tx.to!==proof.transaction.to||tx.value!==BigInt(proof.transaction.value)))throw Error('Chain request substituted the exported Ethereum proof bytes.');
  }else{
-  if(r.version!==21)throw Error('Chain request substituted the Solana transaction version.');
-  const a=inspectHinkalSolanaSwap(r as any).args,normalized={...a,proofAArr:Array.from(a.proofAArr),proofBArr:Array.from(a.proofBArr),proofCArr:Array.from(a.proofCArr),publicInputsArr:a.publicInputsArr.map((row:any)=>Array.from(row)),encryptedOutputs:a.encryptedOutputs.map((row:any)=>Array.from(row))};
+  const provider=(p.request.seed as any).version===15;if(r.version!==(provider?16:21))throw Error('Chain request substituted the Solana transaction version.');
+  const a:any=provider?providerSolanaArgsFromSpend(r as any):inspectHinkalSolanaSwap(r as any).args;
+  const normalized={...a,proofAArr:Array.from(a.proofAArr),proofBArr:Array.from(a.proofBArr),proofCArr:Array.from(a.proofCArr),publicInputsArr:a.publicInputsArr.map((row:any)=>Array.from(row)),encryptedOutputs:a.encryptedOutputs.map((row:any)=>Array.from(row))};
   if(canonical(normalized)!==canonical((p.result.proof as any).solanaArgs))throw Error('Chain request substituted the exported Solana proof bytes.');
  }
  return {request:r,productProof:productChainBinding(p,r)};

@@ -8,6 +8,10 @@ import {validateProductProof,productProofReview} from './hinkal-product-proof';
 import {assertProductPackageWallet,verifyProductPackageChain} from './hinkal-product-admission';
 import {validateHinkalEvmSwap,hinkalEvmSwapReview,verifyHinkalEvmSwapResponse} from './hinkal-evm-swap-intent';
 import {validateHinkalSolanaSwap,hinkalSolanaSwapReview,verifyHinkalSolanaSwapResponse} from './hinkal-solana-swap';
+import {validateHinkal,hinkalReview,verifyHinkalResponse} from './hinkal-intent';
+import {validateHinkalSolanaSpend,hinkalSolanaSpendReview,verifyHinkalSolanaSpendResponse} from './hinkal-solana-spend';
+
+function codec(input:any){if(input?.version===10)return {validate:validateHinkal,review:hinkalReview,verify:verifyHinkalResponse};if(input?.version===16)return {validate:validateHinkalSolanaSpend,review:hinkalSolanaSpendReview,verify:verifyHinkalSolanaSpendResponse};if(input?.version===18)return {validate:validateHinkalEvmSwap,review:hinkalEvmSwapReview,verify:verifyHinkalEvmSwapResponse};if(input?.version===21)return {validate:validateHinkalSolanaSwap,review:hinkalSolanaSwapReview,verify:verifyHinkalSolanaSwapResponse};throw Error('Unsupported product chain transaction version.');}
 
 const hash=z.string().regex(/^0x[0-9a-f]{64}$/),uuid=z.string().uuid(),date=z.string().datetime();
 const schema=z.object({version:z.literal(29),kind:z.literal('drivekey-hinkal-product-chain-request'),deviceId:uuid,requestId:uuid,
@@ -22,7 +26,7 @@ export const productChainApproval=(r:ProductChainRequest)=>'DriveKey product pri
  * are mandatory in verifyProductChain before signing or online consumption. */
 export function validateProductChain(input:unknown,now=Date.now(),expiry=true){
  if(Buffer.byteLength(JSON.stringify(input)??'')>64*1024)throw Error('Product chain request exceeds the 64 KiB signing limit.');
- const r=schema.parse(input),p=validateProductProof(r.package.request,now,expiry),inner=r.chain==='ethereum'?validateHinkalEvmSwap(r.chainRequest,now,expiry):validateHinkalSolanaSwap(r.chainRequest,now,expiry);
+ const r=schema.parse(input),p=validateProductProof(r.package.request,now,expiry),inner=codec(r.chainRequest).validate(r.chainRequest,now,expiry);
  if(r.fingerprint!==productChainFingerprint(r)||r.deviceId!==p.deviceId||r.deviceId!==inner.deviceId||r.requestId!==inner.requestId||r.chain!==p.chain||r.chain!==inner.chain||
     r.createdAt!==inner.createdAt||r.expiresAt!==inner.expiresAt||Date.parse(r.createdAt)<Date.parse(p.createdAt)||Date.parse(r.expiresAt)>Date.parse(p.expiresAt))
   throw Error('Product chain envelope differs from its original approval or transaction.');
@@ -39,7 +43,7 @@ export async function createProductChain(input:unknown,wallet:unknown,chainReque
  r.fingerprint=productChainFingerprint(r);return verifyProductChain(r,wallet,now);
 }
 export function productChainReview(input:unknown,now=Date.now(),expiry=true){
- const r=validateProductChain(input,now,expiry),p=validateProductProof(r.package.request,now,expiry),inner=r.chain==='ethereum'?hinkalEvmSwapReview(r.chainRequest,now,expiry):hinkalSolanaSwapReview(r.chainRequest,now,expiry);
+ const r=validateProductChain(input,now,expiry),p=validateProductProof(r.package.request,now,expiry),inner=codec(r.chainRequest).review(r.chainRequest,now,expiry);
  const proofReview=productProofReview(p,now,expiry);
  return {...inner,inputToken:proofReview.inputToken,outputToken:proofReview.outputToken,decimals:proofReview.decimals,formattedInput:proofReview.formattedInput,formattedMinimum:proofReview.formattedMinimum,
   productMaximumFee:proofReview.maximumFee,productMaximumAccountRent:proofReview.maximumAccountRent,fingerprint:r.fingerprint,chainFingerprint:(r.chainRequest as any).fingerprint,productProofFingerprint:p.fingerprint,
@@ -57,10 +61,10 @@ export async function verifyProductChainResponse(input:unknown,request:unknown,w
  const message=productChainApproval(r);
  if(r.chain==='ethereum'){
   if(getAddress(verifyMessage(message,s.approvalSignature))!==getAddress(w.evmAddress))throw Error('Product chain wallet approval differs.');
-  verifyHinkalEvmSwapResponse(productInnerResponse(r,s),r.chainRequest,w,now,expiry);
+  codec(r.chainRequest).verify(productInnerResponse(r,s),r.chainRequest,w,now,expiry);
  }else{
   if(!nacl.sign.detached.verify(Buffer.from(message),bs58.decode(s.approvalSignature),new PublicKey(w.solanaAddress).toBytes()))throw Error('Product chain wallet approval differs.');
-  verifyHinkalSolanaSwapResponse(productInnerResponse(r,s),r.chainRequest,w,now,expiry);
+  codec(r.chainRequest).verify(productInnerResponse(r,s),r.chainRequest,w,now,expiry);
  }
  return s;
 }

@@ -13,9 +13,8 @@ const candidate = path.resolve(__dirname, '..');
 const main = fs.readFileSync(path.join(candidate, 'main.cjs'), 'utf8');
 const localRequire = createRequire(path.join(candidate, 'main.cjs'));
 const {Transaction, Wallet} = localRequire('ethers');
-const {HinkalDirectAdapter} = localRequire('./dist/hinkal-direct.cjs');
 const {
-  HINKAL_ABI, assertHinkalWallet, hinkalApproval, hinkalReview, validateHinkal, verifyHinkalResponse,
+  HINKAL_ABI, HINKAL_PIN, hinkalFingerprint, assertHinkalWallet, hinkalApproval, hinkalReview, validateHinkal, verifyHinkalResponse,
 } = localRequire('./dist/hinkal.cjs');
 const {TransactionStore} = localRequire('./transaction-store.cjs');
 const {SignatureStore} = localRequire('./signature-store.cjs');
@@ -55,24 +54,10 @@ async function syntheticDeposit() {
       [0], [zero, 0, 0], [0, 0, 0, 0, 0], 0, 0, 0, 1, zero,
       [wallet.evmAddress, 0, '0x'], [zero, zero, '0x', '0x'], wallet.evmAddress, '0x'],
   ]);
-  const rpcResults = {
-    eth_getTransactionCount: '0x0', eth_gasPrice: '0x3b9aca00',
-    eth_estimateGas: '0x61a8', eth_call: '0x',
-  };
-  class FixtureHinkalAdapter extends HinkalDirectAdapter {
-    async identity() {}
-  }
-  const adapter = new FixtureHinkalAdapter({
-    async rpc(chain, method) {
-      assert.equal(chain, 'ethereum');
-      assert.ok(Object.hasOwn(rpcResults, method), `Unexpected RPC method ${method}`);
-      return rpcResults[method];
-    },
-    async balance() {return {native: '1000000000000000', amount: '1000000000000000'};},
-  });
-  const request = await adapter.prepare({
-    action: 'hinkal-deposit', asset: 'ETH', amount, recipient: wallet.evmAddress, data, inputNotes: [],
-  }, wallet);
+  // Assemble only a local ABI/exchange fixture. No provider/preflight or
+  // key-bearing product signer is invoked; this fake proof cannot qualify one.
+  const now=Date.now(),request={version:10,provider:'hinkal',action:'hinkal-deposit',network:'ethereum',chain:'ethereum',requestId:randomUUID(),deviceId:wallet.deviceId,createdAt:new Date(now).toISOString(),expiresAt:new Date(now+600000).toISOString(),from:wallet.evmAddress,recipient:wallet.evmAddress,asset:'ETH',amount,maximumFee:'60000000000000',contractCodeHash:HINKAL_PIN.ethereumCodeHash,inputNotes:[],unsignedTransaction:Transaction.from({type:2,chainId:1,nonce:0,to:HINKAL_PIN.ethereumContract,value:amount,data,gasLimit:30000n,maxFeePerGas:2000000000n,maxPriorityFeePerGas:1000000000n}).unsignedSerialized,fingerprint:''};
+  request.fingerprint=hinkalFingerprint(request);validateHinkal(request,now);
   const rawSignedTransaction = await signer.signTransaction(Transaction.from(request.unsignedTransaction));
   const response = {
     version: 10, deviceId: wallet.deviceId, requestId: request.requestId,
