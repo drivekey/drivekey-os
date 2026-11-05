@@ -14,3 +14,9 @@ wallet-public.json
 wallet-multi-public.json
 unsigned-request.json
 signed-response.json
+
+# Disposable Windows test profiles may be created beside the windows directory.
+/discovery-fixture-*/
+/profile-lock-fixture-*/
+/security-journal-*/
+/security-main-*/
