@@ -11,5 +11,5 @@ process.stdin.on('end',async()=>{let job:any;try{const raw=Buffer.concat(parts);
  policy.assertPrivateView(job.input?.request);
  const result=await prepareScopedViewJob(job.input,job.wallet);job.input.transportPrivateKey=undefined;job=undefined;
  process.stdout.write(JSON.stringify({ok:true,result}),()=>process.exit(0));
-}catch{if(job?.input)job.input.transportPrivateKey=undefined;job=undefined;clear();process.stdout.write(JSON.stringify({ok:false,error:'Scoped private proof preparation failed. Preserve the original view request and session; no proof authorization or chain transaction was signed.'}),()=>process.exit(1));}});
+}catch{if(job?.input&&typeof job.input==='object')job.input.transportPrivateKey=undefined;job=undefined;clear();process.stdout.write(JSON.stringify({ok:false,error:'Scoped private proof preparation failed. Preserve the original view request and session; no proof authorization or chain transaction was signed.'}),()=>process.exit(1));}});
 process.stdin.on('error',()=>{clear();process.exit(2);});

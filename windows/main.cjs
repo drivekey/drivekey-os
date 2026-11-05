@@ -39,7 +39,7 @@ const {isDeepStrictEqual} = require('node:util');
 const {RequestExchange} = require('./tools/request-exchange.cjs');
 const requestExchange = new RequestExchange();
 const ROOT = __dirname, ENTRY = pathToFileURL(path.join(ROOT,'ui','index.html')).href;
-let win, encryptedVault, vaultFile, publicWallet, backupVerified=false, pendingReview, busy=false, activeWalletId=null, productProofUi, productAdmissionUi, signingRecoveryUi, requestLifecycleUi, privateViewUi;
+let win, encryptedVault, vaultFile, publicWallet, backupVerified=false, pendingReview, busy=false, activeWalletId=null, productProofUi, productAdmissionUi, signingRecoveryUi, requestLifecycleUi, privateViewUi, providerFinalizerUi;
 const activeWorkers=new Set();
 const publicReadControllers = new Set();
 function cancelAccountReads() {
@@ -60,14 +60,16 @@ const proofRequestStore=new TransactionStore(path.join(app.getPath('userData'),'
 const proofAuthorizationStore=new SignatureStore(path.join(app.getPath('userData'),'proofs-v1'),recoveryStorage.forJournal('proofs'));
 const proofResultStore=new SignatureStore(path.join(app.getPath('userData'),'proof-results-v1'),recoveryStorage.forJournal('proof-results'));
 const viewStores=Object.fromEntries(['view-sessions','view-requests','view-responses','view-job-attempts','view-preparations'].map(purpose=>[purpose,purpose==='view-requests'?new TransactionStore(path.join(app.getPath('userData'),purpose+'-v1'),recoveryStorage.forJournal(purpose)):new SignatureStore(path.join(app.getPath('userData'),purpose+'-v1'),recoveryStorage.forJournal(purpose))]));
-const signingAttempts=new SigningAttempts(app.getPath('userData'),recoveryStorage,{'transaction':signatureStore,'private-proof':proofAuthorizationStore,'private-view':viewStores['view-responses']});
+const proofFinalizationStore=new SignatureStore(path.join(app.getPath('userData'),'proof-finalizations-v1'),recoveryStorage.forJournal('proof-finalizations'));
+const providerFinalizations=new (require('./tools/provider-finalizations.cjs').ProviderFinalizations)(proofFinalizationStore,proofAuthorizationStore,proofResultStore,async(request,response,result)=>(await job({action:'verify-product-proof-result',vault:{public:request.wallet},request,response,result})).result);
+const signingAttempts=new SigningAttempts(app.getPath('userData'),recoveryStorage,{'transaction':signatureStore,'private-proof':proofAuthorizationStore,'private-view':viewStores['view-responses']},{assertExternalResolved:wallet=>providerFinalizations.assertResolved(wallet)});
 const OFFLINE=process.env.DRIVEKEY_OFFLINE==='1'||require('./package.json').drivekeyOffline===true;
 const rpcFile=path.join(app.getPath('userData'),'rpc-endpoints-v1.json');
 async function online(input,options={}){if(OFFLINE)throw Error('Networking is disabled in the offline companion.');paymentPolicy.assertOnlineJob(input);let endpoints;try{endpoints=await readJSON(rpcFile);}catch{throw Error('Import an RPC configuration first.');}return job({...input,endpoints},'online-worker.cjs',options);}
 const verifiedWallets=new Map();
 const digest = v => createHash('sha256').update(JSON.stringify(v)).digest('hex');
 function passwordOf(v) { if(typeof v!=='string'||v.length<16||v.length>256) throw Error('Use a passphrase of 16–256 characters.'); return v; }
-function clearPendingReview() {pendingReview=undefined;productProofUi?.clear();productAdmissionUi?.clear();signingRecoveryUi?.clear();requestLifecycleUi?.clear();privateViewUi?.clear();requestExchange.clearBinding();}
+function clearPendingReview() {pendingReview=undefined;productProofUi?.clear();productAdmissionUi?.clear();signingRecoveryUi?.clear();requestLifecycleUi?.clear();privateViewUi?.clear();providerFinalizerUi?.clear();requestExchange.clearBinding();}
 function reset() { cancelAccountReads();requestExchange.clear();encryptedVault=undefined; vaultFile=undefined; publicWallet=undefined; backupVerified=false; clearPendingReview();activeWalletId=null; }
 function walletList(){const problem=walletStore.problem||watchStore.problem;return problem?{wallets:[],activeId:null,recoveryRequired:true,canRecover:problem.canRecover,error:problem.error}:{wallets:[...walletStore.list(activeWalletId,verifiedWallets).wallets,...watchStore.list(activeWalletId).wallets.map(w=>({...w,watchOnly:true}))],activeId:activeWalletId,recoveryRequired:false};}
 function selectedWallet(){const wallet=storeFor(activeWalletId).get(activeWalletId);return {public:publicWallet,backupVerified,watchOnly:!encryptedVault,wallet:{id:wallet.id,name:wallet.name},...walletList()};}
@@ -416,7 +418,11 @@ requestLifecycleUi=require('./tools/request-lifecycle.cjs').installRequestLifecy
 });
 privateViewUi=require('./tools/native-private-view.cjs').installPrivateView({
  register,dialog,job,openJSON,saveJSON,passwordOf,policy:paymentPolicy,getWindow:()=>win,getPublic:()=>{requirePublic();return publicWallet;},getVault:()=>encryptedVault,isOffline:()=>OFFLINE,backupVerified:()=>backupVerified,clearPending:clearPendingReview,ready:()=>recoveryStorage.ready(),attempts:signingAttempts,
- sessionStore:viewStores['view-sessions'],requestStore:viewStores['view-requests'],responseStore:viewStores['view-responses'],jobAttemptStore:viewStores['view-job-attempts'],preparationStore:viewStores['view-preparations'],proofRequestStore
+ proofAuthorizationStore,proofResultStore,sessionStore:viewStores['view-sessions'],requestStore:viewStores['view-requests'],responseStore:viewStores['view-responses'],jobAttemptStore:viewStores['view-job-attempts'],preparationStore:viewStores['view-preparations'],proofRequestStore
+});
+providerFinalizerUi=require('./tools/native-provider-finalizer.cjs').installProviderFinalizer({
+ register,dialog,job,openJSON,saveJSON,policy:paymentPolicy,requestStore:proofRequestStore,authorizationStore:proofAuthorizationStore,finalizations:providerFinalizations,signingAttempts,getWindow:()=>win,getPublic:()=>{requirePublic();return publicWallet;},getVaultHash:()=>encryptedVault?digest(encryptedVault):null,isOffline:()=>OFFLINE,clearPending:clearPendingReview,ready:()=>recoveryStorage.ready(),
+ verifySigningResponse:async(response,request,authority,wallet)=>{if(authority==='private-view'){const core=require('./dist/hinkal-view.cjs');core.assertViewWallet(request,wallet);return core.verifyViewResponse(request,response,Date.now(),false);}if(authority==='private-proof'){require('./dist/hinkal-product-admission.cjs').assertProductPackageWallet(request,wallet);return require('./dist/hinkal-product-proof.cjs').verifyProductProofResponse(request,response,Date.now(),false);}return verifyIntent(response,request,wallet,Date.now(),false);}
 });
 app.whenReady().then(()=>{
   if(!primaryInstance)return;

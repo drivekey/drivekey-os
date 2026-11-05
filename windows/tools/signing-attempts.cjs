@@ -10,7 +10,7 @@ const activeWallets=new Set();
 const authorities=new Set(['transaction','private-proof','private-view']);
 function snapshot(value,limit=64*1024){const text=JSON.stringify(value);if(typeof text!=='string'||Buffer.byteLength(text)>limit)throw Error('Signing request exceeds its recovery limit.');return JSON.parse(text);}
 class SigningAttempts{
- constructor(directory,storage,primary){
+ constructor(directory,storage,primary,{assertExternalResolved}={}){this.assertExternalResolved=assertExternalResolved;
   this.primary=primary;this.busy=activeWallets;this.lockPrefix=path.resolve(directory)+(process.platform==='win32'?'':':');
   if(process.platform==='win32')this.lockPrefix=this.lockPrefix.toLowerCase();
   this.attempts=new SignatureStore(path.join(directory,'signing-attempts-v1'),storage.forJournal('signing-attempts'));
@@ -68,6 +68,7 @@ class SigningAttempts{
   if(await this.attempts.load(walletId,id)||await this.results.load(walletId,id)||await this.commitments.load(walletId,id)||await this.store(authority).load(walletId,id))throw Error('This request has signing authority or an uncertain signing attempt. Preserve its original records.');
  }
  async assertResolved(walletId,verify){
+  if(this.assertExternalResolved)await this.assertExternalResolved(walletId);
   for(const record of await this.attempts.list(walletId)){
    const marker=this.checkedMarker(record);
    if(!await this.existing(walletId,record.request,marker.authority,verify))throw Error(uncertain);

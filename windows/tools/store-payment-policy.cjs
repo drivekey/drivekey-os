@@ -16,7 +16,7 @@ const reconciliation = new Set([
   'hinkal-evm-swap-reconcile', 'hinkal-solana-swap-reconcile', 'hinkal-product-chain-reconcile',
 ]);
 const blockedIpc = new Set(['import-prepared-private', 'import-prepared-bridge', 'hinkal-discover',
-  'import-private-view-request','authorize-private-view','create-private-view','export-private-view-request','export-private-view-response','import-private-view-response','prepare-private-view-job','export-private-view-job','import-product-proof','review-product-proof','sign-product-proof','export-product-proof','prove-product-proof','export-product-proof-result','import-product-proof-package']);
+  'import-provider-proof-authorization','finalize-provider-proof','export-provider-proof-result','import-private-view-request','authorize-private-view','create-private-view','export-private-view-request','export-private-view-response','import-private-view-response','prepare-private-view-job','export-private-view-job','import-product-proof','review-product-proof','sign-product-proof','export-product-proof','prove-product-proof','export-product-proof-result','import-product-proof-package']);
 
 function assertChain(chain) {
   if (!chains.has(chain)) throw Error(notice);
