@@ -8,6 +8,8 @@ contextBridge.exposeInMainWorld('drivekey', Object.freeze({
   authorizeProductProof: (token,fingerprint,password) => ipcRenderer.invoke('sign-product-proof',{token,fingerprint,password}),
   listProductProofs: () => ipcRenderer.invoke('list-product-proofs'),
   exportProductProof: id => ipcRenderer.invoke('export-product-proof',{id}),
+  generateProductProof: (id,password) => ipcRenderer.invoke('prove-product-proof',{id,password}),
+  exportProductProofResult: id => ipcRenderer.invoke('export-product-proof-result',{id}),
   importPreparedPrivate: selection => ipcRenderer.invoke('import-prepared-private',selection),
   importPreparedBridge: selection => ipcRenderer.invoke('import-prepared-bridge',selection),
   invalidatePreparedReview: () => ipcRenderer.invoke('invalidate-prepared-review'),

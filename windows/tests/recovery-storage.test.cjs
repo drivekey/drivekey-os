@@ -144,3 +144,9 @@ test('product proof authorization journals alone prevent lost-key reprovisioning
   await assert.rejects(()=>createRecoveryStorage(directory,{}).ready(),/journal key is missing/);assert.deepEqual(await fs.readFile(file),bytes);
   await assert.rejects(()=>fs.stat(path.join(directory,'journal-key-v1.dpapi')),{code:'ENOENT'});
 });
+
+test('product proof results alone preserve the original records when their journal key is missing', {skip:process.platform!=='win32'}, async t=>{
+ const directory=await profile(t),storage=createRecoveryStorage(directory,{}),recordDirectory=path.join(directory,'proof-results-v1',randomUUID());
+ const bytes=await storage.forJournal('proof-results').seal('Unfunded completed proof fixture');await fs.mkdir(recordDirectory,{recursive:true});const file=path.join(recordDirectory,'f'.repeat(64)+'.bin');await fs.writeFile(file,bytes);await fs.unlink(path.join(directory,'journal-key-v1.dpapi'));
+ await assert.rejects(()=>createRecoveryStorage(directory,{}).ready(),/journal key is missing/);assert.deepEqual(await fs.readFile(file),bytes);await assert.rejects(()=>fs.stat(path.join(directory,'journal-key-v1.dpapi')),{code:'ENOENT'});
+});

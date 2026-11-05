@@ -3,6 +3,7 @@
 // returned to the renderer. Every export uses the real native file handoff.
 const {randomUUID,createHash}=require('node:crypto');
 const {productProofReview,validateProductProof}=require('../dist/hinkal-product-proof.cjs');
+const {localProductProvingSupported}=require('../dist/hinkal-product-result.cjs');
 const digest=value=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
 function installProductProofUi(c){
  let pending,epoch=0;
@@ -66,8 +67,10 @@ function installProductProofUi(c){
    validateProductProof(request,Date.now(),false);
    const signed=authorized.find(record=>record.request.fingerprint===id);
    if(signed)await c.job({action:'verify-product-proof',vault:s.vault,request,response:signed.response});current(s);
+   const proved=await c.resultStore.load(s.wallet.deviceId,id.slice(2));current(s);
+   if(proved){if(!signed)throw Error('Private proof recovery is missing its original authorization. Preserve this profile.');await c.job({action:'verify-product-proof-result',vault:s.vault,request,response:signed.response,result:proved.response});current(s);}
    const review=productProofReview(request,Date.now(),false);
-   rows.push({id,state:signed?'authorized':'prepared',chain:review.chain,action:review.action,amount:review.amount,asset:review.inputAsset,
+   rows.push({id,state:proved?'proved':signed?'authorized':'prepared',localProvingSupported:localProductProvingSupported(request),chain:review.chain,action:review.action,amount:review.amount,asset:review.inputAsset,
     recipient:review.recipient,expiresAt:request.expiresAt,createdAt:request.createdAt,requiresSeparateChainReview:true});
   }
   return rows.sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
@@ -79,6 +82,40 @@ function installProductProofUi(c){
   const {response}=await c.job({action:'verify-product-proof',vault:s.vault,request:record.request,response:record.response});current(s);
   const file=await c.saveJSON('Export saved private-proof authorization','drivekey-private-proof-response.json',response);current(s);
   return {saved:!!file,kind:'private-proof',authorizationFingerprint:record.request.fingerprint};
+ });
+ c.register('prove-product-proof',async p=>{
+  c.clearOtherReview();clear();const s=scope();
+  if(!c.backupVerified())throw Error('Verify a separate encrypted backup before creating a private proof.');
+  const password=c.passwordOf(p?.password),id=String(p?.id||'').replace(/^0x/,'');
+  const record=await c.authorizationStore.load(s.wallet.deviceId,id);current(s);
+  if(!record)throw Error('Authorize the private proof request before generating a proof.');
+  c.policy.assertProductProof(record.request);
+  if(!localProductProvingSupported(record.request))throw Error('This proof profile still requires its supported provider finalizer. No local replacement was made.');
+  const review=await c.job({action:'review-product-proof',vault:s.vault,request:record.request});current(s);
+  await c.job({action:'verify-product-proof',vault:s.vault,request:record.request,response:record.response});current(s);
+  const approval=await c.dialog.showMessageBox(s.window,{type:'warning',title:'Generate this exact private proof?',message:'Generate the previously authorized proof offline?',
+   detail:Object.entries(review).map(([k,v])=>k+': '+v).join('\n')+'\n\nThe local prover reconstructs your owned notes and verifies the resulting proof. A blockchain transaction still requires a separate review and signature.',
+   buttons:['Cancel','Generate exact private proof'],defaultId:0,cancelId:0,noLink:true});current(s);
+  if(approval.response!==1)return {cancelled:true};
+  await c.ready();current(s);
+  const previous=await c.resultStore.load(s.wallet.deviceId,id);current(s);let result;
+  if(previous)result=(await c.job({action:'verify-product-proof-result',vault:s.vault,request:record.request,response:record.response,result:previous.response})).result;
+  else{
+   result=await c.job({action:'prove-product-proof',vault:s.vault,password,request:record.request,response:record.response,artifactDirectory:c.artifactDirectory()},'product-proof-worker.cjs');
+   // Preserve a completed proof even if the owner closes or invalidates its UI.
+   try{result=(await c.resultStore.save(s.wallet.deviceId,record.request,result)).response;}
+   catch{throw Error('Could not preserve encrypted proof recovery. No proof was exported. Preserve this profile.');}
+  }
+  current(s);return {kind:'private-proof-result',proved:true,reused:!!previous,authorizationFingerprint:record.request.fingerprint,requiresSeparateChainReview:true};
+ });
+ c.register('export-product-proof-result',async p=>{
+  const s=scope(),id=String(p?.id||'').replace(/^0x/,'');
+  const record=await c.authorizationStore.load(s.wallet.deviceId,id),proved=await c.resultStore.load(s.wallet.deviceId,id);current(s);
+  if(!record||!proved)throw Error('The proof or its original authorization is unavailable. Preserve this profile.');
+  c.policy.assertProductProof(record.request);
+  const {result}=await c.job({action:'verify-product-proof-result',vault:s.vault,request:record.request,response:record.response,result:proved.response});current(s);
+  const file=await c.saveJSON('Export existing private proof','drivekey-private-proof.json',{version:28,kind:'drivekey-hinkal-product-proof-package',request:record.request,response:record.response,result});current(s);
+  return {saved:!!file,kind:'private-proof-result',authorizationFingerprint:record.request.fingerprint,requiresSeparateChainReview:true};
  });
  return {clear};
 }

@@ -54,6 +54,7 @@ const signatureStore=new SignatureStore(path.join(app.getPath('userData'),'signa
 const transactionStore=new TransactionStore(path.join(app.getPath('userData'),'transactions-v1'),recoveryStorage.forJournal('transactions'));
 const proofRequestStore=new TransactionStore(path.join(app.getPath('userData'),'proof-requests-v1'),recoveryStorage.forJournal('proof-requests'));
 const proofAuthorizationStore=new SignatureStore(path.join(app.getPath('userData'),'proofs-v1'),recoveryStorage.forJournal('proofs'));
+const proofResultStore=new SignatureStore(path.join(app.getPath('userData'),'proof-results-v1'),recoveryStorage.forJournal('proof-results'));
 const OFFLINE=process.env.DRIVEKEY_OFFLINE==='1'||require('./package.json').drivekeyOffline===true;
 const rpcFile=path.join(app.getPath('userData'),'rpc-endpoints-v1.json');
 async function online(input,options={}){if(OFFLINE)throw Error('Networking is disabled in the offline companion.');paymentPolicy.assertOnlineJob(input);let endpoints;try{endpoints=await readJSON(rpcFile);}catch{throw Error('Import an RPC configuration first.');}return job({...input,endpoints},'online-worker.cjs',options);}
@@ -80,7 +81,7 @@ async function job(input,worker='worker.cjs',{signal}={}) {
   return new Promise((resolve,reject) => {
     // Narrow child environment; no inherited API keys or user NODE_OPTIONS.
     const env = {SystemRoot:process.env.SystemRoot, WINDIR:process.env.WINDIR, TEMP:process.env.TEMP, TMP:process.env.TMP, PATH:path.dirname(node)};
-    const child=spawn(node,['--no-addons','--max-old-space-size=256',script],{cwd:app.isPackaged?process.resourcesPath:ROOT,env,windowsHide:true,stdio:['pipe','pipe','pipe']});
+    const child=spawn(node,['--no-addons','--max-old-space-size='+(worker==='product-proof-worker.cjs'?1024:256),script],{cwd:app.isPackaged?process.resourcesPath:ROOT,env,windowsHide:true,stdio:['pipe','pipe','pipe']});
     let bytes=0, parts=[], settled=false;
     const cancel=()=>{child.kill();finish(Error('Operation cancelled because the wallet window closed.'));};
     const cancelRead=()=>{child.kill();finish(Error('Public read cancelled.'));};
@@ -358,7 +359,8 @@ productProofUi=require('./tools/native-product-proof.cjs').installProductProofUi
  register,dialog,job,openJSON,saveJSON,passwordOf,policy:paymentPolicy,
  getVault:()=>{requireVault();return encryptedVault;},getPublic:()=>{requirePublic();return publicWallet;},getWindow:()=>win,
  backupVerified:()=>backupVerified,clearOtherReview:clearPendingReview,ready:()=>recoveryStorage.ready(),
- requestStore:proofRequestStore,authorizationStore:proofAuthorizationStore
+ requestStore:proofRequestStore,authorizationStore:proofAuthorizationStore,resultStore:proofResultStore,
+ artifactDirectory:()=>app.isPackaged?path.join(process.resourcesPath,'hinkal-prover'):process.env.DRIVEKEY_HINKAL_ARTIFACTS
 });
 app.whenReady().then(()=>{
   if(!primaryInstance)return;

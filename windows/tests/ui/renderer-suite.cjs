@@ -288,6 +288,12 @@ test('product-private-proof-review-and-recovery',[20,21],async page=>{
  await page.click('#product-proof-list button');await idle(page);
  assert.equal((await snapshot(page)).calls.filter(c=>c.method==='authorizeProductProof').length,1);
  assert.equal((await snapshot(page)).calls.filter(c=>c.method==='exportProductProof').length,1);
+ await page.getByRole('button',{name:'Generate private proof',exact:true}).click();await page.fill('#product-prove-pass',passphrase);await page.click('#product-prove-cancel');assert.equal(await page.inputValue('#product-prove-pass'),'');
+ await page.getByRole('button',{name:'Generate private proof',exact:true}).click();await page.fill('#product-prove-pass',passphrase);await page.locator('#product-prove-form button[type=submit]').click();await idle(page);
+ assert.match(await text(page,'#toast-message'),/separate review and signature/);assert.equal(await page.inputValue('#product-prove-pass'),'');
+ await page.getByRole('button',{name:'Export existing proof',exact:true}).click();await idle(page);
+ assert.equal((await snapshot(page)).calls.filter(c=>c.method==='generateProductProof').length,1);assert.equal((await snapshot(page)).calls.filter(c=>c.method==='exportProductProofResult').length,1);
+ assert.equal((await snapshot(page)).calls.filter(c=>c.method==='authorizeProductProof').length,1);assert.equal((await snapshot(page)).calls.filter(c=>c.method==='sign').length,0);
 },{productProofs:true});
 
 async function main(){

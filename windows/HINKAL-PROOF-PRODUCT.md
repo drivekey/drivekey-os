@@ -32,9 +32,32 @@ damaged-record and interrupted-write preservation scan as transaction and
 signature history. Losing or mismatching a key must never provision a new key
 over these records.
 
+The native controller now supports local proof generation for the existing
+Ethereum v19 and Solana v20/v27 swap profiles. It reconstructs viewing material
+inside a dedicated network-denied child, uses only the original wallet/circuit
+authorization, generates a genuine Groth16 proof, validates its pairing and exact
+payload, then saves the result encrypted before returning metadata. Re-export
+reuses the original result. `proof-results-v1` also participates in key-loss and
+corruption preservation. Provider-finalized v13/v15 profiles fail closed here;
+they are still required and are not replaced with local swap proofs.
+
+All four proving artifacts are staged outside ASAR using compiled byte lengths
+and SHA-256 pins, without version fallback. The packaged child is separately
+hashed by runtime integrity checks. Package creation requires an explicit
+`DRIVEKEY_HINKAL_ARTIFACTS` directory. Provision public pinned files after building:
+
+```
+node tools/provision-proof-artifacts.mjs C:/absolute/artifact-directory
+```
+
+Set `DRIVEKEY_HINKAL_ARTIFACTS` to that directory for packaging and full proof
+tests. Missing, changed or redirected files fail the gate rather than skip it.
+Provisioning downloads only public pinned SDK artifacts; it does not establish
+distribution rights or final release qualification.
+
 Remaining integration includes narrowly scoped private-view discovery and job
-preparation, integrity-bound proving artifacts and genuine proving/finalization,
-admission of the linked chain request, and independent note/proof settlement
+preparation, provider proof finalization, admission of the linked chain request,
+and independent note/proof settlement
 and restart reconciliation. Ethereum and Solana cases still need their real
 native approvals, separate-device exchange and intended-mainnet qualification
 on the final identity-bound release. None of these requirements is waived.
@@ -43,6 +66,7 @@ Focused local checks:
 
 ```
 node --require ./tests/offline-network-deny.cjs --test tests/product-proof.test.cjs tests/native-product-proof.test.cjs
+node --require ./tests/offline-network-deny.cjs --test tests/product-prover.test.cjs
 node tests/ui/renderer-suite.cjs --filter=product-private-proof-review-and-recovery
 ```
 
@@ -50,3 +74,9 @@ The cryptographic fixture creates a fresh unfunded wallet and owned encrypted
 note with a synthetic witness. Its secrets are never printed or packaged. The
 controller tests explicitly substitute dialog answers; the renderer test uses a
 finite synthetic preload. Neither exercises real native approval.
+
+Current official references: [TypeScript SDK and read-only sessions](https://hinkal-team.gitbook.io/hinkal/hinkal-sdk/sdk-description),
+[local proving integration](https://hinkal-team.gitbook.io/hinkal/hinkal-sdk/sdk-integration), and
+[supported chains](https://hinkal-team.gitbook.io/hinkal/ecosystem/supported-chains).
+DriveKey keeps the sensitive nullifying key inside the offline prover; the
+remaining online view flow must expose only an explicitly approved read capability.

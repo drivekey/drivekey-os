@@ -16,6 +16,8 @@ async function controller(profile){
   dialog:{showMessageBox:async()=>{state.dialogCalls++;return {response:state.approval};}},
   requestStore:new TransactionStore(path.join(directory,'proof-requests-v1'),storage.forJournal('proof-requests')),
   authorizationStore:new SignatureStore(path.join(directory,'proofs-v1'),storage.forJournal('proofs')),
+  resultStore:new SignatureStore(path.join(directory,'proof-results-v1'),storage.forJournal('proof-results')),
+  artifactDirectory:()=>path.join(directory,'pinned-prover-fixture'),
   job:async job=>{calls.push(job.action);if(job.action==='review-product-proof')return reviewProductProof(job.request,job.vault);
    if(job.action==='verify')return {verified:true};
    if(job.action==='verify-product-proof'){reviewProductProof(job.request,job.vault,Date.now(),false);return {response:await verifyProductProofResponse(job.request,job.response,Date.now(),false)};}
@@ -69,4 +71,35 @@ test('invalidation during proof creation preserves the original encrypted author
  const saved=await f.c.authorizationStore.load(fixture.vault.public.deviceId,fixture.request.fingerprint.slice(2));
  assert.ok(saved);await verifyProductProofResponse(saved.request,saved.response);
  const fresh=await controller(f.directory);await fresh.invoke('export-product-proof',{id:fixture.request.fingerprint});assert.equal(fresh.state.signs,0);
+});
+
+let completedProof;
+function attachProver(f,{invalidate=false}={}){
+ const job=f.c.job;
+ f.c.artifactDirectory=()=>process.env.DRIVEKEY_HINKAL_ARTIFACTS;
+ f.c.job=async p=>{
+  if(p.action==='verify-product-proof-result')return {result:await require('../dist/hinkal-product-result.cjs').verifyProductProofResult(p.request,p.response,p.result,Date.now(),false)};
+  if(p.action==='prove-product-proof'){
+   const result=invalidate?completedProof.result:await require('../dist/hinkal-product-prover.cjs').proveProductProof(p.vault,p.password,p.request,p.response,p.artifactDirectory);
+   if(invalidate)f.ui.clear();return result;
+  }
+  return job(p);
+ };
+}
+test('native controller durably saves a genuine proof and restart exports the same result without proving again',async()=>{
+ const f=await controller();attachProver(f);const reviewed=await f.invoke('import-product-proof');await f.invoke('sign-product-proof',{token:reviewed.token,fingerprint:reviewed.review.fingerprint,password:fixture.password});
+ const answer=await f.invoke('prove-product-proof',{id:fixture.request.fingerprint,password:fixture.password});assert.equal(answer.proved,true);assert.equal(answer.requiresSeparateChainReview,true);
+ const record=await f.c.resultStore.load(fixture.vault.public.deviceId,fixture.request.fingerprint.slice(2)),auth=await f.c.authorizationStore.load(fixture.vault.public.deviceId,fixture.request.fingerprint.slice(2));completedProof={result:record.response,auth:auth.response};
+ const ciphertext=await fs.readFile(f.c.resultStore.location(fixture.vault.public.deviceId,fixture.request.fingerprint.slice(2)));assert.equal(ciphertext.includes(Buffer.from(record.response.proof.data)),false);
+ const fresh=await controller(f.directory);attachProver(fresh);const rows=await fresh.invoke('list-product-proofs');assert.equal(rows[0].state,'proved');assert.equal(JSON.stringify(rows).includes('proofAArr'),false);assert.equal(JSON.stringify(rows).includes(record.response.proof.data),false);
+ fresh.c.job=async p=>{if(p.action==='prove-product-proof')throw Error('Must not prove again');return f.c.job(p);};
+ const exported=await fresh.invoke('export-product-proof-result',{id:fixture.request.fingerprint});assert.equal(exported.saved,false);
+ const reused=await fresh.invoke('prove-product-proof',{id:fixture.request.fingerprint,password:fixture.password});assert.equal(reused.reused,true);
+ assert.deepEqual((await fresh.c.resultStore.load(fixture.vault.public.deviceId,fixture.request.fingerprint.slice(2))).response,record.response);
+});
+test('canceled proving does not run, while invalidation after proving preserves the encrypted result',async()=>{
+ const f=await controller();attachProver(f,{invalidate:true});await f.c.authorizationStore.save(fixture.vault.public.deviceId,fixture.request,completedProof.auth);
+ f.state.backup=false;await assert.rejects(f.invoke('prove-product-proof',{id:fixture.request.fingerprint,password:fixture.password}),/backup/);assert.equal(f.state.dialogCalls,0);f.state.backup=true;
+ f.state.approval=0;assert.deepEqual(await f.invoke('prove-product-proof',{id:fixture.request.fingerprint,password:fixture.password}),{cancelled:true});assert.equal(await f.c.resultStore.load(fixture.vault.public.deviceId,fixture.request.fingerprint.slice(2)),null);
+ f.state.approval=1;await assert.rejects(f.invoke('prove-product-proof',{id:fixture.request.fingerprint,password:fixture.password}),/canceled/);assert.equal(f.state.exports,0);assert.deepEqual((await f.c.resultStore.load(fixture.vault.public.deviceId,fixture.request.fingerprint.slice(2))).response,completedProof.result);
 });

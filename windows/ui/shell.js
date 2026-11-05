@@ -51,7 +51,7 @@ $('clear-exchange-folder').onclick=async()=>{
  const result=await api('clearRequestExchange');
  if(result?.cleared){ui.exchangeFolder=null;updateExchangeControls();}
 };
-function clearReview(){ui.revision++;ui.review=null;ui.token=null;ui.origin=null;clearInterval(expiryTimer);$('review-empty').hidden=false;$('review-loaded').hidden=true;$('signed').hidden=true;$('terms').replaceChildren();$('advanced-terms').replaceChildren();$('sign-pass').value='';$('approval').checked=false;$('review-status').textContent='No request loaded';$('handoff-status').textContent='';updateReviewNavigation();}
+function clearReview(){ui.revision++;ui.review=null;ui.token=null;ui.origin=null;ui.proofToGenerate=null;$('product-prove-pass').value='';$('product-prove-form').hidden=true;clearInterval(expiryTimer);$('review-empty').hidden=false;$('review-loaded').hidden=true;$('signed').hidden=true;$('terms').replaceChildren();$('advanced-terms').replaceChildren();$('sign-pass').value='';$('approval').checked=false;$('review-status').textContent='No request loaded';$('handoff-status').textContent='';updateReviewNavigation();}
 function invalidate(){clearReview();return api('invalidatePreparedReview');}
 function clearQR(){ui.receiveEpoch++;ui.qr=null;$('receive-address').textContent='—';$('receive-qr').hidden=true;$('receive-qr').removeAttribute('src');$('receive-qr-empty').hidden=false;$('copy-address').disabled=true;$('amount-qr').hidden=true;$('amount-qr').removeAttribute('src');$('request-qr-empty').hidden=false;$('qr-uri').textContent='';$('qr-context').textContent='';$('copy-request').hidden=true;}
 function resetLocal(){clearReview();clearQR();ui.public=null;ui.activeId=null;ui.name='';ui.backupVerified=false;ui.watchOnly=false;ui.exchangeFolder=null;updateExchangeControls();ui.records=[];document.querySelectorAll('input[type=password]').forEach(e=>e.value='');$('home-balances').replaceChildren(node('p','Balances have not been checked.'));$('balance-display').textContent='Balance not checked';$('balance-time').textContent='';}
@@ -299,7 +299,11 @@ async function refreshProductProofs(){
  $('product-proof-recovery-state').textContent=rows.length?'Encrypted in this Windows profile. Exporting reuses the same authorization.':'No proof requests for this wallet.';
  for(const r of rows){
   const row=node('article',undefined,'signature-row'),copy=node('div');const amount=node('p');amount.dataset.proofAmount=r.amount;amount.dataset.proofAsset=r.asset;copy.append(node('strong',r.chain+' · '+r.action+' · '+r.state),amount,node('code',r.id));row.append(copy);
-  if(r.state==='authorized')row.append(button('Export proof authorization',async()=>{const result=await api('exportProductProof',r.id);if(result?.saved)notify('Existing proof authorization exported. No new signature was created.');}));
+  if(['authorized','proved'].includes(r.state)){
+   row.append(button('Export proof authorization',async()=>{const result=await api('exportProductProof',r.id);if(result?.saved)notify('Existing proof authorization exported. No new signature was created.');}));
+   if(r.state==='proved')row.append(button('Export existing proof',async()=>{const result=await api('exportProductProofResult',r.id);if(result?.saved)notify('Existing proof exported. Review the chain transaction separately.');}));
+   else if(r.localProvingSupported){const generate=button('Generate private proof',()=>{clearReview();ui.proofToGenerate=r.id;$('product-prove-id').textContent=r.id;$('product-prove-form').hidden=false;$('product-prove-pass').focus();});generate.disabled=!ui.backupVerified;row.append(generate);}
+  }
   else row.append(button('Review proof request',async()=>{const result=await api('reviewProductProof',r.id);if(result?.token)acceptPrepared(result,'proof-recovery');}));
   list.append(row);
  }
@@ -307,6 +311,14 @@ async function refreshProductProofs(){
 }
 $('import-product-proof').onclick=async()=>{clearReview();if(!ui.public||ui.watchOnly){notify('Choose the local signing wallet first.',true);return;}const result=await api('importProductProof');if(result?.token)acceptPrepared(result,'proof-import');};
 $('product-proof-history').onclick=async()=>{await refreshProductProofs();goto('signatures');};
+$('product-prove-form').onsubmit=async e=>{
+ e.preventDefault();if(!ui.proofToGenerate||!ui.backupVerified||ui.watchOnly)return;
+ const id=ui.proofToGenerate,pass=$('product-prove-pass').value;$('product-prove-pass').value='';ui.proofToGenerate=null;$('product-prove-form').hidden=true;
+ const result=await api('generateProductProof',id,pass);if(!result)return;
+ if(result.cancelled){notify('Proof generation canceled. The authorization is preserved.');return;}
+ if(result.proved){notify('Private proof verified and saved. A chain transaction still requires a separate review and signature.');await refreshProductProofs();}
+};
+$('product-prove-cancel').onclick=()=>{ui.proofToGenerate=null;$('product-prove-pass').value='';$('product-prove-form').hidden=true;};
 async function refreshSignatures(){const identity=ui.public?.deviceId,list=$('signature-list');list.replaceChildren();if(!identity||ui.watchOnly){$('signature-recovery-state').textContent=ui.watchOnly?'Saved signatures belong to the local signing wallet.':'Choose a local wallet to view saved signatures.';return;}const rows=await api('listSignatures');if(identity!==ui.public?.deviceId)return;if(!rows){$('signature-recovery-state').textContent='Saved signatures unavailable. Preserve this profile and retry.';return;}$('signature-recovery-state').textContent=rows.length?'Encrypted in this Windows profile. Export does not create a new signature.':'No saved signatures for this wallet.';for(const r of rows){const row=node('article',undefined,'signature-row'),copy=node('div');row.dataset.signatureId=r.id;copy.append(node('strong',r.network),node('p',dateLabel(r.signedAt)),node('code',r.transactionHash));row.append(copy,button('Export saved response',async()=>{const result=await api('exportSignature',r.id);if(result?.saved)notify('Existing signed response exported.');else if(result?.cancelled||result?.saved===false)notify('Export canceled. The saved response is preserved.');}));list.append(row);}}
 $('refresh-signatures').onclick=refreshSignatures;
 const zoomLevels=[0.5,0.67,0.8,1,1.25,1.5,1.75,2];
