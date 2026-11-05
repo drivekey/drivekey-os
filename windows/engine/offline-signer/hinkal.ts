@@ -24,7 +24,7 @@ export async function signHinkal(vault:any,password:string,input:unknown,fingerp
   else{const output=ownNote(d.encryptedOutputs[0][0]);if(output.amount!==remaining||BigInt(output.timeStamp)!==d.timeStamp||BigInt(output.getCommitment())!==d.outCommitments[0][0])throw Error('Hinkal private output ownership, amount or commitment mismatch.');}
   if(r.action==='hinkal-transfer'){const p=r.recipientInfo!.split(','),recipient=new Utxo({amount:BigInt(r.amount),erc20TokenAddress:token,timeStamp:d.timeStamp.toString(),H0:[BigInt(p[1]),BigInt(p[2])],stealthAddress:p[0],encryptionKey:p[5]});if(BigInt(recipient.getCommitment())!==d.outCommitments[0][1])throw Error('Private recipient commitment differs from its certified address and exact amount.');}
   // Keep the view/spend key inside this one-use process. It is never a response field.
-  void nk;}validateHinkal(r,clock());const rawSignedTransaction=await keys.evm.signTransaction(Transaction.from(r.unsignedTransaction));
-  return verifyHinkalResponse({version:10,deviceId:r.deviceId,requestId:r.requestId,fingerprint:r.fingerprint,signedAt:new Date(clock()).toISOString(),rawSignedTransaction,transactionHash:Transaction.from(rawSignedTransaction).hash!,approvalSignature:await keys.evm.signMessage(hinkalApproval(r))},r,vault.public,clock());
+  void nk;}validateHinkal(r,clock());const approvalSignature=await keys.evm.signMessage(hinkalApproval(r)),signingAt=clock();validateHinkal(r,signingAt);const rawSignedTransaction=await keys.evm.signTransaction(Transaction.from(r.unsignedTransaction));
+  return verifyHinkalResponse({version:10,deviceId:r.deviceId,requestId:r.requestId,fingerprint:r.fingerprint,signedAt:new Date(signingAt).toISOString(),rawSignedTransaction,transactionHash:Transaction.from(rawSignedTransaction).hash!,approvalSignature},r,vault.public,clock(),false);
  }finally{wipeSolSecret(keys.sol);}
 }

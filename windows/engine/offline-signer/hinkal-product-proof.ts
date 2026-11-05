@@ -23,16 +23,20 @@ export async function authorizeProductProof(vault:any,password:string,input:unkn
  if(r.fingerprint!==fingerprint)throw Error('Product proof review changed.');
  const start=performance.now(),clock=()=>now+Math.floor(performance.now()-start),seed:any=r.seed;
  const authorize=seed.version===13?signHinkalProof:seed.version===15?signHinkalSolanaProof:seed.version===19?signLocalHinkalSwap:signLocalHinkalSolanaSwap;
- const proofAuthorization=await authorize(vault,password,seed,seed.fingerprint,clock());
- validateProductProof(r,clock());
- // The circuit authorization alone cannot be imported as a product response:
- // this separate domain signature binds it to the exact v28 native review.
+ // Unlock the attestation key before creating the circuit authorization. The
+ // inner boundary must validate the original outer deadline, which can be
+ // earlier than the seed deadline. Neither request nor clock is rewritten.
  const keys=await unlockMultiVault(vault,password);
  try{
-  validateProductProof(r,clock());const signedAt=new Date(clock()).toISOString(),message=productProofWalletMessage(r,proofAuthorization,signedAt);
+  validateProductProof(r,clock());let signingAt:number|undefined;
+  const proofAuthorization=await authorize(vault,password,seed,seed.fingerprint,clock(),at=>{validateProductProof(r,at);signingAt=at;});
+  if(signingAt===undefined||proofAuthorization.signedAt!==new Date(signingAt).toISOString())throw Error('Product proof signing boundary differs.');
+  // This signature attests to an already-created, exactly bound authorization.
+  // Finish and retain that response even if delivery crosses the deadline.
+  const signedAt=proofAuthorization.signedAt,message=productProofWalletMessage(r,proofAuthorization,signedAt);
   const walletAuthorization=r.chain==='ethereum'?await keys.evm.signMessage(message):bs58.encode(nacl.sign.detached(Buffer.from(message),retainedSolSecret(keys.sol)));
   const response={version:28,kind:'drivekey-hinkal-product-proof-response',requestId:r.requestId,deviceId:r.deviceId,fingerprint:r.fingerprint,
    signedAt,proofAuthorization,walletAuthorization,blockchainTransactionSigned:false,submitted:false};
-  return verifyProductProofResponse(r,response,clock());
+  return verifyProductProofResponse(r,response,clock(),false);
  }finally{wipeSolSecret(keys.sol);}
 }
