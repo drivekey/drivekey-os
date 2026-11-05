@@ -1,5 +1,6 @@
 'use strict';
 // Install only from the privileged main process. No secrets are accepted in imports.
+const {preparedRecord}=require('./tools/request-lifecycle.cjs');
 const fs=require('node:fs/promises');
 const {TextDecoder}=require('node:util');
 const {randomUUID}=require('node:crypto');
@@ -58,7 +59,7 @@ function installRouteUi(c){
     const document=await readDocument(picked.filePaths[0]);assertScope(s);
     const prepared=privateMode?await preparePrivateDocument(document,selection,s.wallet,deps(s)):await prepareBridgeDocument(document,selection,s.wallet,deps(s));
     assertScope(s);
-    await c.transactionStore.put({version:1,request:prepared.request,state:'prepared',updatedAt:new Date().toISOString()});
+    await c.transactionStore.put(preparedRecord(prepared.request));
     assertScope(s);
     const token=randomUUID();c.setPending({token,request:prepared.request,review:prepared.review,vaultHash:c.getVaultHash()});
     return {token,review:prepared.review};
@@ -91,7 +92,8 @@ function installRouteUi(c){
     if(c.verifyPreparedBinding)await c.verifyPreparedBinding(record,wallet,false);
     const review=historicalReview(record.request,c.bridgeCodec);
     if(c.getPublic().deviceId!==wallet.deviceId)throw Error('Selected wallet changed.');
-    return {...transactionDetail(record,wallet,review),paymentWritable:paymentPolicy.allowedIntent(record.request)};
+    const signingState=c.getSigningState?await c.getSigningState(record,wallet):null;
+    return {...transactionDetail(record,wallet,review),...(signingState?{state:signingState}:{}),paymentWritable:paymentPolicy.allowedIntent(record.request),canDiscard:c.canDiscard?await c.canDiscard(record,wallet):false,handoffState:record.handoff?.state||'legacy-unknown'};
   });
 }
 module.exports={installRouteUi,historicalReview,readDocument};

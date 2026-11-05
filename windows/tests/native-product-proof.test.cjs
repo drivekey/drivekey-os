@@ -110,3 +110,13 @@ test('private-proof fallback authorization remains recoverable after a primary w
  const f=await controller();f.c.authorizationStore.seal=async()=>{throw Error('Injected primary proof outage');};const r=await f.invoke('import-product-proof');await f.invoke('sign-product-proof',{token:r.token,fingerprint:r.review.fingerprint,password:fixture.password});assert.equal(f.state.signs,1);assert.equal(await f.c.authorizationStore.load(fixture.vault.public.deviceId,fixture.request.fingerprint.slice(2)),null);
  const fresh=await controller(f.directory),rows=await fresh.invoke('list-product-proofs');assert.equal(rows[0].state,'authorized');await fresh.invoke('export-product-proof',{id:fixture.request.fingerprint});assert.equal(fresh.state.signs,0);assert.equal(fresh.state.exports,1);
 });
+
+test('private-proof original response import restores only its committed authorization without signing again',async()=>{
+ const f=await controller(),r=await f.invoke('import-product-proof');await f.invoke('sign-product-proof',{token:r.token,fingerprint:r.review.fingerprint,password:fixture.password});
+ const id=fixture.request.fingerprint.slice(2),original=await f.c.authorizationStore.load(fixture.vault.public.deviceId,id);
+ for(const store of [f.c.authorizationStore,f.c.signingAttempts.results])for(const file of await store.candidates(fixture.vault.public.deviceId,id))await fs.rename(file,file+'.preserved-test-copy');
+ const handlers=new Map(),{installSigningRecovery}=require('../tools/native-signing-recovery.cjs'),{productProofReview}=require('../dist/hinkal-product-proof.cjs');
+ installSigningRecovery({register:(n,fn)=>handlers.set(n,fn),attempts:f.c.signingAttempts,getPublic:f.c.getPublic,getVault:f.c.getVault,getWindow:f.c.getWindow,getVaultHash:()=>require('node:crypto').createHash('sha256').update(JSON.stringify(f.c.getVault())).digest('hex'),clearPending:()=>f.ui.clear(),openJSON:async()=>({data:original.response}),dialog:f.c.dialog,
+  verify:async(response,request)=>({response:await verifyProductProofResponse(request,response,Date.now(),false),review:productProofReview(request,Date.now(),false)})});
+ const restored=await handlers.get('recover-signing-response')({id:fixture.request.fingerprint,authority:'private-proof'});assert.equal(restored.restored,true);assert.equal(f.state.signs,1);assert.equal(JSON.stringify(restored).includes(original.response.walletAuthorization),false);assert.deepEqual((await f.c.authorizationStore.load(fixture.vault.public.deviceId,id)).response,original.response);
+});

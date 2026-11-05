@@ -1,5 +1,6 @@
 'use strict';
 // Privileged public-proof import. Renderer receives only the new chain review.
+const {preparedRecord}=require('./request-lifecycle.cjs');
 const fs=require('node:fs/promises'),{TextDecoder}=require('node:util'),{randomUUID}=require('node:crypto');
 const {parseStrictJSON}=require('./strict-json.cjs');
 const {verifyProductProofPackage,verifyProductPackageChain,productBindingSchema}=require('../dist/hinkal-product-admission.cjs');
@@ -61,7 +62,7 @@ function installProductAdmission(c){
    const verified=await checked(()=>verifyProductPackageChain(p,s.wallet,prepared.request,s.clock()));current(s);
    if(canonical(verified.productProof)!==canonical(prepared.productProof))throw Error('Online proof admission returned a different binding.');
    productProof=verified.productProof;request=await checked(()=>createProductChain(p,s.wallet,verified.request,s.clock()));current(s);c.validateIntent(request);c.assertIntentWallet(request,s.wallet);
-   await c.transactionStore.put({version:1,request,productProof,state:'prepared',updatedAt:new Date().toISOString()});current(s);
+   await c.transactionStore.put(preparedRecord(request,{productProof}));current(s);
   }
   validateProductProof(p.request,s.clock());current(s);const review=c.reviewIntent(request),token=randomUUID();
   c.setPending({token,request,review,productProof,vaultHash:s.vaultHash});return {token,review,reused,proofRequestFingerprint:p.request.fingerprint,requiresSeparateChainReview:true};

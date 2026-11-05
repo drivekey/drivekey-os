@@ -36,7 +36,7 @@ function transactionSummary(record) {
     amount: amount(request.amount),
     outputAmount,
     minimumOutput: amount(request.minimumOutput),
-    outputState: outputAsset ? (outputAmount === undefined ? "awaiting-settlement" : "settled") : undefined,
+    outputState: state==='discarded'?undefined:outputAsset ? (outputAmount === undefined ? "awaiting-settlement" : "settled") : undefined,
     source: text(request.from),
     recipient: text(request.recipient),
     direction: allowance ? "approval" : request.action === "hinkal-withdraw" ? "withdraw" : bridge ? "bridge" : outputAsset && /swap/.test(request.action || "") ? "swap" : "sent",

@@ -63,7 +63,7 @@ function installProductProofUi(c){
    const proved=await c.resultStore.load(s.wallet.deviceId,id.slice(2));current(s);
    if(proved){if(!signed)throw Error('Private proof recovery is missing its original authorization. Preserve this profile.');await c.job({action:'verify-product-proof-result',vault:s.vault,request,response:signed.response,result:proved.response});current(s);}
    const review=productProofReview(request,Date.now(),false);
-   rows.push({id,state:entry?.uncertain?'signing-uncertain':proved?'proved':signed?'authorized':'prepared',localProvingSupported:localProductProvingSupported(request),chain:review.chain,action:review.action,amount:review.amount,asset:review.inputAsset,
+   rows.push({id,state:entry?.uncertain?'signing-uncertain':proved?'proved':signed?'authorized':'prepared',...(entry?.uncertain?{canRecoverOriginal:entry.canRecoverOriginal}:{}),localProvingSupported:localProductProvingSupported(request),chain:review.chain,action:review.action,amount:review.amount,asset:review.inputAsset,
     recipient:review.recipient,expiresAt:request.expiresAt,createdAt:request.createdAt,requiresSeparateChainReview:true});
   }
   return rows.sort((a,b)=>b.createdAt.localeCompare(a.createdAt));

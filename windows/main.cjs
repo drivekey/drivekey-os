@@ -10,6 +10,7 @@ const {validateHinkalSolana,hinkalSolanaReview,verifyHinkalSolanaResponse,assert
 const {app, BrowserWindow, ipcMain, dialog, session, shell, clipboard, safeStorage} = require('electron');
 // Grayscale antialiasing avoids colored fringes on small desktop text.
 app.commandLine.appendSwitch('disable-lcd-text');
+const {preparedRecord}=require('./tools/request-lifecycle.cjs');
 const {SignatureStore}=require('./signature-store.cjs');
 const {SigningAttempts}=require('./tools/signing-attempts.cjs');
 const {TransactionStore,reconcileRecord}=require('./transaction-store.cjs');
@@ -38,7 +39,7 @@ const {isDeepStrictEqual} = require('node:util');
 const {RequestExchange} = require('./tools/request-exchange.cjs');
 const requestExchange = new RequestExchange();
 const ROOT = __dirname, ENTRY = pathToFileURL(path.join(ROOT,'ui','index.html')).href;
-let win, encryptedVault, vaultFile, publicWallet, backupVerified=false, pendingReview, busy=false, activeWalletId=null, productProofUi, productAdmissionUi;
+let win, encryptedVault, vaultFile, publicWallet, backupVerified=false, pendingReview, busy=false, activeWalletId=null, productProofUi, productAdmissionUi, signingRecoveryUi, requestLifecycleUi;
 const activeWorkers=new Set();
 const publicReadControllers = new Set();
 function cancelAccountReads() {
@@ -54,7 +55,7 @@ const watchStore=new WalletStore(path.join(app.getPath('userData'),'watch-catalo
 const storeFor=id=>watchStore.records.some(r=>r.id===id)?watchStore:walletStore;
 const recoveryStorage=createRecoveryStorage(app.getPath('userData'),safeStorage);
 const signatureStore=new SignatureStore(path.join(app.getPath('userData'),'signatures-v1'),recoveryStorage.forJournal('signatures'));
-const transactionStore=new TransactionStore(path.join(app.getPath('userData'),'transactions-v1'),recoveryStorage.forJournal('transactions'));
+const transactionStore=new TransactionStore(path.join(app.getPath('userData'),'transactions-v1'),{...recoveryStorage.forJournal('transactions'),beforeDiscard:r=>signingAttempts.assertUnstarted(r.request.deviceId,r.request.fingerprint.slice(2))});
 const proofRequestStore=new TransactionStore(path.join(app.getPath('userData'),'proof-requests-v1'),recoveryStorage.forJournal('proof-requests'));
 const proofAuthorizationStore=new SignatureStore(path.join(app.getPath('userData'),'proofs-v1'),recoveryStorage.forJournal('proofs'));
 const proofResultStore=new SignatureStore(path.join(app.getPath('userData'),'proof-results-v1'),recoveryStorage.forJournal('proof-results'));
@@ -65,7 +66,7 @@ async function online(input,options={}){if(OFFLINE)throw Error('Networking is di
 const verifiedWallets=new Map();
 const digest = v => createHash('sha256').update(JSON.stringify(v)).digest('hex');
 function passwordOf(v) { if(typeof v!=='string'||v.length<16||v.length>256) throw Error('Use a passphrase of 16–256 characters.'); return v; }
-function clearPendingReview() {pendingReview=undefined;productProofUi?.clear();productAdmissionUi?.clear();requestExchange.clearBinding();}
+function clearPendingReview() {pendingReview=undefined;productProofUi?.clear();productAdmissionUi?.clear();signingRecoveryUi?.clear();requestLifecycleUi?.clear();requestExchange.clearBinding();}
 function reset() { cancelAccountReads();requestExchange.clear();encryptedVault=undefined; vaultFile=undefined; publicWallet=undefined; backupVerified=false; clearPendingReview();activeWalletId=null; }
 function walletList(){const problem=walletStore.problem||watchStore.problem;return problem?{wallets:[],activeId:null,recoveryRequired:true,canRecover:problem.canRecover,error:problem.error}:{wallets:[...walletStore.list(activeWalletId,verifiedWallets).wallets,...watchStore.list(activeWalletId).wallets.map(w=>({...w,watchOnly:true}))],activeId:activeWalletId,recoveryRequired:false};}
 function selectedWallet(){const wallet=storeFor(activeWalletId).get(activeWalletId);return {public:publicWallet,backupVerified,watchOnly:!encryptedVault,wallet:{id:wallet.id,name:wallet.name},...walletList()};}
@@ -113,9 +114,11 @@ async function openJSON(title) {
   if(result.canceled)return null;
   return {file:result.filePaths[0],data:await readJSON(result.filePaths[0])};
 }
-async function saveJSON(title,name,data) {
+async function saveJSON(title,name,data,{beforeWrite}={}) {
   const result=await dialog.showSaveDialog(win,{title,defaultPath:name,filters:[{name:'DriveKey JSON',extensions:['json']}]});
   if(result.canceled)return null;
+  // Persist exposure before any requested handoff write can escape.
+  if(beforeWrite)await beforeWrite();
   // Never overwrite an existing vault, backup, request, or response.
   await fs.writeFile(result.filePath,JSON.stringify(data,null,2)+'\n',{flag:'wx',mode:0o600});
   return result.filePath;
@@ -198,6 +201,7 @@ register('import-request',async()=>{
   const picked=await openJSON('Import unsigned DriveKey request');if(!picked)return {cancelled:true};
   paymentPolicy.assertIntent(picked.data);
   const review=await job({action:'review',request:picked.data,vault:encryptedVault});
+  await requestLifecycleUi.imported(picked.data);
   const token=randomUUID();pendingReview={token,request:picked.data,review,vaultHash:digest(encryptedVault)};return {token,review};
 });
 register('sign-request',async p=>{
@@ -214,6 +218,7 @@ register('sign-request',async p=>{
   const terms=Object.entries(refreshed).map(([key,value])=>key+': '+(typeof value==='object'?JSON.stringify(value):value)).join('\n');
   const confirm=await dialog.showMessageBox(win,{type:'warning',title:'Approve this exact transaction?',message:'Create a transferable signature?',detail:terms+'\n\nLocal software signing trusts the running computer. No transaction is broadcast here.',buttons:['Cancel','Approve exact transaction'],defaultId:0,cancelId:0,noLink:true});
   if(confirm.response!==1)return {cancelled:true,reviewConsumed:true};
+  const originalDraft=await transactionStore.load(signingWallet.deviceId,r.request.fingerprint);if(originalDraft?.state==='discarded')throw Error('This local draft was discarded and cannot be signed.');
   currentSigningScope();await job({action:'verify',vault:signingVault,password});currentSigningScope();
   const {response}=await signingAttempts.run({walletId:signingWallet.deviceId,request:r.request,authority:'transaction',current:currentSigningScope,
     verify:async(response,request,authority)=>(await job({action:authority==='private-proof'?'verify-product-proof':'verify-saved',vault:signingVault,request,response})).response,
@@ -224,7 +229,7 @@ register('sign-request',async p=>{
 });
 register('list-signatures',async()=>{
   requireVault();const records=await signingAttempts.list(publicWallet.deviceId,'transaction');
-  return records.map(record=>({id:record.request.fingerprint.slice(2),requestId:record.request.requestId,network:record.request.network||record.request.chain,signedAt:record.response?.signedAt,transactionHash:record.response?.transactionHash,...(record.uncertain?{state:'signing-uncertain',warning:'Signing outcome unknown. Preserve this profile; new signing for this wallet is disabled.'}:{})}));
+  return records.map(record=>({id:record.request.fingerprint.slice(2),requestId:record.request.requestId,network:record.request.network||record.request.chain,signedAt:record.response?.signedAt,transactionHash:record.response?.transactionHash,...(record.uncertain?{state:'signing-uncertain',canRecoverOriginal:record.canRecoverOriginal,warning:'Signing outcome unknown. Preserve this profile; new signing for this wallet is disabled.'}:{})}));
 });
 register('export-signature',async p=>{
   requireVault();const stored=await signingAttempts.recover(publicWallet.deviceId,p?.id,'transaction',async(response,request)=>(await job({action:'verify-saved',vault:encryptedVault,request,response})).response);if(!stored)throw Error('Saved signature not found for this wallet.');
@@ -256,27 +261,29 @@ register('configure-rpc',async()=>{
  let saved={};try{saved=await readJSON(rpcFile);}catch(error){if(error.code!=='ENOENT')throw error;}
  await fs.writeFile(rpcFile,JSON.stringify({...saved,...picked.data}),{mode:0o600});cancelAccountReads();accountBalanceReader.clear();clearPendingReview();return {configured:true};
 });
+async function retainPrepared(request,review){
+ const scope=importScope();await transactionStore.put(preparedRecord(request));assertImportScope(scope);
+ const token=randomUUID();pendingReview={token,request,review,vaultHash:encryptedVault?digest(encryptedVault):null};return {token,review};
+}
 register('prepare-payment',async p=>{
  requirePublic();clearPendingReview();const request=validatePayment(await online({action:'prepare',input:p,wallet:publicWallet}));assertPaymentWallet(request,publicWallet);
  paymentPolicy.assertIntent(request);
- const token=randomUUID(),review=paymentReview(request);
- await transactionStore.put({version:1,request,state:'prepared',updatedAt:new Date().toISOString()});
- pendingReview={token,request,review,vaultHash:encryptedVault?digest(encryptedVault):null};return {token,review};
+ return retainPrepared(request,paymentReview(request));
 });
 register('prepare-swap',async p=>{
  requirePublic();clearPendingReview();const request=validateSwap(await online({action:'uniswap-v3-prepare',input:p,wallet:publicWallet}));assertSwapWallet(request,publicWallet);
- const token=randomUUID(),review=swapReview(request);pendingReview={token,request,review,vaultHash:encryptedVault?digest(encryptedVault):null};await transactionStore.put({version:1,request,state:'prepared',updatedAt:new Date().toISOString()});return {token,review};
+ return retainPrepared(request,swapReview(request));
 });
-for(const [channel,version] of [['prepare-lifi-mayan-evm-source',22],['prepare-mayan-solana-source',23],['prepare-mayan-evm-redeem',24],['prepare-lifi-relay-solana',25],['prepare-lifi-relay-evm',26]])register(channel,async p=>{requirePublic();clearPendingReview();const codec=bridgeCodec({version}),raw=await online({action:codec.action+'prepare',input:p,wallet:publicWallet});if(raw?.version!==version)throw Error('Prepared bridge version differs from the selected route.');const request=codec.validate(raw);codec.assertWallet(request,publicWallet);const token=randomUUID(),review=codec.review(request);pendingReview={token,request,review,vaultHash:encryptedVault?digest(encryptedVault):null};await transactionStore.put({version:1,request,state:'prepared',updatedAt:new Date().toISOString()});return {token,review};});
+for(const [channel,version] of [['prepare-lifi-mayan-evm-source',22],['prepare-mayan-solana-source',23],['prepare-mayan-evm-redeem',24],['prepare-lifi-relay-solana',25],['prepare-lifi-relay-evm',26]])register(channel,async p=>{requirePublic();clearPendingReview();const codec=bridgeCodec({version}),raw=await online({action:codec.action+'prepare',input:p,wallet:publicWallet});if(raw?.version!==version)throw Error('Prepared bridge version differs from the selected route.');const request=codec.validate(raw);codec.assertWallet(request,publicWallet);return retainPrepared(request,codec.review(request));});
 register('reconcile-lifi-mayan-destination',async p=>{requirePublic();const record=await transactionStore.load(publicWallet.deviceId,p?.id);if(record?.request?.version!==22||!record.response||['prepared','signed'].includes(record.state))throw Error('A submitted LI.FI source is required.');await verifyIntent(record.response,record.request,publicWallet,Date.now(),false);const result=await online({action:'lifi-mayan-solana-destination-reconcile',request:record.request,response:record.response});if(!['confirmed','destination-pending','pending','uncertain','conflict','failed'].includes(result?.state)||result.state==='confirmed'&&result.completeRoute!==true)throw Error('Invalid destination reconciliation response.');await transactionStore.put(reconcileRecord(record,result,{destination:true}));return result;});
-register('prepare-lifi-solana',async p=>{requirePublic();clearPendingReview();const request=validateLifiSolana(await online({action:'lifi-solana-prepare',input:p,wallet:publicWallet}));assertLifiSolanaWallet(request,publicWallet);const token=randomUUID(),review=lifiSolanaReview(request);pendingReview={token,request,review,vaultHash:encryptedVault?digest(encryptedVault):null};await transactionStore.put({version:1,request,state:'prepared',updatedAt:new Date().toISOString()});return {token,review};});
+register('prepare-lifi-solana',async p=>{requirePublic();clearPendingReview();const request=validateLifiSolana(await online({action:'lifi-solana-prepare',input:p,wallet:publicWallet}));assertLifiSolanaWallet(request,publicWallet);return retainPrepared(request,lifiSolanaReview(request));});
 register('hinkal-discover',async p=>{requirePublic();return online({action:'hinkal-discover',input:p});});
-register('prepare-lifi-evm',async p=>{requirePublic();clearPendingReview();const request=validateLifiEvm(await online({action:'lifi-evm-prepare',input:p,wallet:publicWallet}));assertLifiEvmWallet(request,publicWallet);const token=randomUUID(),review=lifiEvmReview(request);pendingReview={token,request,review,vaultHash:encryptedVault?digest(encryptedVault):null};await transactionStore.put({version:1,request,state:'prepared',updatedAt:new Date().toISOString()});return {token,review};});
-register('prepare-hinkal-solana-swap',async p=>{requirePublic();clearPendingReview();const request=validateHinkalSolanaSwap(await online({action:'hinkal-solana-swap-prepare',input:p,wallet:publicWallet}));assertHinkalSolanaSwapWallet(request,publicWallet);const token=randomUUID(),review=hinkalSolanaSwapReview(request);pendingReview={token,request,review,vaultHash:encryptedVault?digest(encryptedVault):null};await transactionStore.put({version:1,request,state:'prepared',updatedAt:new Date().toISOString()});return {token,review};});
-register('prepare-hinkal-evm-swap',async p=>{requirePublic();clearPendingReview();const request=validateHinkalEvmSwap(await online({action:'hinkal-evm-swap-prepare',input:p,wallet:publicWallet}));assertHinkalEvmSwapWallet(request,publicWallet);const token=randomUUID(),review=hinkalEvmSwapReview(request);pendingReview={token,request,review,vaultHash:encryptedVault?digest(encryptedVault):null};await transactionStore.put({version:1,request,state:'prepared',updatedAt:new Date().toISOString()});return {token,review};});
-register('prepare-hinkal-solana-spend',async p=>{requirePublic();clearPendingReview();const request=validateHinkalSolanaSpend(await online({action:'hinkal-solana-spend-prepare',input:p,wallet:publicWallet}));assertHinkalSolanaSpendWallet(request,publicWallet);const token=randomUUID(),review=hinkalSolanaSpendReview(request);pendingReview={token,request,review,vaultHash:encryptedVault?digest(encryptedVault):null};await transactionStore.put({version:1,request,state:'prepared',updatedAt:new Date().toISOString()});return {token,review};});
-register('prepare-hinkal-solana',async p=>{requirePublic();clearPendingReview();const request=validateHinkalSolana(await online({action:'hinkal-solana-prepare',input:p,wallet:publicWallet}));assertHinkalSolanaWallet(request,publicWallet);const token=randomUUID(),review=hinkalSolanaReview(request);pendingReview={token,request,review,vaultHash:encryptedVault?digest(encryptedVault):null};await transactionStore.put({version:1,request,state:'prepared',updatedAt:new Date().toISOString()});return {token,review};});
-register('prepare-hinkal',async p=>{requirePublic();clearPendingReview();const request=validateHinkal(await online({action:'hinkal-direct-prepare',input:p,wallet:publicWallet}));assertHinkalWallet(request,publicWallet);const token=randomUUID(),review=hinkalReview(request);pendingReview={token,request,review,vaultHash:encryptedVault?digest(encryptedVault):null};await transactionStore.put({version:1,request,state:'prepared',updatedAt:new Date().toISOString()});return {token,review};});
+register('prepare-lifi-evm',async p=>{requirePublic();clearPendingReview();const request=validateLifiEvm(await online({action:'lifi-evm-prepare',input:p,wallet:publicWallet}));assertLifiEvmWallet(request,publicWallet);return retainPrepared(request,lifiEvmReview(request));});
+register('prepare-hinkal-solana-swap',async p=>{requirePublic();clearPendingReview();const request=validateHinkalSolanaSwap(await online({action:'hinkal-solana-swap-prepare',input:p,wallet:publicWallet}));assertHinkalSolanaSwapWallet(request,publicWallet);return retainPrepared(request,hinkalSolanaSwapReview(request));});
+register('prepare-hinkal-evm-swap',async p=>{requirePublic();clearPendingReview();const request=validateHinkalEvmSwap(await online({action:'hinkal-evm-swap-prepare',input:p,wallet:publicWallet}));assertHinkalEvmSwapWallet(request,publicWallet);return retainPrepared(request,hinkalEvmSwapReview(request));});
+register('prepare-hinkal-solana-spend',async p=>{requirePublic();clearPendingReview();const request=validateHinkalSolanaSpend(await online({action:'hinkal-solana-spend-prepare',input:p,wallet:publicWallet}));assertHinkalSolanaSpendWallet(request,publicWallet);return retainPrepared(request,hinkalSolanaSpendReview(request));});
+register('prepare-hinkal-solana',async p=>{requirePublic();clearPendingReview();const request=validateHinkalSolana(await online({action:'hinkal-solana-prepare',input:p,wallet:publicWallet}));assertHinkalSolanaWallet(request,publicWallet);return retainPrepared(request,hinkalSolanaReview(request));});
+register('prepare-hinkal',async p=>{requirePublic();clearPendingReview();const request=validateHinkal(await online({action:'hinkal-direct-prepare',input:p,wallet:publicWallet}));assertHinkalWallet(request,publicWallet);return retainPrepared(request,hinkalReview(request));});
 function exchangeScope() {
  requirePublic();
  if(OFFLINE||encryptedVault)throw Error('Exchange folders require an online public wallet.');
@@ -301,14 +308,16 @@ register('export-payment-request',async()=>{
  if(pendingReview.productProof!==undefined)await productAdmissionUi.verifyPending(pendingReview,publicWallet,true);
  if(!OFFLINE&&!encryptedVault&&requestExchange.available(exchangeScope())){
   const request=validateIntent(pendingReview.request);assertIntentWallet(request,publicWallet);
-  return requestExchange.export(request,pendingReview.token,exchangeScope());
+  const token=pendingReview.token,binding=exchangeScope();
+  return requestLifecycleUi.exportRequest(request,async beforeWrite=>{await beforeWrite();return requestExchange.export(request,token,binding);},'exchange');
  }
- const file=await saveJSON('Transfer request to offline companion','request-v'+pendingReview.request.version+'.json',pendingReview.request);return {saved:!!file};
+ const request=validateIntent(pendingReview.request);assertIntentWallet(request,publicWallet);
+ const file=await requestLifecycleUi.exportRequest(request,beforeWrite=>saveJSON('Transfer request to offline companion','request-v'+request.version+'.json',request,{beforeWrite}));return {saved:!!file};
 });
 async function ingestResponse(data,scope,expected) {
  assertImportScope(scope);
  const record=await transactionStore.load(scope.wallet.deviceId,data?.fingerprint);assertImportScope(scope);
- if(!record)throw Error('No matching prepared intent for this wallet.');
+ if(!record)throw Error('No matching prepared intent for this wallet.');if(record.state==='discarded')throw Error('This discarded local draft cannot accept another response. Preserve the original files.');
  if(record.productProof!==undefined)await productAdmissionUi.verifyRecord(record,scope.wallet,false);assertImportScope(scope);
  paymentPolicy.assertIntent(record.request);
  if(expected&&!isDeepStrictEqual(record.request,expected))throw Error('Response differs from the current reviewed request.');
@@ -332,9 +341,10 @@ register('import-exchange-response',async()=>{
  return ingestResponse(picked.data,scope,request);
 });
 register('list-transactions',async()=>{
- requirePublic();const records=await transactionStore.list(publicWallet.deviceId),saved=(await signingAttempts.list(publicWallet.deviceId,'transaction')).filter(r=>r.response);
+ requirePublic();const records=await transactionStore.list(publicWallet.deviceId),signatureRecords=await signingAttempts.list(publicWallet.deviceId,'transaction'),saved=signatureRecords.filter(r=>r.response);
  for(const s of saved.filter(s=>[8,9,10,11,12,14,16,18,21,22,23,24,25,26,29].includes(s.request.version))){let record=records.find(r=>r.request.fingerprint===s.request.fingerprint);if(!record){record={version:1,request:s.request,state:'uncertain',response:s.response,reason:'Submission history is missing. Reconcile the saved hash; do not rebroadcast.'};records.push(record);await transactionStore.put(record);}else if(record.state==='prepared'){record.state='signed';record.response=s.response;await transactionStore.put(record);}}
- return records.map(transactionSummary);
+ for(const s of signatureRecords.filter(r=>r.uncertain))if(!records.some(r=>r.request.fingerprint===s.request.fingerprint))records.push({version:1,request:s.request,state:'signing-uncertain',reason:'Signing outcome unknown. Recover the original response; no new signing or submission is permitted.'});
+ return records.map(r=>{const row=transactionSummary(r);return signatureRecords.some(s=>s.uncertain&&s.request.fingerprint===r.request.fingerprint)?{...row,state:'signing-uncertain',reason:'Signing outcome unknown. Recover the original response; no new signing or submission is permitted.'}:row;});
 });
 register('submit-payment',async p=>{
  requirePublic();if(OFFLINE)throw Error('Offline companion cannot broadcast.');const submissionScope=importScope();const record=await transactionStore.load(publicWallet.deviceId,p?.id);
@@ -365,6 +375,8 @@ require('./ui-routes-main.cjs').installRouteUi({
  getPublic:()=>{requirePublic();return publicWallet;},getWindow:()=>win,isOffline:()=>OFFLINE,
  clearPending:clearPendingReview,setPending:value=>{pendingReview=value;},
  getVaultHash:()=>encryptedVault?digest(encryptedVault):null,
+ canDiscard:(record,wallet)=>requestLifecycleUi.canDiscard(record,wallet),
+ getSigningState:async(record,wallet)=>(await signingAttempts.list(wallet.deviceId,'transaction')).some(r=>r.uncertain&&r.request.fingerprint===record.request.fingerprint)?'signing-uncertain':null,
  verifyPreparedBinding:(record,wallet,expiry)=>productAdmissionUi.verifyRecord(record,wallet,expiry)
 });
 productProofUi=require('./tools/native-product-proof.cjs').installProductProofUi({
@@ -379,6 +391,23 @@ productAdmissionUi=require('./tools/native-product-admission.cjs').installProduc
  getPublic:()=>{requirePublic();return publicWallet;},getWindow:()=>win,isOffline:()=>OFFLINE,
  getVaultHash:()=>encryptedVault?digest(encryptedVault):null,clearPending:clearPendingReview,
  setPending:value=>{pendingReview=value;},validateIntent,assertIntentWallet,reviewIntent
+});
+signingRecoveryUi=require('./tools/native-signing-recovery.cjs').installSigningRecovery({
+ register,dialog,openJSON,attempts:signingAttempts,clearPending:clearPendingReview,
+ getPublic:()=>{requirePublic();return publicWallet;},getVault:()=>{requireVault();return encryptedVault;},getWindow:()=>win,getVaultHash:()=>encryptedVault?digest(encryptedVault):null,
+ verify:async(response,request,authority,s)=>{
+  if(authority==='private-proof'){
+   require('./dist/hinkal-product-admission.cjs').assertProductPackageWallet(request,s.wallet);
+   const checked=await job({action:'verify-product-proof',vault:s.vault,request,response},'worker.cjs',{owner:s.window});
+   return {response:checked.response,review:require('./dist/hinkal-product-proof.cjs').productProofReview(request,Date.now(),false)};
+  }
+  return job({action:'verify-saved',vault:s.vault,request,response},'worker.cjs',{owner:s.window});
+ }
+});
+requestLifecycleUi=require('./tools/request-lifecycle.cjs').installRequestLifecycle({
+ register,dialog,store:transactionStore,attempts:signingAttempts,clearPending:clearPendingReview,
+ getPublic:()=>{requirePublic();return publicWallet;},getWindow:()=>win,
+ review:r=>require('./ui-routes-main.cjs').historicalReview(r,bridgeCodec)
 });
 app.whenReady().then(()=>{
   if(!primaryInstance)return;

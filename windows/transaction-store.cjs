@@ -1,9 +1,10 @@
 // One writer is enforced by Electron's profile lock. Transferable bytes are DPAPI encrypted.
+const {validateHandoff,assertHandoffTransition,discardableShape}=require('./tools/request-lifecycle.cjs');
 const fs=require('node:fs/promises'),path=require('node:path'),{randomUUID}=require('node:crypto');
 const MAX_PLAIN=128*1024,MAX_SEALED=256*1024;
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,HASH=/^0x[0-9a-f]{64}$/;
 const SETTLEMENT_STATES=['confirmed','failed','pending','uncertain','conflict','expired-unresolved','destination-pending'];
-const STATES=['prepared','signed','submitting',...SETTLEMENT_STATES];
+const STATES=['prepared','discarded','signed','submitting',...SETTLEMENT_STATES];
 const canonical=x=>Array.isArray(x)?'['+x.map(canonical).join(',')+']':x&&typeof x==='object'?'{'+Object.keys(x).sort().map(k=>JSON.stringify(k)+':'+canonical(x[k])).join(',')+'}':JSON.stringify(x);
 function snapshot(record){
  const text=JSON.stringify(record);
@@ -14,7 +15,9 @@ function validateRecord(r,wallet,id){
  if(!r||r.version!==1||!UUID.test(wallet)||!HASH.test(id)||r.request?.deviceId!==wallet||r.request?.fingerprint!==id||!UUID.test(r.request?.requestId)||!STATES.includes(r.state))throw Error('Transaction journal identity or state mismatch.');
  const s=r.response;
  if(s&&(s.version!==r.request.version||s.deviceId!==wallet||s.requestId!==r.request.requestId||s.fingerprint!==id||typeof s.transactionHash!=='string'||!s.transactionHash||typeof s.rawSignedTransaction!=='string'||!s.rawSignedTransaction))throw Error('Transaction response identity mismatch.');
- if(r.state!=='prepared'&&!s)throw Error('Signed transaction response is required.');
+ if(r.handoff!==undefined)validateHandoff(r.handoff);
+ if(r.state==='discarded'&&(s||!discardableShape({...r,state:'prepared'})||typeof r.discardedAt!=='string'||!Number.isSafeInteger(Date.parse(r.discardedAt))))throw Error('Invalid discarded-draft evidence.');
+ if(!['prepared','discarded'].includes(r.state)&&!s)throw Error('Signed transaction response is required.');
  return r;
 }
 function reconcileRecord(record,input,{destination=false}={}){
@@ -26,7 +29,7 @@ function reconcileRecord(record,input,{destination=false}={}){
  return {...record,state:result.state,...(result.reason===undefined?{reason:undefined}:{reason:result.reason}),[destination?'destinationSettlement':'settlement']:result,updatedAt:new Date().toISOString()};
 }
 class TransactionStore{
- constructor(directory,{seal,unseal}){this.directory=directory;this.seal=seal;this.unseal=unseal;}
+ constructor(directory,{seal,unseal,beforeDiscard}){this.directory=directory;this.seal=seal;this.unseal=unseal;this.beforeDiscard=beforeDiscard;}
  file(wallet,id){if(!UUID.test(wallet)||!HASH.test(id))throw Error('Invalid transaction scope.');return path.join(this.directory,wallet,id.slice(2)+'.bin');}
  async load(wallet,id){
   const file=this.file(wallet,id);let handle;
@@ -46,10 +49,13 @@ class TransactionStore{
   validateRecord(record,wallet,id);
   const old=await this.load(wallet,id);
   if(old){
+   assertHandoffTransition(old.handoff,record.handoff);
+   if(old.state==='discarded'){if(canonical(old)!==canonical(record))throw Error('A discarded request is immutable and cannot be activated again.');return old;}
    if(canonical(old.productProof)!==canonical(record.productProof))throw Error('The original product proof binding is immutable.');
    if(canonical(old.request)!==canonical(record.request)||old.response&&canonical(old.response)!==canonical(record.response))throw Error('Approved transaction is immutable.');
    if(old.state!=='prepared'&&record.state==='prepared'||!['prepared','signed'].includes(old.state)&&['prepared','signed'].includes(record.state)||old.state!=='signed'&&old.state!=='submitting'&&record.state==='submitting')throw Error('Transaction submission state cannot be reset.');
   }
+  if(record.state==='discarded'){if(!old||old.state!=='prepared'||old.response||!discardableShape(old)||typeof this.beforeDiscard!=='function')throw Error('The original unsigned-draft guard is required.');await this.beforeDiscard(old);}
   await fs.mkdir(path.dirname(file),{recursive:true});const tmp=file+'.'+randomUUID()+'.tmp';
   try{
    const sealed=await this.seal(JSON.stringify(record));if(!Buffer.isBuffer(sealed)||sealed.length===0||sealed.length>MAX_SEALED)throw Error('Invalid encrypted journal.');

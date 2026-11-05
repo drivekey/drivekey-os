@@ -69,3 +69,28 @@ test('unresolved attempts block explicit submission but original recovered respo
 test('insufficient recovery capacity is rejected before creating a marker or invoking the signer',async()=>{
  const f=await fixture(),request={...f.request,unsignedTransaction:'x'.repeat(64000)};await assert.rejects(f.attempts.run({...f.options,request}),/recovery capacity/);assert.equal(f.signs(),0);assert.equal((await f.attempts.attempts.list(f.walletId)).length,0);
 });
+
+async function retainElsewhere(store,f){for(const file of await store.candidates(f.walletId,f.request.fingerprint.slice(2)))await fs.rename(file,file+'.preserved-test-copy');}
+test('exact committed external response restores missing journals without creating another signature or changing the attempt',async()=>{
+ const f=await fixture();await f.attempts.run(f.options);const markerFile=f.attempts.attempts.location(f.walletId,f.request.fingerprint.slice(2)),before=await fs.readFile(markerFile);await retainElsewhere(f.transaction,f);await retainElsewhere(f.attempts.results,f);
+ const fresh=f.restart(),row=(await fresh.list(f.walletId,'transaction'))[0];assert.equal(row.uncertain,true);assert.equal(row.canRecoverOriginal,true);await assert.rejects(fresh.run(f.options),/outcome is uncertain/);
+ const restored=await fresh.restore({walletId:f.walletId,id:f.request.fingerprint.slice(2),authority:'transaction',response:f.response,verify:f.options.verify});assert.deepEqual(restored.response,f.response);assert.equal(f.signs(),1);assert.deepEqual(await fs.readFile(markerFile),before);await fresh.assertResolved(f.walletId,f.options.verify);await fresh.run(f.options);assert.equal(f.signs(),1);
+});
+test('a changed timestamp, transaction byte, hash or extra field cannot masquerade as an original response',async()=>{
+ const f=await fixture();await f.attempts.run(f.options);await retainElsewhere(f.transaction,f);await retainElsewhere(f.attempts.results,f);
+ for(const change of [r=>r.signedAt=new Date(0).toISOString(),r=>r.rawSignedTransaction+='changed',r=>r.transactionHash='changed',r=>r.extra=true]){const response=structuredClone(f.response);change(response);await assert.rejects(f.attempts.restore({walletId:f.walletId,id:f.request.fingerprint.slice(2),authority:'transaction',response,verify:f.options.verify}),/retained original commitment/);}
+ assert.equal(f.signs(),1);assert.equal(await f.transaction.load(f.walletId,f.request.fingerprint.slice(2)),null);
+});
+test('an older unknown attempt without surviving response or commitment refuses blind external import',async()=>{
+ const f=await fixture();await f.attempts.attempts.claim(f.walletId,f.request,f.attempts.marker(f.request,'transaction'));const before=(await fs.readdir(path.join(f.directory,'signing-attempts-v1',f.walletId))).length;
+ await assert.rejects(f.attempts.restore({walletId:f.walletId,id:f.request.fingerprint.slice(2),authority:'transaction',response:f.response,verify:f.options.verify}),/commitment is unavailable/);assert.equal((await f.attempts.list(f.walletId,'transaction'))[0].canRecoverOriginal,false);assert.equal((await fs.readdir(path.join(f.directory,'signing-attempts-v1',f.walletId))).length,before);assert.equal(f.signs(),0);
+});
+test('an older attempt with original stored bytes obtains a commitment without signing or rewriting its response',async()=>{
+ const f=await fixture();await f.attempts.attempts.claim(f.walletId,f.request,f.attempts.marker(f.request,'transaction'));await f.transaction.save(f.walletId,f.request,f.response);const file=f.transaction.location(f.walletId,f.request.fingerprint.slice(2)),before=await fs.readFile(file);await f.attempts.recover(f.walletId,f.request.fingerprint.slice(2),'transaction',f.options.verify);assert.equal((await f.attempts.inspect(f.walletId,f.request.fingerprint.slice(2),'transaction')).commitment.responseHash.length,64);assert.equal(f.signs(),0);assert.deepEqual(await fs.readFile(file),before);
+});
+test('commitment publication failure prevents export and retrying only recovery preserves the same response',async()=>{
+ const f=await fixture(),seal=f.attempts.commitments.seal;f.attempts.commitments.seal=failed;await assert.rejects(f.attempts.run(f.options),/outcome is uncertain/);assert.equal(f.signs(),1);f.attempts.commitments.seal=seal;const r=await f.attempts.recover(f.walletId,f.request.fingerprint.slice(2),'transaction',f.options.verify);assert.deepEqual(r.response,f.response);assert.equal(f.signs(),1);
+});
+test('reordered JSON response keys match the same commitment and wrong authority or wallet cannot restore it',async()=>{
+ const f=await fixture();await f.attempts.run(f.options);await retainElsewhere(f.transaction,f);await retainElsewhere(f.attempts.results,f);const response=Object.fromEntries(Object.entries(f.response).reverse());await f.attempts.restore({walletId:f.walletId,id:f.request.fingerprint.slice(2),authority:'transaction',response,verify:f.options.verify});await assert.rejects(f.attempts.inspect(f.walletId,f.request.fingerprint.slice(2),'private-proof'));await assert.rejects(f.attempts.inspect(randomUUID(),f.request.fingerprint.slice(2),'transaction'));assert.equal(f.signs(),1);
+});
