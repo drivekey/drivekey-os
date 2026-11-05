@@ -163,9 +163,9 @@ function createFinalReceipt(record){
 // Explicit journal projection: saved signatures, requests and receipt logs never escape.
 function transactionDetail(record,wallet,review){
   if(!record||record.request?.deviceId!==wallet?.deviceId)throw Error('Transaction is unavailable for the selected wallet.');
-  const r=record.request;
+  const envelope=record.request,r=envelope.version===29?envelope.chainRequest:envelope;
   sourceMatches(r.from,wallet,r.chain);
-  const result={id:r.fingerprint,version:r.version,action:r.action,provider:r.provider||'payment',network:r.chain,asset:r.asset||r.tokenIn,amount:r.amount,recipient:r.recipient,state:record.state,createdAt:r.createdAt,expiresAt:r.expiresAt,review:{},settlement:{},canReconcileDestination:r.version===22&&r.action==='bridge'&&!!record.response&&!['prepared','signed'].includes(record.state),receiptAvailable:receiptAvailable(record)};
+  const result={id:envelope.fingerprint,version:envelope.version,action:r.action,provider:r.provider||'payment',network:r.chain,asset:r.asset||r.tokenIn,amount:r.amount,recipient:r.recipient,state:record.state,createdAt:r.createdAt,expiresAt:r.expiresAt,review:{},settlement:{},canReconcileDestination:r.version===22&&r.action==='bridge'&&!!record.response&&!['prepared','signed'].includes(record.state),receiptAvailable:receiptAvailable(record)};
   if(r.destinationChain)result.destinationNetwork=r.destinationChain;if(r.tokenOut)result.outputAsset=r.tokenOut;
   if(record.updatedAt)result.updatedAt=record.updatedAt;if(record.response?.transactionHash)result.transactionHash=record.response.transactionHash;if(record.response?.signedAt)result.signedAt=record.response.signedAt;
   if(typeof record.reason==='string')result.reason=record.reason.slice(0,400);

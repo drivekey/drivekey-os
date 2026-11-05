@@ -13,7 +13,7 @@ const reconciliation = new Set([
   'lifi-mayan-evm-source-reconcile', 'lifi-mayan-solana-destination-reconcile',
   'mayan-evm-redeem-reconcile', 'mayan-solana-source-reconcile',
   'hinkal-direct-reconcile', 'hinkal-solana-reconcile', 'hinkal-solana-spend-reconcile',
-  'hinkal-evm-swap-reconcile', 'hinkal-solana-swap-reconcile',
+  'hinkal-evm-swap-reconcile', 'hinkal-solana-swap-reconcile', 'hinkal-product-chain-reconcile',
 ]);
 const blockedIpc = new Set(['import-prepared-private', 'import-prepared-bridge', 'hinkal-discover',
   'import-product-proof','review-product-proof','sign-product-proof','export-product-proof','prove-product-proof','export-product-proof-result','import-product-proof-package']);

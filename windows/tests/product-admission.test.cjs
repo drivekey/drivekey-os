@@ -88,3 +88,10 @@ test('pending proof-bound export and signing checks require the unchanged origin
  await assert.rejects(f.ui.verifyPending({...f.state.pending,productProof:{...f.state.pending.productProof,authorizationHash:'0x'+'0'.repeat(64)}},fixture.wallet),/differs from its original/);
  const keyFile=path.join(f.directory,'journal-key-v1.dpapi'),key=await fs.readFile(keyFile);await fs.unlink(keyFile);await assert.rejects(f.ui.verifyPending(f.state.pending,fixture.wallet));await assert.rejects(fs.access(keyFile),{code:'ENOENT'});await fs.writeFile(keyFile,key,{flag:'wx'});await f.ui.verifyPending(f.state.pending,fixture.wallet);
 });
+
+test('new native imports retain the complete offline envelope in the original journal and export review',async()=>{
+ for(const fixture of fixtures){const f=await admissionController(fixture);await f.invoke();const r=f.state.pending.request;assert.equal(r.version,29);assert.deepEqual(r.package,fixture.document);assert.equal(r.expiresAt,fixture.document.request.expiresAt);assert.equal(f.state.pending.review.fingerprint,r.fingerprint);assert.equal(f.state.pending.productProof.chainFingerprint,r.chainRequest.fingerprint);await f.ui.verifyPending(f.state.pending,fixture.wallet);}
+});
+test('earlier bound plain-chain journals remain recoverable but cannot create another detached offline approval',async()=>{
+ const fixture=fixtures[0],f=await admissionController(fixture);await f.invoke();const current=(await f.c.transactionStore.list(fixture.wallet.deviceId))[0],legacy={...current,request:current.request.chainRequest};await f.c.transactionStore.put(legacy);await f.ui.verifyRecord(legacy,fixture.wallet,false);await assert.rejects(f.ui.verifyRecord(legacy,fixture.wallet,true),/lacks the offline product envelope/);assert.equal((await f.c.transactionStore.list(fixture.wallet.deviceId)).length,2);
+});

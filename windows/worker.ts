@@ -1,7 +1,9 @@
+import './engine/offline-signer/network-deny';
 import {createVault, inspectVault, verifyVault, reviewRequest, signReviewed, verifySavedSignature} from './signer';
 import {reviewProductProof,authorizeProductProof} from './engine/offline-signer/hinkal-product-proof';
 import {verifyProductProofResponse} from './engine/core/hinkal-product-proof';
 import {verifyProductProofResult} from './engine/core/hinkal-product-result';
+import {verifyProductChain,verifyProductChainResponse,productChainReview} from './engine/core/hinkal-product-chain';
 import {verifyProductPackageChain} from './engine/core/hinkal-product-admission';
 const paymentPolicy = require('./tools/store-payment-policy.cjs');
 const MAX = 1024 * 1024;
@@ -22,13 +24,14 @@ process.stdin.on('end', async () => {
       case 'create': result = await createVault(job.password); break;
       case 'inspect': result = inspectVault(job.vault); break;
       case 'verify': result = await verifyVault(job.vault,job.password); break;
-      case 'review': paymentPolicy.assertIntent(job.request); result = reviewRequest(job.request,job.vault); break;
+      case 'review': paymentPolicy.assertIntent(job.request); if(job.request?.version===29)await verifyProductChain(job.request,job.vault?.public); result = reviewRequest(job.request,job.vault); break;
       case 'sign': paymentPolicy.assertIntent(job.request); result = await signReviewed(job.vault,job.password,job.request,job.fingerprint); break;
-      case 'verify-saved': result = verifySavedSignature(job.vault,job.request,job.response); break;
+      case 'verify-saved': result = await verifySavedSignature(job.vault,job.request,job.response); break;
       case 'review-product-proof': result = reviewProductProof(job.request,job.vault); break;
       case 'sign-product-proof': paymentPolicy.assertProductProof(job.request); result = await authorizeProductProof(job.vault,job.password,job.request,job.fingerprint); break;
       case 'verify-product-proof': reviewProductProof(job.request,job.vault,Date.now(),false); result = {response:await verifyProductProofResponse(job.request,job.response,Date.now(),false)}; break;
       case 'verify-product-proof-result': reviewProductProof(job.request,job.vault,Date.now(),false); result = {result:await verifyProductProofResult(job.request,job.response,job.result,Date.now(),false)}; break;
+      case 'verify-product-chain-envelope': {const r=await verifyProductChain(job.request,job.wallet,Date.now(),false);result={review:productChainReview(r,Date.now(),false),...(job.response?{response:await verifyProductChainResponse(job.response,r,job.wallet,Date.now(),false)}:{})};break;}
       case 'verify-product-proof-chain': result=await verifyProductPackageChain(job.package,job.wallet,job.request,Date.now(),false); break;
       default: throw Error('Unsupported operation.');
     }

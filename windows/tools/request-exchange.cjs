@@ -39,7 +39,7 @@ function readJSON(file) {
     try {
       const bytesRead = fs.readSync(fd, buffer, 0, buffer.length, 0);
       if (bytesRead > 256 * 1024) throw Error('Exchange file exceeds size limit.');
-      try {return JSON.parse(new TextDecoder('utf-8', {fatal: true}).decode(buffer.subarray(0, bytesRead)));}
+      try {return require('./strict-json.cjs').parseStrictJSON(new TextDecoder('utf-8', {fatal: true}).decode(buffer.subarray(0, bytesRead)));}
       catch {throw Error('The exchange file is not valid UTF-8 JSON.');}
     } finally {buffer.fill(0);}
   } finally {fs.closeSync(fd);}

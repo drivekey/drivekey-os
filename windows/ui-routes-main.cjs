@@ -8,6 +8,7 @@ const {MAX_BYTES,parsePreparationText,privateSelection,bridgeSelection,preparePr
 const {validateHinkalAcceptanceSeed,verifyHinkalProofAuthorization,verifyHinkalProofLink}=require('./dist/hinkal-proof-link.cjs');
 const {HINKAL_PIN}=require('./dist/hinkal.cjs');
 const reviewFns={
+  29:require('./dist/hinkal-product-chain.cjs').productChainReview,
   8:require('./dist/payment.cjs').paymentReview,
   9:require('./dist/swap.cjs').swapReview,
   10:require('./dist/hinkal.cjs').hinkalReview,
@@ -25,7 +26,7 @@ function historicalReview(request,bridgeCodec){
   if(typeof review!=='function')throw Error('Saved transaction version is unavailable.');
   // Reconstruct at creation time, so old valid records remain readable. This
   // never creates approval authority; actual signing still validates expiry.
-  return [12,18,21,22,25,26].includes(request.version)?review(request,at,false):review(request,at);
+  return [12,18,21,22,25,26,29].includes(request.version)?review(request,at,false):review(request,at);
 }
 async function readDocument(file){
   const handle=await fs.open(file,'r');let buffer;
@@ -86,7 +87,7 @@ function installRouteUi(c){
     if(!input||Object.keys(input).length!==1||!/^0x[0-9a-f]{64}$/.test(input.id))throw Error('Invalid transaction identity.');
     const wallet=structuredClone(c.getPublic()),record=await c.transactionStore.load(wallet.deviceId,input.id);
     if(!record)throw Error('Transaction is unavailable for the selected wallet.');
-    if(record.response)c.verifyIntent(record.response,record.request,wallet,Date.now(),false);
+    if(record.response)await c.verifyIntent(record.response,record.request,wallet,Date.now(),false);
     if(c.verifyPreparedBinding)await c.verifyPreparedBinding(record,wallet,false);
     const review=historicalReview(record.request,c.bridgeCodec);
     if(c.getPublic().deviceId!==wallet.deviceId)throw Error('Selected wallet changed.');

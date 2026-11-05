@@ -98,3 +98,8 @@ test('exchange rejects relative paths, network paths and malformed UTF-8', t => 
   });
 });
 
+
+test('exchange rejects duplicate response keys including escaped spellings',t=>{
+ const f=fixture(t);f.exchange.export(f.request,f.token,f.scope);const file=path.join(f.directory,f.request.requestId,'signed-response.json');
+ for(const raw of ['{"fingerprint":"a","fingerprint":"b"}','{"nested":{"a":1,"\\u0061":2}}']){fs.writeFileSync(file,raw);assert.throws(()=>f.exchange.response(f.request,f.token,f.scope),/not valid UTF-8 JSON/);}
+});

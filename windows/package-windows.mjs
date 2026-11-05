@@ -35,6 +35,7 @@ for(const offline of [false,true]){
  await copyDirectory(path.join(root,'ui'),path.join(stage,'ui'));await mkdir(path.join(stage,'dist'),{recursive:true});
  await copyFile(path.join(root,'dist','hinkal-product-proof.cjs'),path.join(stage,'dist','hinkal-product-proof.cjs'));
  await copyFile(path.join(root,'dist','hinkal-product-result.cjs'),path.join(stage,'dist','hinkal-product-result.cjs'));
+ await copyFile(path.join(root,'dist','hinkal-product-chain.cjs'),path.join(stage,'dist','hinkal-product-chain.cjs'));
  await copyFile(path.join(root,'dist','hinkal-product-admission.cjs'),path.join(stage,'dist','hinkal-product-admission.cjs'));
  await copyFile(path.join(root,'dist','product-proof-worker.cjs'),path.join(stage,'dist','product-proof-worker.cjs'));
  await copyFile(path.join(root,'THIRD-PARTY-NOTICES.txt'),path.join(stage,'THIRD-PARTY-NOTICES.txt'));

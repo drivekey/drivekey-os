@@ -3,6 +3,7 @@
 const fs=require('node:fs/promises'),{TextDecoder}=require('node:util'),{randomUUID}=require('node:crypto');
 const {parseStrictJSON}=require('./strict-json.cjs');
 const {verifyProductProofPackage,verifyProductPackageChain,productBindingSchema}=require('../dist/hinkal-product-admission.cjs');
+const {createProductChain,verifyProductChain}=require('../dist/hinkal-product-chain.cjs');
 const {validateProductProof}=require('../dist/hinkal-product-proof.cjs');
 const {canonical}=require('../dist/payment.cjs');
 async function readProductProofPackage(file){
@@ -22,9 +23,12 @@ function installProductAdmission(c){
  }
  async function verifyRecord(record,wallet,expiry=true,now=Date.now()){
   if(record.productProof===undefined)return;
-  const binding=productBindingSchema.parse(record.productProof),p=await savedPackage(wallet,binding.requestFingerprint),verified=await checked(()=>verifyProductPackageChain(p,wallet,record.request,now,expiry));
+  if(expiry&&record.request.version!==29)throw Error('This earlier proof-bound transaction lacks the offline product envelope. Its records are preserved for recovery; no new approval is available.');
+  const binding=productBindingSchema.parse(record.productProof),p=await savedPackage(wallet,binding.requestFingerprint),envelope=record.request.version===29?await checked(()=>verifyProductChain(record.request,wallet,now,expiry)):null;
+  if(envelope&&canonical(envelope.package)!==canonical(p))throw Error('Envelope differs from the immutable saved proof package.');
+  const verified=await checked(()=>verifyProductPackageChain(p,wallet,envelope?envelope.chainRequest:record.request,now,expiry));
   if(canonical(verified.productProof)!==canonical(binding))throw Error('Saved chain request differs from its original product proof binding. Preserve this profile.');
-  return verified;
+  return {...verified,request:record.request};
  }
  async function verifyPending(pending,wallet,expiry=true){
   if(pending.productProof===undefined)return;
@@ -46,7 +50,8 @@ function installProductAdmission(c){
    ({request,productProof}=await verifyRecord(record,s.wallet,true,s.clock()));current(s);reused=true;
   }else{
    const notes=new Set(p.request.seed.job.context.inputNotes),overlap=records.some(r=>{
-    const existing=r.request?.proofSeed?.job?.context?.inputNotes||r.request?.inputNotes||[];
+    const inner=r.request?.version===29?r.request.chainRequest:r.request;
+    const existing=inner?.proofSeed?.job?.context?.inputNotes||inner?.inputNotes||[];
     return existing.some(n=>notes.has(n));
    });
    if(overlap)throw Error('Private inputs already belong to another saved request. Reconcile or explicitly cancel that workflow before preparing another one.');
@@ -55,7 +60,7 @@ function installProductAdmission(c){
    const prepared=await c.online({action:'hinkal-product-proof-prepare',input:p,wallet:s.wallet});current(s);
    const verified=await checked(()=>verifyProductPackageChain(p,s.wallet,prepared.request,s.clock()));current(s);
    if(canonical(verified.productProof)!==canonical(prepared.productProof))throw Error('Online proof admission returned a different binding.');
-   ({request,productProof}=verified);c.validateIntent(request);c.assertIntentWallet(request,s.wallet);
+   productProof=verified.productProof;request=await checked(()=>createProductChain(p,s.wallet,verified.request,s.clock()));current(s);c.validateIntent(request);c.assertIntentWallet(request,s.wallet);
    await c.transactionStore.put({version:1,request,productProof,state:'prepared',updatedAt:new Date().toISOString()});current(s);
   }
   validateProductProof(p.request,s.clock());current(s);const review=c.reviewIntent(request),token=randomUUID();

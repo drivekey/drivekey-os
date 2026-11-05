@@ -1,3 +1,5 @@
+import {signProductChain} from './engine/offline-signer/hinkal-product-chain';
+import {validateProductChain,assertProductChainWallet,productChainReview,verifyProductChainResponse} from './engine/core/hinkal-product-chain';
 import {signLifiMayanEvm} from './engine/offline-signer/lifi-mayan-evm';
 import {signLifiRelay} from './engine/offline-signer/lifi-relay';
 import {validateLifiRelay,assertLifiRelayWallet,lifiRelayReview,verifyLifiRelayResponse} from './engine/core/lifi-relay-intent';
@@ -112,6 +114,7 @@ export function inspectVault(input: unknown) {
  * An application deadline does not revoke an Ethereum or durable-nonce signature. */
 export function verifySavedSignature(vaultInput: unknown, requestInput: unknown, responseInput: unknown, now = Date.now()) {
   const v = vaultSnapshot(vaultInput), response = snapshot(responseInput);
+  if((requestInput as any)?.version===29)return verifyProductChainResponse(response,snapshot(requestInput),v.public,now,false).then(response=>({response,review:productChainReview(requestInput,now,false),applicationDeadlinePassed:now>=Date.parse((requestInput as any).expiresAt)}));
   const signedAt = Date.parse(response?.signedAt);
   checkedTime(now); checkedTime(signedAt);
   if([25,26].includes((requestInput as any)?.version)){const r=validateLifiRelay(snapshot(requestInput),signedAt,false);assertLifiRelayWallet(r,v.public);return {response:verifyLifiRelayResponse(response,r,v.public,now,false),review:lifiRelayReview(r,signedAt,false),applicationDeadlinePassed:now>=Date.parse(r.expiresAt)};}
@@ -158,6 +161,7 @@ export async function verifyVault(input: unknown, passphrase: string) {
 export function reviewRequest(input: unknown, vaultInput: unknown, now = Date.now()): Record<string, string> {
   const v = vaultSnapshot(vaultInput);
   if([25,26].includes((input as any)?.version)){const r=validateLifiRelay(snapshot(input),now);assertLifiRelayWallet(r,v.public);return lifiRelayReview(r,now);}
+  if((input as any)?.version===29){const r=validateProductChain(snapshot(input),now);assertProductChainWallet(r,v.public);return productChainReview(r,now);}
   if((input as any)?.version===22){const r=validateLifiMayanEvm(snapshot(input),now);assertLifiMayanEvmWallet(r,v.public);return lifiMayanEvmReview(r,now);}
   if((input as any)?.version===24){const r=validateMayanEvmRedeem(snapshot(input),now);assertMayanEvmRedeemWallet(r,v.public);return mayanEvmRedeemReview(r,now);}
   if((input as any)?.version===23){const r=validateMayanSolana(snapshot(input),now);assertMayanSolanaWallet(r,v.public);return mayanSolanaReview(r,now);}
@@ -219,6 +223,7 @@ export function reviewRequest(input: unknown, vaultInput: unknown, now = Date.no
 export async function signReviewed(vaultInput: unknown, passphrase: string, requestInput: unknown, expectedFingerprint: string, now = Date.now()) {
   password(passphrase);
   if([25,26].includes((requestInput as any)?.version))return signLifiRelay(vaultSnapshot(vaultInput),passphrase,snapshot(requestInput),expectedFingerprint,now);
+  if((requestInput as any)?.version===29)return signProductChain(vaultSnapshot(vaultInput),passphrase,snapshot(requestInput),expectedFingerprint,now);
   if((requestInput as any)?.version===22)return signLifiMayanEvm(vaultSnapshot(vaultInput),passphrase,snapshot(requestInput),expectedFingerprint,now);
   if((requestInput as any)?.version===24)return signMayanEvmRedeem(vaultSnapshot(vaultInput),passphrase,snapshot(requestInput),expectedFingerprint,now);
   if((requestInput as any)?.version===23)return signMayanSolana(vaultSnapshot(vaultInput),passphrase,snapshot(requestInput),expectedFingerprint,now);

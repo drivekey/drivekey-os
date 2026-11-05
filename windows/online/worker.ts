@@ -1,3 +1,4 @@
+import {productChainOperation} from './hinkal-product-chain';
 import {LifiRelayDestinationAdapter} from './lifi-relay-destination';
 import {LifiMayanSolanaDestinationAdapter} from './lifi-mayan-solana-destination';
 import {LifiRelaySourceAdapter} from './lifi-relay-source';
@@ -25,6 +26,9 @@ process.stdin.on('end',async()=>{
   paymentPolicy.assertOnlineJob(j);
   const adapter=new OnlineAdapter(j.endpoints);let result;
   switch(j.action){
+   case 'hinkal-product-chain-preflight':result=await productChainOperation(adapter,'preflight',j.request);break;
+   case 'hinkal-product-chain-broadcast':result=await productChainOperation(adapter,'broadcast',j.request,j.response);break;
+   case 'hinkal-product-chain-reconcile':result=await productChainOperation(adapter,'reconcile',j.request,j.response);break;
    case 'hinkal-product-proof-prepare':result=await prepareProductProofPackage(adapter,j.input,j.wallet);break;
    case 'lifi-relay-destination-reconcile':result=await new LifiRelayDestinationAdapter(adapter).reconcile(j.request,j.response);break;
    case 'lifi-relay-source-reconcile':result=await new LifiRelaySourceAdapter(adapter).reconcile(j.request,j.response);break;

@@ -18,6 +18,8 @@ async function admissionFixture(chain='ethereum'){
   }
   const r={...common,version:21,provider:'hinkal',action:'hinkal-swap',chain,network:chain,asset:'SOL',tokenOut:'USDC',minimumOutput:c.proposal.bounds.minimumOutput,maximumFee:'5000',accountRent:'10000000',blockhash:seed.chainContext.blockhash,lastValidBlockHeight:seed.chainContext.lastValidBlockHeight,merkleMIndex:seed.merkleMIndex,programDataSha256:HINKAL_SOLANA.pin.programDataSha256,unsignedTransaction:buildHinkalSolanaSwapWire(seed,result.proof.solanaArgs).unsignedTransaction};r.fingerprint=hinkalSolanaSwapFingerprint(r);return validateHinkalSolanaSwap(r,at);
  }
- return {wallet:f.vault.public,document,chainRequest};
+ return {wallet:f.vault.public,document,chainRequest,
+  signEnvelope:(request,fingerprint=request.fingerprint,now=Date.now())=>require('../../dist/hinkal-product-chain-signer.cjs').signProductChain(f.vault,f.password,request,fingerprint,now),
+  recoverEnvelope:(request,response)=>require('./hinkal-proof-session.cjs').child('worker.cjs',{action:'verify-saved',vault:f.vault,request,response})};
 }
 module.exports={admissionFixture};

@@ -9,7 +9,8 @@ function text(value, limit = 128) {
 }
 
 function transactionSummary(record) {
-  const request = record.request;
+  const envelope = record.request;
+  const request = envelope.version === 29 ? envelope.chainRequest : envelope;
   const bridge = ["bridge", "bridge-redeem"].includes(request.action);
   const destination = record.destinationSettlement || record.settlement;
   const completeRoute = destination?.state === "confirmed" && destination.completeRoute === true;
@@ -23,8 +24,8 @@ function transactionSummary(record) {
   const fee = settled ? amount(destination.actualFeeBaseUnits ?? destination.actualFee) : undefined;
 
   return {
-    id: request.fingerprint,
-    version: request.version,
+    id: envelope.fingerprint,
+    version: envelope.version,
     action: text(request.action, 40),
     provider: text(request.provider, 80) || (request.version === 8 ? "Direct payment" : undefined),
     network: request.chain,
