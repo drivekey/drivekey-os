@@ -1,7 +1,7 @@
 'use strict';
 // Bounded JSON with duplicate keys rejected at every object nesting level.
 function parseStrictJSON(text,maxBytes=256*1024,maxNodes=35000){
- if(!Number.isSafeInteger(maxBytes)||maxBytes<1||maxBytes>8*1024*1024||!Number.isSafeInteger(maxNodes)||maxNodes<1||maxNodes>500000)throw Error('Invalid bounded JSON limits.');
+ if(!Number.isSafeInteger(maxBytes)||maxBytes<1||maxBytes>16*1024*1024||!Number.isSafeInteger(maxNodes)||maxNodes<1||maxNodes>1000000)throw Error('Invalid bounded JSON limits.');
  if(typeof text!=='string'||Buffer.byteLength(text,'utf8')>maxBytes)throw Error('JSON file exceeds the size limit.');
  let value;try{value=JSON.parse(text);}catch{throw Error('Choose a valid JSON file.');}
  let offset=0,nodes=0;

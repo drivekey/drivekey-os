@@ -10,7 +10,7 @@ const nonceLength = 12;
 const tagLength = 16;
 const wrappedLimit = 4096;
 const journalLimit = 256 * 1024;
-const journalPurposes = Object.freeze(['signatures', 'transactions', 'proofs', 'proof-requests', 'proof-results', 'signing-attempts', 'signing-results', 'signing-commitments', 'view-sessions', 'view-requests', 'view-responses', 'view-job-attempts', 'view-preparations', 'proof-finalizations', 'private-note-claims', 'private-note-chains', 'private-note-locks','note-discovery-jobs','note-discovery-pages','note-discovery-results']);
+const journalPurposes = Object.freeze(['signatures', 'transactions', 'proofs', 'proof-requests', 'proof-results', 'signing-attempts', 'signing-results', 'signing-commitments', 'view-sessions', 'view-requests', 'view-responses', 'view-job-attempts', 'view-preparations', 'proof-finalizations', 'private-note-claims', 'private-note-chains', 'private-note-locks','note-discovery-jobs','note-discovery-pages','note-discovery-results','note-history']);
 const storageError = 'Windows encrypted recovery storage is unavailable. Signing is disabled.';
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const journalContext = purpose => Buffer.from('DriveKey journal v1: ' + purpose);
@@ -74,7 +74,7 @@ async function* protectedJournals(profile) {
       throw error;
     });
     if(wallets.some(entry=>entry.isSymbolicLink()))throw Error('Redirected protected wallet journal.');
-    if(purpose==='private-note-locks')for(const entry of wallets.filter(entry=>!entry.isDirectory())){const handle=await fs.open(path.join(root,entry.name),'r');try{yield {handle,purpose};}finally{await handle.close();}}
+    if(purpose==='private-note-locks'||purpose==='note-history')for(const entry of wallets.filter(entry=>!entry.isDirectory())){const handle=await fs.open(path.join(root,entry.name),'r');try{yield {handle,purpose};}finally{await handle.close();}}
     for (const wallet of wallets.filter(entry => entry.isDirectory())) {
       const scope = path.join(root, wallet.name);
       for (const file of await fs.readdir(scope)) {
