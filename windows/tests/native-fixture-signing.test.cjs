@@ -1,0 +1,69 @@
+'use strict';
+const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs/promises'),path=require('node:path'),{randomBytes,randomUUID}=require('node:crypto'),{spawnSync}=require('node:child_process');
+const {fixtureFromPackage:parse,configureFixtureProfile:configure,fixturePassword,assertFixtureChannel,assertFixtureRequest}=require('../tools/native-fixture-signing.cjs');
+const {checkedCredential,dpapi,digest}=require('../tools/native-fixture-worker.cjs');
+const metadata=()=>({version:1,mode:'unfunded-local-solana',profileId:randomUUID(),baseSourceFingerprint:'a'.repeat(64)});
+async function fixture(){
+ const appData=await fs.mkdtemp(path.join(process.env.LOCALAPPDATA,'DriveKeyNativeFixtureUnit-')),p=metadata(),directory=path.join(appData,'DriveKeyAcceptance/UnfundedNativeFixtures',p.profileId);await fs.mkdir(directory,{recursive:true});
+ const password=randomBytes(32).toString('hex'),vault={public:{deviceId:randomUUID()},ciphertext:randomBytes(32).toString('hex')},request={version:8,action:'payment',chain:'solana',network:'solana',asset:'SOL',deviceId:vault.public.deviceId,fingerprint:'0x'+'b'.repeat(64),amount:'1',recipient:'public-fixture-recipient'};
+ const scope={version:1,fixtureOnly:true,profileId:p.profileId,sourceFingerprint:p.baseSourceFingerprint,deviceId:vault.public.deviceId,vaultDigest:digest(vault),requests:[{fingerprint:request.fingerprint,requestDigest:digest(request)}]},secret={version:1,fixtureOnly:true,profileId:p.profileId,deviceId:vault.public.deviceId,vaultDigest:digest(vault),password};
+ const records=new Map(),writes=async(name,record)=>{const token=randomBytes(32);records.set(token.toString('hex'),structuredClone(record));await fs.writeFile(path.join(directory,name),token);};
+ await writes('scope.dpapi',scope);await writes('unlock.dpapi',secret);let decryptions=0;
+ const options={localAppData:appData,unprotect:async b=>{decryptions++;const r=records.get(b.toString('hex'));if(!r)throw Error('Bad protected fixture');return Buffer.from(JSON.stringify(r));}},envelope={metadata:p,input:{action:'sign',vault,request,fingerprint:request.fingerprint,password:{fixtureProfileId:p.profileId}}};
+ return {appData,directory,p,scope,secret,options,envelope,writes,decryptions:()=>decryptions};
+}
+test('normal packages and environment flags cannot enable protected fixture credentials; malformed or mixed qualification metadata fails closed',()=>{
+ assert.equal(parse({}),null);for(const extra of [null,{}, {...metadata(),mode:'mainnet'},{...metadata(),profileId:'../wallet'},{...metadata(),endpoint:'http://127.0.0.1'},{...metadata(),baseSourceFingerprint:'A'.repeat(64)},{...metadata(),version:2}])assert.throws(()=>parse({drivekeyFixtureSigning:extra}));assert.throws(()=>parse({drivekeyFixtureSigning:metadata(),drivekeyQualification:{}}));assert.equal(Object.isFrozen(parse({drivekeyFixtureSigning:metadata()})),true);
+ const prior=process.env.DRIVEKEY_FIXTURE_SIGNING;try{process.env.DRIVEKEY_FIXTURE_SIGNING='1';assert.equal(parse(require('../package.json')),null);}finally{if(prior===undefined)delete process.env.DRIVEKEY_FIXTURE_SIGNING;else process.env.DRIVEKEY_FIXTURE_SIGNING=prior;}
+});
+test('fixture profiles reject online activation and directory redirection while preserving normal data',async()=>{
+ const f=await fixture(),normal=path.join(f.appData,'normal'),calls=[];await fs.mkdir(normal);await fs.writeFile(path.join(normal,'sentinel.bin'),'keep');const app={getPath:()=>f.appData,setName:n=>calls.push(['name',n]),setPath:(...v)=>calls.push(v)};
+ assert.throws(()=>configure(app,f.p,false));assert.equal(calls.length,0);const profile=configure(app,f.p,true);assert.notEqual(profile,normal);assert.equal(await fs.readFile(path.join(normal,'sentinel.bin'),'utf8'),'keep');assert.equal(calls.filter(c=>c[0]!=='name').length,2);
+ const redirected=metadata(),link=path.join(path.dirname(profile),redirected.profileId);await fs.symlink(normal,link,'junction');assert.throws(()=>configure(app,redirected,true),/Redirected/);assert.deepEqual(await fs.readdir(normal),['sentinel.bin']);
+});
+test('fixture renderer receives a public UUID reference and cannot supply a raw password or arbitrary credential path',()=>{
+ const p=metadata();for(const value of ['this-is-a-literal-passphrase',null,{fixtureProfileId:randomUUID()},{fixtureProfileId:p.profileId,file:'unlock.dpapi'},{fixtureProfileId:'../elsewhere'}])assert.throws(()=>fixturePassword(value,p));const reference=fixturePassword({fixtureProfileId:p.profileId},p);assert.equal(Object.isFrozen(reference),true);assert.equal(Object.keys(reference).join(','),'fixtureProfileId');
+});
+test('fixture policy preserves backup/review/signature handoffs but denies other wallets creation, networking, submission and private operations',()=>{
+ for(const c of ['load-vault','activate-wallet','export-backup','verify-backup','import-request','sign-request','export-signature'])assertFixtureChannel(c);
+ for(const c of ['create-vault','configure-rpc','prepare-payment','submit-payment','account-balances','market-snapshot','sign-product-proof','create-private-view','import-watch-wallet','start-public-history'])assert.throws(()=>assertFixtureChannel(c));
+ assertFixtureRequest({version:8,action:'payment',chain:'solana',network:'solana',asset:'USDC'});for(const r of [{version:8,action:'payment',chain:'ethereum',network:'ethereum',asset:'ETH'},{version:8,action:'payment',chain:'devnet',network:'solana',asset:'SOL'},{version:8,action:'payment',chain:'solana',network:'solana',asset:'fake'},{version:21,action:'swap',chain:'solana',network:'solana',asset:'SOL'}])assert.throws(()=>assertFixtureRequest(r));
+});
+test('protected scope admits only the exact fixture vault and originally authorized request, then clears raw decrypted buffers',async()=>{
+ const f=await fixture(),buffers=[],unprotect=f.options.unprotect;f.options.unprotect=async b=>{const plain=await unprotect(b);buffers.push(plain);return plain;};const result=await checkedCredential(f.envelope,f.options);assert.equal(result.password===f.secret.password,true);assert.equal(f.decryptions(),2);assert.equal(buffers.every(b=>b.every(n=>n===0)),true);result.password=undefined;
+});
+test('wallet, fingerprint, recipient, amount, fee, chain, asset and permission tampering fail before unlock decryption',async()=>{
+ const f=await fixture();const mutations=[e=>e.input.vault.public.deviceId=randomUUID(),e=>e.input.vault.ciphertext='changed',e=>e.input.fingerprint='0x'+'c'.repeat(64),e=>e.input.request.recipient='different',e=>e.input.request.amount='2',e=>e.input.request.maximumFee='1000000000',e=>e.input.request.chain='devnet',e=>e.input.request.asset='FAKE',e=>e.input.request.permission='unlimited',e=>e.input.action='sign-product-proof',e=>e.metadata.profileId='../protected'];
+ for(const mutate of mutations){const e=structuredClone(f.envelope);mutate(e);const before=f.decryptions();await assert.rejects(checkedCredential(e,f.options));assert.ok(f.decryptions()-before<=1);}
+});
+test('scope reclassification, changed source, wrong wallet and oversized request allowlists cannot grant signing authority',async()=>{
+ const f=await fixture();for(const mutate of [s=>s.fixtureOnly=false,s=>s.sourceFingerprint='b'.repeat(64),s=>s.deviceId=randomUUID(),s=>s.requests=[],s=>s.requests=Array.from({length:4},()=>s.requests[0])]){const s=structuredClone(f.scope);mutate(s);await f.writes('scope.dpapi',s);const before=f.decryptions();await assert.rejects(checkedCredential(f.envelope,f.options));assert.equal(f.decryptions()-before,1);}
+});
+test('missing, damaged and redirected credential records fail closed and preserve surviving files',async()=>{
+ for(const kind of ['missing','damaged','redirected']){const f=await fixture(),file=path.join(f.directory,'unlock.dpapi'),before=await fs.readFile(file);await fs.rename(file,file+'.preserved');if(kind==='damaged')await fs.writeFile(file,randomBytes(32));if(kind==='redirected')await fs.symlink(f.appData,file,'junction');await assert.rejects(checkedCredential(f.envelope,f.options));assert.deepEqual(await fs.readFile(file+'.preserved'),before);}
+});
+test('backup verification is scoped to the same encrypted fixture vault and cannot invoke another worker action',async()=>{
+ const f=await fixture(),e=structuredClone(f.envelope);e.input.action='verify';delete e.input.request;delete e.input.fingerprint;const s=await checkedCredential(e,f.options);assert.equal(typeof s.password,'string');s.password=undefined;e.input.vault.ciphertext='different';await assert.rejects(checkedCredential(e,f.options));
+});
+test('real Windows DPAPI roundtrip exposes only ciphertext on disk and rejects damaged ciphertext',async()=>{
+ const plain=randomBytes(48),cipher=await dpapi('Protect',plain);let opened;try{assert.equal(cipher.includes(plain),false);opened=await dpapi('Unprotect',cipher);assert.equal(opened.equals(plain),true);cipher[Math.floor(cipher.length/2)]^=1;await assert.rejects(dpapi('Unprotect',cipher));}finally{plain.fill(0);cipher.fill(0);opened?.fill(0);}
+});
+test('requiring the original offline worker installs no stdin readers and clears its input password on failure',()=>{
+ const worker=path.resolve(__dirname,'../dist/worker.cjs'),script="const a=process.stdin.listenerCount('data'),b=process.stdin.listenerCount('end');const m=require(process.argv[1]);const j={action:'unsupported',password:require('node:crypto').randomBytes(32).toString('hex')};m.executeOfflineJob(j).then(()=>process.exit(3),()=>{if(process.stdin.listenerCount('data')!==a||process.stdin.listenerCount('end')!==b||j.password!==undefined)process.exit(4);process.stdout.write(JSON.stringify({passed:true}));});";
+ const child=spawnSync(process.execPath,['-e',script,worker],{windowsHide:true,encoding:'utf8',timeout:15000,env:{SystemRoot:process.env.SystemRoot,WINDIR:process.env.WINDIR}});assert.equal(child.status,0);assert.deepEqual(JSON.parse(child.stdout),{passed:true});
+});
+test('isolated broker verifies and signs only the exact DPAPI-scoped unfunded Solana intent through the original worker',async()=>{
+ const p=metadata(),base=await fs.mkdtemp(path.join(process.env.LOCALAPPDATA,'DriveKeyBrokerCryptoUnit-')),directory=path.join(base,'DriveKeyAcceptance/UnfundedNativeFixtures',p.profileId);await fs.mkdir(directory,{recursive:true});
+ const who=spawnSync('whoami.exe',[],{encoding:'utf8',windowsHide:true});assert.equal(who.status,0);assert.equal(spawnSync('icacls.exe',[directory,'/inheritance:r','/grant:r',who.stdout.trim()+':(OI)(CI)F'],{windowsHide:true,stdio:'ignore'}).status,0);
+ const worker=path.resolve(__dirname,'../dist/worker.cjs'),broker=path.resolve(__dirname,'../tools/native-fixture-worker.cjs'),env={SystemRoot:process.env.SystemRoot,WINDIR:process.env.WINDIR,TEMP:process.env.TEMP,TMP:process.env.TMP,LOCALAPPDATA:base},password=randomBytes(32).toString('hex');
+ function invoke(file,args,input){const child=spawnSync(process.execPath,['--no-addons',file,...args],{env,windowsHide:true,timeout:30000,maxBuffer:1024*1024,input:JSON.stringify(input),encoding:'utf8'});assert.equal(child.signal,null);return {code:child.status,reply:JSON.parse(child.stdout)};}
+ const made=invoke(worker,[],{action:'create',password});assert.equal(made.code,0);const vault=made.reply.result,recipientPassword=randomBytes(32).toString('hex'),recipient=invoke(worker,[],{action:'create',password:recipientPassword});assert.equal(recipient.code,0);
+ const recipientPlain=Buffer.from(JSON.stringify({fixtureOnly:true,vault:recipient.reply.result,password:recipientPassword}));let recipientSealed;try{recipientSealed=await dpapi('Protect',recipientPlain);await fs.writeFile(path.join(directory,'recipient.dpapi'),recipientSealed,{flag:'wx'});}finally{recipientPlain.fill(0);recipientSealed?.fill(0);}
+ const {solPayment,paymentFingerprint,verifyPaymentResponse}=require('../dist/payment.cjs'),now=Date.now(),request={version:8,action:'payment',requestId:randomUUID(),deviceId:vault.public.deviceId,chain:'solana',network:'solana',createdAt:new Date(now).toISOString(),expiresAt:new Date(now+300000).toISOString(),from:vault.public.solanaAddress,recipient:recipient.reply.result.public.solanaAddress,asset:'SOL',amount:'1',maximumFee:'5000',accountRent:'0',createRecipientAccount:false,blockhash:require('@solana/web3.js').Keypair.generate().publicKey.toBase58(),lastValidBlockHeight:1000};
+ request.unsignedTransaction=solPayment(request).serialize({requireAllSignatures:false,verifySignatures:false}).toString('base64');request.fingerprint=paymentFingerprint(request);
+ const common={version:1,fixtureOnly:true,profileId:p.profileId,deviceId:vault.public.deviceId,vaultDigest:digest(vault)},scope={...common,sourceFingerprint:p.baseSourceFingerprint,requests:[{fingerprint:request.fingerprint,requestDigest:digest(request)}]};
+ for(const [name,data]of [['scope.dpapi',scope],['unlock.dpapi',{...common,password}]]){const plain=Buffer.from(JSON.stringify(data));let sealed;try{sealed=await dpapi('Protect',plain);await fs.writeFile(path.join(directory,name),sealed,{flag:'wx'});}finally{plain.fill(0);sealed?.fill(0);}}
+ const envelope={metadata:p,input:{action:'verify',vault,password:{fixtureProfileId:p.profileId}}},checked=invoke(broker,[worker],envelope);assert.equal(checked.code,0);assert.equal(checked.reply.result.verified,true);
+ envelope.input={action:'sign',vault,request,fingerprint:request.fingerprint,password:{fixtureProfileId:p.profileId}};const signed=invoke(broker,[worker],envelope);assert.equal(signed.code,0);assert.equal(typeof verifyPaymentResponse(signed.reply.result,request,vault.public).transactionHash,'string');assert.equal(JSON.stringify(signed.reply).includes(password),false);
+ envelope.input.request={...request,amount:'2'};const bad=invoke(broker,[worker],envelope);assert.equal(bad.code,1);assert.equal(bad.reply.ok,false);assert.equal(JSON.stringify(bad.reply).includes(password),false);assert.equal(bad.reply.result,undefined);
+});

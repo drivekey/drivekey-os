@@ -10,19 +10,10 @@ import {verifyProductProofResult} from './engine/core/hinkal-product-result';
 import {verifyProductChain,verifyProductChainResponse,productChainReview} from './engine/core/hinkal-product-chain';
 import {verifyProductPackageChain} from './engine/core/hinkal-product-admission';
 const paymentPolicy = require('./tools/store-payment-policy.cjs');
-const MAX = 1024 * 1024;
-let bytes = 0, chunks: Buffer[] = [];
-const clearChunks = () => { chunks.forEach(b => b.fill(0)); chunks = []; };
-process.stdin.on('data', (chunk: Buffer) => {
-  bytes += chunk.length;
-  if (bytes > MAX) { chunk.fill(0); clearChunks(); process.exit(2); }
-  chunks.push(chunk);
-});
-process.stdin.on('end', async () => {
-  let job: any;
+// Both CLI and the explicit unfunded fixture broker call the same dispatcher.
+// Requiring this module never installs another stdin reader or child process.
+export async function executeOfflineJob(job: any): Promise<unknown> {
   try {
-    const raw = Buffer.concat(chunks); clearChunks();
-    try { job = JSON.parse(raw.toString('utf8')); } finally { raw.fill(0); }
     let result: unknown;
     switch(job.action) {
       case 'review-private-view': {const r=validateViewRequest(job.request);assertViewWallet(r,job.wallet);result=viewReview(r);break;}
@@ -44,7 +35,24 @@ process.stdin.on('end', async () => {
       case 'verify-product-proof-chain': result=await verifyProductPackageChain(job.package,job.wallet,job.request,Date.now(),false); break;
       default: throw Error('Unsupported operation.');
     }
-    job.password = undefined; job = undefined;
+    return result;
+  } finally { if(job && typeof job === 'object')job.password = undefined; }
+}
+if(require.main === module) {
+const MAX = 1024 * 1024;
+let bytes = 0, chunks: Buffer[] = [];
+const clearChunks = () => { chunks.forEach(b => b.fill(0)); chunks = []; };
+process.stdin.on('data', (chunk: Buffer) => {
+  bytes += chunk.length;
+  if (bytes > MAX) { chunk.fill(0); clearChunks(); process.exit(2); }
+  chunks.push(chunk);
+});
+process.stdin.on('end', async () => {
+  let job: any;
+  try {
+    const raw = Buffer.concat(chunks); clearChunks();
+    try { job = JSON.parse(raw.toString('utf8')); } finally { raw.fill(0); }
+    const result = await executeOfflineJob(job);job = undefined;
     process.stdout.write(JSON.stringify({ok:true,result}), () => process.exit(0));
   } catch {
     // Library/validation exceptions can contain user input or secret material.
@@ -55,3 +63,4 @@ process.stdin.on('end', async () => {
   }
 });
 process.stdin.on('error', () => { clearChunks(); process.exit(2); });
+}

@@ -2,6 +2,8 @@ const productChain=require('./dist/hinkal-product-chain.cjs');
 function checkedProductChain(operation){const rejected=()=>{throw Error('Product chain approval could not be verified. Check the original files, wallet and deadline; preserve the profile.');};try{const result=operation();return result instanceof Promise?result.catch(rejected):result;}catch{return rejected();}}
 const {bridgeCodec}=require('./tools/bridge-intent-codecs.cjs');
 const paymentPolicy=require('./tools/store-payment-policy.cjs');
+const fixtureSigning=require('./tools/native-fixture-signing.cjs');
+const fixtureMetadata=fixtureSigning.fixtureFromPackage(require('./package.json'));
 const {createFinalReceipt}=require('./preparation-import.cjs');
 const {validateHinkalSolanaSwap,hinkalSolanaSwapReview,verifyHinkalSolanaSwapResponse,assertHinkalSolanaSwapWallet}=require('./dist/hinkal-solana-swap.cjs');
 const {validateHinkalEvmSwap,hinkalEvmSwapReview,verifyHinkalEvmSwapResponse,assertHinkalEvmSwapWallet}=require('./dist/hinkal-evm-swap.cjs');
@@ -41,6 +43,7 @@ const requestExchange = new RequestExchange();
 const ROOT = __dirname, ENTRY = pathToFileURL(path.join(ROOT,'ui','index.html')).href;
 // This internal build has a dedicated profile and cannot load or sign wallets.
 if(paymentPolicy.publicHistoryQualification)require('./tools/public-history-qualification.cjs').configureQualificationProfile(app,paymentPolicy.publicHistoryQualification,process.env.DRIVEKEY_OFFLINE==='1'||require('./package.json').drivekeyOffline===true);
+if(fixtureMetadata)fixtureSigning.configureFixtureProfile(app,fixtureMetadata,require('./package.json').drivekeyOffline===true);
 let win, encryptedVault, vaultFile, publicWallet, backupVerified=false, pendingReview, busy=false, activeWalletId=null, productProofUi, productAdmissionUi, signingRecoveryUi, requestLifecycleUi, privateViewUi, providerFinalizerUi, noteDiscoveryUi, publicHistoryUi;
 const activeWorkers=new Set();
 const publicReadControllers = new Set();
@@ -74,7 +77,7 @@ const rpcFile=path.join(app.getPath('userData'),'rpc-endpoints-v1.json');
 async function online(input,options={}){if(OFFLINE)throw Error('Networking is disabled in the offline companion.');paymentPolicy.assertOnlineJob(input);let endpoints;try{endpoints=await readJSON(rpcFile);}catch{throw Error('Import an RPC configuration first.');}return job({...input,endpoints},'online-worker.cjs',options);}
 const verifiedWallets=new Map();
 const digest = v => createHash('sha256').update(JSON.stringify(v)).digest('hex');
-function passwordOf(v) { if(typeof v!=='string'||v.length<16||v.length>256) throw Error('Use a passphrase of 16–256 characters.'); return v; }
+function passwordOf(v) { if(fixtureMetadata)return fixtureSigning.fixturePassword(v,fixtureMetadata);if(typeof v!=='string'||v.length<16||v.length>256) throw Error('Use a passphrase of 16–256 characters.'); return v; }
 function clearPendingReview() {pendingReview=undefined;productProofUi?.clear();productAdmissionUi?.clear();signingRecoveryUi?.clear();requestLifecycleUi?.clear();privateViewUi?.clear();providerFinalizerUi?.clear();noteDiscoveryUi?.clear();publicHistoryUi?.clear();requestExchange.clearBinding();}
 function reset() { cancelAccountReads();requestExchange.clear();encryptedVault=undefined; vaultFile=undefined; publicWallet=undefined; backupVerified=false; clearPendingReview();activeWalletId=null; }
 function walletList(){const problem=walletStore.problem||watchStore.problem;return problem?{wallets:[],activeId:null,recoveryRequired:true,canRecover:problem.canRecover,error:problem.error}:{wallets:[...walletStore.list(activeWalletId,verifiedWallets).wallets,...watchStore.list(activeWalletId).wallets.map(w=>({...w,watchOnly:true}))],activeId:activeWalletId,recoveryRequired:false};}
@@ -87,7 +90,10 @@ async function job(input,worker='worker.cjs',{signal,owner:expectedOwner}={}) {
   requireOwner();
   const node = app.isPackaged ? path.join(process.resourcesPath,'node.exe') : (process.env.DRIVEKEY_NODE || process.execPath);
   const script=app.isPackaged?path.join(process.resourcesPath,'app.asar.unpacked','dist',worker):path.join(ROOT,'dist',worker);
+  const protectedFixture=!!fixtureMetadata&&worker==='worker.cjs'&&['verify','sign'].includes(input.action);
+  const broker=protectedFixture?(app.isPackaged?path.join(process.resourcesPath,'native-fixture-worker.cjs'):path.join(ROOT,'tools/native-fixture-worker.cjs')):null;
   if(app.isPackaged){const integrity=require('./RUNTIME-INTEGRITY.json');for(const [key,file]of [['node.exe',node],['dist/'+worker,script]])if(createHash('sha256').update(await fs.readFile(file)).digest('hex')!==integrity[key])throw Error('Signing runtime integrity check failed.');}
+  if(protectedFixture){fixtureSigning.fixturePassword(input.password,fixtureMetadata);if(input.action==='sign')fixtureSigning.assertFixtureRequest(input.request);if(app.isPackaged&&createHash('sha256').update(await fs.readFile(broker)).digest('hex')!==require('./RUNTIME-INTEGRITY.json')['native-fixture-worker.cjs'])throw Error('Fixture runtime integrity check failed.');}
   // Integrity reads yield. Closing or replacing the window during those reads
   // must not create a fresh, untracked key-bearing child afterwards.
   requireOwner();
@@ -95,7 +101,8 @@ async function job(input,worker='worker.cjs',{signal,owner:expectedOwner}={}) {
   return new Promise((resolve,reject) => {
     // Narrow child environment; no inherited API keys or user NODE_OPTIONS.
     const env = {SystemRoot:process.env.SystemRoot, WINDIR:process.env.WINDIR, TEMP:process.env.TEMP, TMP:process.env.TMP, PATH:path.dirname(node)};
-    const child=spawn(node,['--no-addons','--max-old-space-size='+(worker==='product-proof-worker.cjs'?1024:256),script],{cwd:app.isPackaged?process.resourcesPath:ROOT,env,windowsHide:true,stdio:['pipe','pipe','pipe']});
+    if(protectedFixture)env.LOCALAPPDATA=process.env.LOCALAPPDATA;
+    const child=spawn(node,['--no-addons','--max-old-space-size='+(worker==='product-proof-worker.cjs'?1024:256),...protectedFixture?[broker,script]:[script]],{cwd:app.isPackaged?process.resourcesPath:ROOT,env,windowsHide:true,stdio:['pipe','pipe','pipe']});
     let bytes=0, parts=[], settled=false;
     const cancel=()=>{child.kill();finish(Error('Operation cancelled because the wallet window closed.'));};
     const cancelRead=()=>{child.kill();finish(Error('Public read cancelled.'));};
@@ -110,7 +117,7 @@ async function job(input,worker='worker.cjs',{signal,owner:expectedOwner}={}) {
     child.stdin.on('error',()=>{});
     signal?.addEventListener('abort',cancelRead,{once:true});
     if(signal?.aborted){cancelRead();return;}
-    child.stdin.end(JSON.stringify(input)); input.password=undefined;if(input.input&&typeof input.input==='object')input.input.transportPrivateKey=undefined;
+    child.stdin.end(JSON.stringify(protectedFixture?{metadata:fixtureMetadata,input}:input)); input.password=undefined;if(input.input&&typeof input.input==='object')input.input.transportPrivateKey=undefined;
   });
 }
 async function readJSON(file) {
@@ -141,10 +148,10 @@ function register(channel,handler) {
     const serial=!concurrentHistoryChannels.has(channel);
     if(busy&&serial)return {ok:false,error:'Finish the current operation first.'};
     if(serial)busy=true;
-    try{paymentPolicy.assertIpcChannel(channel);const result=await handler(payload);if(result?.token&&result?.review&&pendingReview?.token===result.token)return {ok:true,result:{...result,requestCreatedAt:pendingReview.request.createdAt}};return {ok:true,result};}catch(error){return {ok:false,error:(error instanceof Error?error.message:'Operation failed.').slice(0,400)};}finally{if(serial)busy=false;}
+    try{paymentPolicy.assertIpcChannel(channel);if(fixtureMetadata)fixtureSigning.assertFixtureChannel(channel);const result=await handler(payload);if(result?.token&&result?.review&&pendingReview?.token===result.token)return {ok:true,result:{...result,requestCreatedAt:pendingReview.request.createdAt}};return {ok:true,result};}catch(error){return {ok:false,error:(error instanceof Error?error.message:'Operation failed.').slice(0,400)};}finally{if(serial)busy=false;}
   });
 }
-function registerPublicRead(channel,handler){let running=false;ipcMain.handle(channel,async(event,payload)=>{if(event.sender!==win.webContents||event.senderFrame!==win.webContents.mainFrame||event.senderFrame.url!==ENTRY)throw Error('Invalid sender.');if(busy||running)return {ok:false,error:'Finish the current operation first.'};running=true;try{paymentPolicy.assertIpcChannel(channel);return {ok:true,result:await handler(payload)};}catch(error){return {ok:false,error:(error instanceof Error?error.message:'Public read unavailable.').slice(0,400)};}finally{running=false;}});}
+function registerPublicRead(channel,handler){let running=false;ipcMain.handle(channel,async(event,payload)=>{if(event.sender!==win.webContents||event.senderFrame!==win.webContents.mainFrame||event.senderFrame.url!==ENTRY)throw Error('Invalid sender.');if(busy||running)return {ok:false,error:'Finish the current operation first.'};running=true;try{paymentPolicy.assertIpcChannel(channel);if(fixtureMetadata)fixtureSigning.assertFixtureChannel(channel);return {ok:true,result:await handler(payload)};}catch(error){return {ok:false,error:(error instanceof Error?error.message:'Public read unavailable.').slice(0,400)};}finally{running=false;}});}
 const accountBalanceReader=require('./account-balances.cjs').createAccountBalanceReader({
  getWallets:()=>walletList().wallets,
  online:(input,signal)=>online(input,{signal}),
@@ -211,6 +218,7 @@ register('import-request',async()=>{
   requireVault();clearPendingReview();
   const picked=await openJSON('Import unsigned DriveKey request');if(!picked)return {cancelled:true};
   paymentPolicy.assertIntent(picked.data);
+  if(fixtureMetadata)fixtureSigning.assertFixtureRequest(picked.data);
   const review=await job({action:'review',request:picked.data,vault:encryptedVault});
   await requestLifecycleUi.imported(picked.data);
   const token=randomUUID();pendingReview={token,request:picked.data,review,vaultHash:digest(encryptedVault)};return {token,review};
@@ -227,7 +235,7 @@ register('sign-request',async p=>{
   if(r.productProof!==undefined)await productAdmissionUi.verifyPending(r,publicWallet,true);
   const refreshed=await job({action:'review',request:r.request,vault:encryptedVault});
   const terms=Object.entries(refreshed).map(([key,value])=>key+': '+(typeof value==='object'?JSON.stringify(value):value)).join('\n');
-  const confirm=await dialog.showMessageBox(win,{type:'warning',title:'Approve this exact transaction?',message:'Create a transferable signature?',detail:terms+'\n\nLocal software signing trusts the running computer. No transaction is broadcast here.',buttons:['Cancel','Approve exact transaction'],defaultId:0,cancelId:0,noLink:true});
+  const confirm=await dialog.showMessageBox(win,{type:'warning',title:'Approve this exact transaction?',message:'Create a transferable signature?',detail:(fixtureMetadata?'UNFUNDED LOCAL FIXTURE ONLY. Never fund this wallet.\n\n':'')+terms+'\n\nLocal software signing trusts the running computer. No transaction is broadcast here.',buttons:['Cancel','Approve exact transaction'],defaultId:0,cancelId:0,noLink:true});
   if(confirm.response!==1)return {cancelled:true,reviewConsumed:true};
   const originalDraft=await transactionStore.load(signingWallet.deviceId,r.request.fingerprint);if(originalDraft?.state==='discarded')throw Error('This local draft was discarded and cannot be signed.');
   currentSigningScope();await job({action:'verify',vault:signingVault,password});currentSigningScope();
@@ -261,7 +269,7 @@ registerPublicRead('market-snapshot',p=>marketService.snapshot(p));
 const interfaceZoomLevels=Object.freeze([0.5,0.67,0.8,1,1.25,1.5,1.75,2]);
 register('interface-settings',async()=>({zoom:win.webContents.getZoomFactor()}));
 register('set-interface-zoom',async p=>{if(!p||Object.keys(p).length!==1||typeof p.zoom!=='number'||!interfaceZoomLevels.includes(p.zoom))throw Error('Choose a supported interface zoom level.');win.webContents.setZoomFactor(p.zoom);return {zoom:win.webContents.getZoomFactor()};});
-register('application-mode',async()=>({offline:OFFLINE,version:require('./package.json').version,fundingReady:false,publicHistoryQualification:!!paymentPolicy.publicHistoryQualification,networks:['ethereum','solana','sepolia','devnet'],capabilities:{publicPayments:!paymentPolicy.publicHistoryQualification,publicHistoryVerification:!OFFLINE&&!!paymentPolicy.publicHistoryQualification,uniswapV3:false,lifiSwaps:false,relayBridge:false,preparedPrivateImport:false,preparedMayanImport:false,privateProofCreation:false,productProofAdmission:false,privateBalanceDiscovery:false,scopedPrivateView:false,savings:false}}));
+register('application-mode',async()=>({offline:OFFLINE,version:require('./package.json').version,fundingReady:false,publicHistoryQualification:!!paymentPolicy.publicHistoryQualification,...fixtureMetadata?{unfundedFixtureQualification:true}:{},networks:fixtureMetadata?['solana']:['ethereum','solana','sepolia','devnet'],capabilities:{publicPayments:!paymentPolicy.publicHistoryQualification,publicHistoryVerification:!OFFLINE&&!!paymentPolicy.publicHistoryQualification,uniswapV3:false,lifiSwaps:false,relayBridge:false,preparedPrivateImport:false,preparedMayanImport:false,privateProofCreation:false,productProofAdmission:false,privateBalanceDiscovery:false,scopedPrivateView:false,savings:false}}));
 register('payment-qr',async p=>{requirePublic();return scopedPaymentQR(publicWallet,p);});
 register('payment-balance',async p=>{requirePublic();if(!p||!['ethereum','sepolia','solana','devnet'].includes(p.chain)||!['ETH','SOL','USDC'].includes(p.asset)||Object.keys(p).some(k=>!['chain','asset'].includes(k)))throw Error('Invalid balance request.');const from=['ethereum','sepolia'].includes(p.chain)?publicWallet.evmAddress:publicWallet.solanaAddress;return online({action:'balance',chain:p.chain,asset:p.asset,from});});
 register('export-payment-receipt',async p=>{requirePublic();const r=await transactionStore.load(publicWallet.deviceId,p?.id);const receipt=createFinalReceipt(r);await verifyIntent(r.response,r.request,publicWallet,Date.now(),false);if(r.productProof!==undefined)await productAdmissionUi.verifyRecord(r,publicWallet,false);const f=await saveJSON('Save finalized payment receipt','drivekey-payment-receipt.json',receipt);return {saved:!!f};});
@@ -441,7 +449,7 @@ app.whenReady().then(()=>{
   isolated.setPermissionCheckHandler(()=>false);
   const allowed=new Set(['index.html','shell.js','routes.js','chooser.js','chooser.css','black.css','portfolio.js','workspace.js','assets.js','private-view.js','note-discovery.js',...require('./ui-assets.json'),'app.js','style.css','vendor/tabler.min.css','assets/drivekey-logo.jpg','assets/usb-pcb-hero.png','assets/usb-pcb-detail.png','assets/solana.png','assets/hinkal.svg','assets/provider-lifi.svg','assets/provider-jupiter.png','assets/provider-uniswap.svg','assets/provider-husher.png','assets/chain-ethereum.svg','assets/Inter.woff2','assets/SpaceGrotesk.woff2'].map(f=>pathToFileURL(path.join(ROOT,'ui',f)).href));
   isolated.webRequest.onBeforeRequest((details,callback)=>callback({cancel:!allowed.has(details.url)}));
-  win=new BrowserWindow({width:1440,height:1000,minWidth:850,minHeight:650,backgroundColor:'#080c12',show:true,autoHideMenuBar:true,title:OFFLINE?'DriveKey Offline Companion':'DriveKey Windows',webPreferences:{session:isolated,preload:path.join(ROOT,'preload.cjs'),sandbox:true,contextIsolation:true,nodeIntegration:false,webSecurity:true,devTools:!app.isPackaged}});
+  win=new BrowserWindow({width:1440,height:1000,minWidth:850,minHeight:650,backgroundColor:'#080c12',show:true,autoHideMenuBar:true,title:fixtureMetadata?'DriveKey Offline Fixture Qualification':OFFLINE?'DriveKey Offline Companion':'DriveKey Windows',webPreferences:{session:isolated,preload:path.join(ROOT,'preload.cjs'),sandbox:true,contextIsolation:true,nodeIntegration:false,webSecurity:true,devTools:!app.isPackaged}});
   win.webContents.setWindowOpenHandler(()=>({action:'deny'}));
   win.webContents.on('will-navigate',(event,url)=>{if(url!==ENTRY)event.preventDefault();});
   win.webContents.on('will-attach-webview',event=>event.preventDefault());
