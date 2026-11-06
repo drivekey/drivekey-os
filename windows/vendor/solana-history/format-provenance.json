@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "kind": "drivekey-public-archive-format-provenance",
+  "agave": {
+    "repository": "https://github.com/anza-xyz/agave",
+    "commit": "84ca856dc20c509a6140c7b4310fa60c209feaaf",
+    "schemaPath": "storage-proto/proto/confirmed_block.proto",
+    "schemaSha256": "25c97516fa02aa983774cce2f792a26bf5fac113911fe301b406e8a4da71c90c",
+    "licenseSha256": "048838ecab23173fe6db9b3a4f5d9e2f5480b8692dfca556fed4aa039ca06bc8"
+  },
+  "compactIndex": {
+    "repository": "https://github.com/rpcpool/yellowstone-faithful",
+    "commit": "fe631879f3830447ff481cba07e54b3cea4891c6",
+    "subtree": "compactindexsized",
+    "legacyReferenceSubtree": "deprecated/compactindex36",
+    "originalFormatReference": "https://github.com/firedancer-io/radiance/tree/main/pkg/compactindex",
+    "licenseSha256": "3ddf9be5c28fe27dad143a5dc76eea25222ad1dd68934a047064e56ed2fa40c5"
+  },
+  "formats": [
+    "https://ipld.io/specs/codecs/dag-cbor/spec/",
+    "https://ipld.io/specs/transport/car/carv1/",
+    "https://docs.old-faithful.net/references/of1-files",
+    "https://www.rfc-editor.org/rfc/rfc8878.html",
+    "https://github.com/Cyan4973/xxHash/blob/dev/doc/xxhash_spec.md"
+  ],
+  "scope": "Protocol formats and Apache-licensed compact-index reference. The default-AGPL research RPC/metadata conversion programs are not incorporated or shipped."
+}
