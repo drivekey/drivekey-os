@@ -15,20 +15,33 @@ import {validateHinkalSolanaSwapContext} from './hinkal-local-solana-swap';
 import {hinkalSolanaSwapRoute} from './hinkal-solana-swap-route';
 import {assertHinkalSolanaRouteQualified} from './hinkal-solana-route-admission';
 import {validatePublicNoteSnapshot,validatePublicNotePage} from './hinkal-note-snapshot';
+import {validateHinkalSolana,assertHinkalSolanaWallet} from './hinkal-solana-intent';
 const hash=z.string().regex(/^0x[0-9a-f]{64}$/),uint=z.string().regex(/^(0|[1-9][0-9]*)$/).max(39);
+const depositContext=z.object({testOnly:z.literal(true),chain:z.literal('solana'),action:z.literal('deposit'),asset:z.enum(['SOL','USDC']),amount:uint,from:z.string().max(44),recipient:z.string().max(44),inputNotes:z.array(z.string()).length(0),pendingLeaves:z.array(z.string()).length(0)}).strict();
+function validateDepositContext(input:unknown){const c=depositContext.parse(input);if(c.from!==c.recipient||!PublicKey.isOnCurve(new PublicKey(c.from).toBytes())||BigInt(c.amount)<=0n||BigInt(c.amount)>=1n<<64n)throw Error('Solana deposit viewing scope differs.');return c;}
 export const viewPublicKey=z.string().length(60).superRefine((value,ctx)=>{try{const bytes=Buffer.from(value,'base64'),key=createPublicKey({key:bytes,format:'der',type:'spki'});if(bytes.length!==44||bytes.toString('base64')!==value||key.asymmetricKeyType!=='x25519'||key.export({format:'der',type:'spki'}).toString('base64')!==value)throw Error();}catch{ctx.addIssue({code:'custom',message:'Invalid X25519 transport public key.'});}});
 const schema=z.object({version:z.literal(30),kind:z.literal('drivekey-hinkal-view-request'),requestId:z.string().uuid(),deviceId:z.string().uuid(),
- createdAt:z.string().datetime(),expiresAt:z.string().datetime(),wallet:multiPublicSchema,profile:z.union([z.literal(13),z.literal(15),z.literal(19),z.literal(27)]),context:z.unknown(),
+ createdAt:z.string().datetime(),expiresAt:z.string().datetime(),wallet:multiPublicSchema,profile:z.union([z.literal(13),z.literal(14),z.literal(15),z.literal(19),z.literal(27)]),context:z.unknown(),
  nonce:z.number().int().min(0).max(4294967295).nullable(),maximumFee:uint,maximumAccountRent:uint,transportPublicKey:viewPublicKey,fingerprint:hash}).strict();
 export type ViewRequest=z.infer<typeof schema>;
 export const viewFingerprint=(input:any)=>{const {fingerprint,...body}=input;return keccak256(Buffer.from('DriveKey scoped private view request v30\n'+canonical(body)));};
 export function validateViewRequest(input:unknown,now=Date.now(),expiry=true){
- const r=schema.parse(input),c=r.profile===13?validateHinkalProofContext(r.context):r.profile===15?validateHinkalSolanaProofContext(r.context):r.profile===19?validateHinkalEvmSwapContext(r.context,!expiry):validateHinkalSolanaSwapContext(r.context),created=Date.parse(r.createdAt),expires=Date.parse(r.expiresAt),swap=r.profile===19||r.profile===27;
+ const r=schema.parse(input),c=r.profile===13?validateHinkalProofContext(r.context):r.profile===14?validateDepositContext(r.context):r.profile===15?validateHinkalSolanaProofContext(r.context):r.profile===19?validateHinkalEvmSwapContext(r.context,!expiry):validateHinkalSolanaSwapContext(r.context),created=Date.parse(r.createdAt),expires=Date.parse(r.expiresAt),swap=r.profile===19||r.profile===27;
  if(!Number.isSafeInteger(now)||created>now+60000||expires<=created||expires-created>600000||expiry&&now>=expires||r.deviceId!==r.wallet.deviceId||r.fingerprint!==viewFingerprint(r)||c.pendingLeaves.length||
   (c.chain==='ethereum'?getAddress(c.from)!==getAddress(r.wallet.evmAddress)||r.nonce===null||r.maximumAccountRent!=='0'||BigInt(r.maximumFee)>10n**16n:c.from!==r.wallet.solanaAddress||r.nonce!==null||BigInt(r.maximumAccountRent)>(swap?40000000n:10000000n)||BigInt(r.maximumFee)>100000n)||
   BigInt(r.maximumFee)<=0n||Buffer.byteLength(JSON.stringify(r))>64*1024)throw Error('Private view identity, scope or lifetime differs.');
  if(swap){const s=c as any;if(s.inputNotes.length>2||new Set(s.inputNotes).size!==s.inputNotes.length||created<Date.parse(s.quoteCreatedAt)||expires>Date.parse(s.quoteExpiresAt)||expires-created>180000)throw Error('Private swap view inputs or exact quote lifetime differ.');if(r.profile===27){if(BigInt(s.proposal.bounds.maximumFee)>BigInt(r.maximumFee))throw Error('Private swap route fee exceeds the reviewed ceiling.');assertHinkalSolanaRouteQualified(hinkalSolanaSwapRoute(s.proposal,'1').review);}}
  return {...r,context:c};
+}
+// The outer viewing approval never authorizes a chain signature. Bind the
+// independently decoded deposit to it before retaining or exporting a request.
+export function validateDepositViewPreparation(request:unknown,response:unknown,input:unknown,now=Date.now(),expiry=true){
+ const r=validateViewRequest(request,now,expiry),s=verifyViewResponse(r,response,now,expiry);
+ if(r.profile!==14||r.context.action!=='deposit')throw Error('Expected a Solana deposit viewing request.');
+ const p=z.object({version:z.literal(30),kind:z.literal('drivekey-hinkal-deposit-preparation'),deviceId:z.string().uuid(),requestId:z.string().uuid(),fingerprint:hash,transactionRequest:z.unknown(),blockchainTransactionSigned:z.literal(false),submitted:z.literal(false)}).strict().parse(input),tx=validateHinkalSolana(p.transactionRequest,now,expiry);
+ assertHinkalSolanaWallet(tx,r.wallet);
+ if(p.deviceId!==r.deviceId||p.requestId!==r.requestId||p.fingerprint!==r.fingerprint||tx.from!==r.context.from||tx.recipient!==r.context.recipient||tx.asset!==r.context.asset||tx.amount!==r.context.amount||BigInt(tx.maximumFee)>BigInt(r.maximumFee)||BigInt(tx.accountRent)>BigInt(r.maximumAccountRent)||Date.parse(tx.createdAt)<Date.parse(s.authorizedAt)||Date.parse(tx.expiresAt)>Date.parse(r.expiresAt))throw Error('Prepared Solana deposit changed its original viewing scope.');
+ return tx;
 }
 export const privateViewInputAsset=(context:any):'ETH'|'SOL'|'USDC'=>context.action==='swap'?(context.tokenIn??context.asset):context.asset;
 const swapParameters=z.object({chain:z.enum(['ethereum','solana']),amount:uint,nonce:z.number().int().min(0).max(4294967295).nullable(),maximumFee:uint,maximumAccountRent:uint,slippageBps:z.literal(100)}).strict();
