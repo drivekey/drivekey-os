@@ -1,5 +1,6 @@
 // Network-only public receipt observations; no wallet, password or viewing key.
 import {createHash} from 'node:crypto';
+import {setTimeout as delay} from 'node:timers/promises';
 import {z} from 'zod';
 import {Interface} from 'ethers';
 import bs58 from 'bs58';
@@ -30,8 +31,29 @@ function finality(latest:any,finalized:any,now:number){const live=quantity(lates
 function readers(chain:'ethereum'|'solana',adapters:OnlineAdapter[]){if(!['ethereum','solana'].includes(chain)||!Array.isArray(adapters)||adapters.length!==2)throw Error('Two independent public receipt readers are required.');const origins=adapters.map(a=>{const value=a.endpoints[chain];if(typeof value!=='string')throw Error('Missing public receipt endpoint.');const u=new URL(value);if(u.protocol!=='https:'||u.username||u.password||u.hash)throw Error('Public receipt readers require HTTPS.');return u.origin;});if(new Set(origins).size!==2)throw Error('Public receipt readers must have distinct HTTPS origins.');return origins;}
 function identities(chain:'ethereum'|'solana',input:unknown,maximum=4){const ids=z.array(z.string().min(1).max(88)).min(1).max(maximum).parse(input);for(const id of ids)if(chain==='ethereum')hash(id);else solHash(id,64);if(new Set(ids).size!==ids.length)throw Error('Duplicate public receipt identity.');return ids;}
 
+// Shared by recent/archive callers within this public-read transport. Wait
+// before the first request as workers can restart between receipt batches.
+// These conservative intervals are not a claim about a provider's limit window.
+export function createPublicHistoryBlockPacer(){
+ const origins=new Set(['https://api.mainnet-beta.solana.com','https://solana-rpc.publicnode.com']),states=new Map<string,{last:number,tail:Promise<void>}>();
+ return async(url:string,init:RequestInit={})=>{
+  const origin=new URL(url).origin;
+  if(!origins.has(origin)||init.method?.toUpperCase()!=='POST'||typeof init.body!=='string')return;
+  if(strictJSON(init.body,32768).method!=='getBlock')return;
+  const signal=init.signal??undefined;signal?.throwIfAborted();
+  let state=states.get(origin);if(!state){state={last:performance.now(),tail:Promise.resolve()};states.set(origin,state);}const current=state;
+  const entry=current.tail.then(async()=>{signal?.throwIfAborted();let remaining;while((remaining=2200-(performance.now()-current.last))>0)await delay(Math.ceil(remaining),undefined,{signal});signal?.throwIfAborted();current.last=performance.now();});
+  current.tail=entry.then(()=>{},()=>{});
+  if(!signal)return entry;
+  // A queued cancellation returns promptly, while its queued entry remains
+  // handled and will fail before starting any network request.
+  return new Promise<void>((resolve,reject)=>{const abort=()=>{signal.removeEventListener('abort',abort);reject(signal.reason);};signal.addEventListener('abort',abort,{once:true});entry.then(()=>{signal.removeEventListener('abort',abort);resolve();},error=>{signal.removeEventListener('abort',abort);reject(error);});if(signal.aborted)abort();});
+ };
+}
+const pacePublicBlock=createPublicHistoryBlockPacer();
 export async function strictPublicHistoryJSON(url:string,init:RequestInit={}){
- const response=await fetch(url,{...init,redirect:'error',signal:AbortSignal.timeout(20000)});if(!response.ok||!response.body)throw Error('Public history HTTP service unavailable (HTTP '+response.status+').');const length=response.headers.get('content-length');if(length&&(!/^[0-9]+$/.test(length)||Number(length)>2*1024*1024))throw Error('Public history JSON exceeds 2 MiB.');const chunks:Buffer[]=[];let bytes:Buffer|undefined,size=0;
+ const signal=AbortSignal.any([AbortSignal.timeout(20000),...init.signal?[init.signal]:[]]);await pacePublicBlock(url,{...init,signal});signal.throwIfAborted();
+ const response=await fetch(url,{...init,redirect:'error',signal});if(!response.ok||!response.body)throw Error('Public history HTTP service unavailable (HTTP '+response.status+').');const length=response.headers.get('content-length');if(length&&(!/^[0-9]+$/.test(length)||Number(length)>2*1024*1024))throw Error('Public history JSON exceeds 2 MiB.');const chunks:Buffer[]=[];let bytes:Buffer|undefined,size=0;
  try{for await(const part of response.body as any){size+=part.length;if(size>2*1024*1024)throw Error('Public history JSON exceeds 2 MiB.');chunks.push(Buffer.from(part));}bytes=Buffer.concat(chunks);return strictJSON(new TextDecoder('utf-8',{fatal:true}).decode(bytes),2*1024*1024,500000);}finally{bytes?.fill(0);for(const part of chunks)part.fill(0);}
 }
 export async function publicNoteEventCandidates(chain:'ethereum'|'solana',fromBlockNumber=0){
@@ -83,14 +105,14 @@ export async function verifySnapshotReceiptCoverage(manifest:unknown,pages:unkno
 // A restartable scan verifies bounded reference batches. Indexer heights choose
 // transport only; the independently decoded canonical receipt must match them.
 export async function observePublicHistoryReferences(chain:'ethereum'|'solana',input:unknown,adapters:OnlineAdapter[],now=Date.now()){
- readers(chain,adapters);number(now);const refs=z.array(z.object({transactionId:z.string().max(88),position:z.number().int().nonnegative().safe()}).strict()).min(1).max(4).parse(input);identities(chain,refs.map(r=>r.transactionId));
+ readers(chain,adapters);number(now);const started=performance.now(),clock=()=>now+Math.floor(performance.now()-started),refs=z.array(z.object({transactionId:z.string().max(88),position:z.number().int().nonnegative().safe()}).strict()).min(1).max(4).parse(input);identities(chain,refs.map(r=>r.transactionId));
  let archiveBefore=0;
  if(chain==='solana'){
   const epochs=[];for(const a of adapters){await a.identity(chain);const e=await a.rpc(chain,'getEpochInfo',[{commitment:'finalized'}]);for(const k of ['absoluteSlot','slotIndex','epoch','slotsInEpoch'])number(e?.[k]);if(e.slotsInEpoch!==432000||e.slotIndex>=432000||e.absoluteSlot!==e.epoch*432000+e.slotIndex)throw Error('Public Solana history epoch schedule differs.');epochs.push(e);}
   if(Math.abs(epochs[0].absoluteSlot-epochs[1].absoluteSlot)>512)throw Error('Public Solana history readers disagree on finalized epoch progress.');archiveBefore=Math.min(...epochs.map(e=>e.absoluteSlot-e.slotIndex));
  }
  const receipts:any[]=[],events:PublicNoteHistoryEvent[]=[],batches:any[]=[];
- for(const archived of [false,true]){const selected=refs.filter(r=>chain==='solana'&&r.position<archiveBefore?archived:!archived);if(!selected.length)continue;const batch=archived?await observeSolanaArchiveReceipts(selected.map(r=>({transactionId:r.transactionId,slot:r.position})),adapters,now):await observePublicNoteReceipts(chain,selected.map(r=>r.transactionId),adapters,now,chain==='solana');for(const ref of selected){const receipt=batch.receipts.find(r=>r.transactionId===ref.transactionId);if(!receipt||receipt.blockNumber!==String(ref.position))throw Error('Public reference height differs from its canonical receipt.');}receipts.push(...batch.receipts);events.push(...batch.events);batches.push({transactionIds:selected.map(r=>r.transactionId),receiptSourcePolicy:archived?'canonical-rpc-plus-public-archive-and-two-current-rpcs':'two-independent-canonical-rpcs',observations:batch.observations,...'currentChainObservations'in batch?{currentChainObservations:batch.currentChainObservations}:{}});}
+ for(const archived of [false,true]){const selected=refs.filter(r=>chain==='solana'&&r.position<archiveBefore?archived:!archived);if(!selected.length)continue;const batch=archived?await observeSolanaArchiveReceipts(selected.map(r=>({transactionId:r.transactionId,slot:r.position})),adapters,clock()):await observePublicNoteReceipts(chain,selected.map(r=>r.transactionId),adapters,clock(),chain==='solana');for(const ref of selected){const receipt=batch.receipts.find(r=>r.transactionId===ref.transactionId);if(!receipt||receipt.blockNumber!==String(ref.position))throw Error('Public reference height differs from its canonical receipt.');}receipts.push(...batch.receipts);events.push(...batch.events);batches.push({transactionIds:selected.map(r=>r.transactionId),receiptSourcePolicy:archived?'canonical-rpc-plus-public-archive-and-two-current-rpcs':'two-independent-canonical-rpcs',observations:batch.observations,...'currentChainObservations'in batch?{currentChainObservations:batch.currentChainObservations}:{}});}
  if(new Set(events.map(e=>e.index)).size!==events.length)throw Error('Public history batch contains conflicting leaf indices.');return {chain,receipts:refs.map(r=>receipts.find(x=>x.transactionId===r.transactionId)),events,batches,independentChainReadersVerified:true,canonicalReceiptMetadataVerified:true,canonicalBlockMembershipVerified:true,ciphertextHistoryVerified:false,spendabilityVerified:false,eligibleForSigning:false,blockchainTransactionSigned:false,submitted:false};
 }
 
