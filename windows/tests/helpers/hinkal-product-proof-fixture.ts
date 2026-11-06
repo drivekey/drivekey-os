@@ -13,8 +13,9 @@ const {preProcessing}=require('../../node_modules/@hinkal/common/common/src/cryp
  {UserKeys}=require('../../node_modules/@hinkal/common/common/src/data-structures/crypto-keys/keys.cjs'),
  {Utxo}=require('../../node_modules/@hinkal/common/common/src/data-structures/utxo/Utxo.cjs'),
  math=require('../../node_modules/@hinkal/common/common/src/functions/snarkjs/common.snarkjs.cjs');
-export async function productProofFixture(){
- const password='Unfunded proof fixture '+randomBytes(24).toString('hex'),vault=await createMultiVault(password),keys=await unlockMultiVault(vault,password);
+export async function productProofFixture(existing?:{vault:any,password:string}){
+ if(existing&&(!existing.vault||typeof existing.password!=='string'||existing.password.length<16))throw Error('Invalid existing unfunded fixture.');
+ const password=existing?.password||'Unfunded proof fixture '+randomBytes(24).toString('hex'),vault=existing?.vault||await createMultiVault(password),keys=await unlockMultiVault(vault,password);
  let user:any;
  try{await preProcessing();user=new UserKeys(await keys.evm.signMessage(HINKAL_PIN.sdkLoginMessage));}finally{wipeSolSecret(keys.sol);}
  const c=structuredClone(fixture.seed.job.context),now=Date.now();

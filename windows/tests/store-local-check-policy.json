@@ -1,7 +1,7 @@
 {
   "version": 1,
   "scope": "Complete local engineering suite with exact fresh-unfunded fixture authority; no mainnet, native installed-release, physical signing or release qualification",
-  "minimumHistoricalTestCount": 1012,
+  "minimumHistoricalTestCount": 1028,
   "requiredTests": [
     "the Store worker signs exact ETH, SOL and USDC payments on the supported chains with disposable local keys",
     "deferred prepare, sign and broadcast paths are closed while reconciliation remains available",
@@ -38,7 +38,23 @@
     "compiled dispatcher rejects malformed policies and explicit false, true or object authorization results",
     "compiled dispatcher snapshots the complete job before asynchronous authorization and freezes the policy scope",
     "the fixture worker refuses vaults not freshly enrolled in this harness",
-    "full local reporting requires every former deferred case to pass and never masks a failed workflow"
+    "full local reporting requires every former deferred case to pass and never masks a failed workflow",
+    "scoped offline metadata is explicit, rejects mixed modes and never changes normal or legacy policy",
+    "scoped native channels admit offline proof handoffs while refusing every network, funding and submission channel",
+    "scoped fixture review retains exact chain families and canonical payment assets without enabling normal releases",
+    "only the registered offline signer and prover actions use the protected broker",
+    "scoped credentials require the full vault, complete public wallet, source and exact compiled worker before unlock",
+    "request, recipient, asset, amount, fees, minimums, expiry and additional fields cannot enter a scoped signing job",
+    "scoped review uses no vault unlock record and cannot inherit a signing authority",
+    "missing, corrupted, linked or wrongly scoped protected credentials preserve originals and fail closed",
+    "scoped execution authority binds its exact method, request, full wallet and one invocation",
+    "only the prover authorization is dynamic while its full request, vault and artifact path remain exactly scoped",
+    "normal standalone prover CLI rejects JSON and environment authority injection before cryptographic work",
+    "requiring the original prover creates no stdin reader and rejects non-void authority without retaining the input password",
+    "the original prover snapshots and freezes asynchronous authority scope before any key or proof operation",
+    "the exact protected broker reviews signs and recovers five fresh-unfunded canonical payment requests",
+    "the exact protected broker signs both Uniswap directions and only bounded approval or zero revocation",
+    "the exact protected broker creates and independently verifies genuine private proofs on both chains while refusing forged authorizations before unlock"
   ],
   "deferredPositiveCases": [],
   "allowedDeferredDenials": []

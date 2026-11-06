@@ -26,7 +26,7 @@ const nodeSource=process.execPath;
 const hash=async f=>createHash('sha256').update(await readFile(f)).digest('hex');
 async function copyDirectory(source,dest){await mkdir(dest,{recursive:true});for(const e of await readdir(source,{withFileTypes:true})){if(e.isSymbolicLink())throw Error('No symlinks in application stage.');const a=path.join(source,e.name),b=path.join(dest,e.name);if(e.isDirectory())await copyDirectory(a,b);else await copyFile(a,b);}}
 const runtimes={};for(const file of ['worker.cjs','online-worker.cjs','product-proof-worker.cjs','product-view-worker.cjs','provider-proof-worker.cjs','public-note-worker.cjs','public-note-math-worker.cjs'])runtimes['dist/'+file]=await hash(path.join(root,'dist',file));runtimes['node.exe']=await hash(nodeSource);
-if(fixtureMetadata)runtimes['native-fixture-worker.cjs']=await hash(path.join(root,'tools/native-fixture-worker.cjs'));
+if(fixtureMetadata)for(const name of ['native-fixture-worker.cjs','native-offline-scope.cjs'])runtimes[name]=await hash(path.join(root,'tools',name));
 await writeFile(path.join(root,'RUNTIME-INTEGRITY.json'),JSON.stringify(runtimes,null,2)+'\n');
 const results=[];
 for(const offline of [false,true]){
@@ -47,7 +47,7 @@ for(const offline of [false,true]){
  await writeFile(path.join(stage,'package.json'),JSON.stringify({name:offline?'drivekey-offline-companion':'drivekey-windows',version:meta.version,main:'main.cjs',description:fixtureMetadata?'Internal unfunded offline fixture qualification; never release or fund':meta.drivekeyQualification?'Internal read-only public-history qualification; no wallets, signing or submissions':'DriveKey Windows payments',drivekeyOffline:offline,...meta.drivekeyQualification?{drivekeyQualification:meta.drivekeyQualification}:{},...fixtureMetadata?{drivekeyFixtureSigning:fixtureMetadata}:{}}));
  const [dir]=await packager({dir:stage,name:label,platform:'win32',arch:'x64',electronVersion:meta.devDependencies.electron,icon:path.join(root,'ui/assets/blue/app.ico'),out:outputDir,tmpdir:separateRoot?stageBase:undefined,asar:{unpack:'**/dist/{worker,online-worker,product-proof-worker,product-view-worker,provider-proof-worker,public-note-worker,public-note-math-worker}.cjs'},prune:false,overwrite:false,extraResource:[nodeSource,path.join(root,'THIRD-PARTY-NOTICES.txt'),artifactStage]});
  const copiedNode=path.join(dir,'resources',path.basename(nodeSource));if(path.basename(nodeSource)!=='node.exe')await copyFile(copiedNode,path.join(dir,'resources','node.exe'));
- if(fixtureMetadata)await copyFile(path.join(root,'tools/native-fixture-worker.cjs'),path.join(dir,'resources/native-fixture-worker.cjs'));
+ if(fixtureMetadata)for(const name of ['native-fixture-worker.cjs','native-offline-scope.cjs'])await copyFile(path.join(root,'tools',name),path.join(dir,'resources',name));
  const exe=path.join(dir,label+'.exe');await flipFuses(exe,{version:FuseVersion.V1,[FuseV1Options.RunAsNode]:false,[FuseV1Options.EnableCookieEncryption]:true,[FuseV1Options.EnableNodeOptionsEnvironmentVariable]:false,[FuseV1Options.EnableNodeCliInspectArguments]:false,[FuseV1Options.EnableEmbeddedAsarIntegrityValidation]:true,[FuseV1Options.OnlyLoadAppFromAsar]:true});
  results.push({kind:offline?'offline':'windows',directory:path.relative(resultRoot,dir),executable:path.relative(resultRoot,exe),sha256:await hash(exe),asarSHA256:await hash(path.join(dir,'resources','app.asar')),publisherSigned:false});
 }
