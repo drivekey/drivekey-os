@@ -25,12 +25,13 @@ function installPrivateView(c){
  }
  c.register('create-private-view',async p=>{
   if(c.isOffline())throw Error('Create the viewing request on the online computer.');c.clearPending();clear();const s=scope();c.policy.assertPrivateView();
-  if(!p||Object.keys(p).sort().join(',')!=='context,maximumAccountRent,maximumFee,nonce,profile')throw Error('Private preparation draft fields differ.');
-  const transport=createViewTransport(),now=Date.now(),request={version:30,kind:'drivekey-hinkal-view-request',requestId:randomUUID(),deviceId:s.wallet.deviceId,createdAt:new Date(now).toISOString(),expiresAt:new Date(now+600000).toISOString(),wallet:s.wallet,...structuredClone(p),transportPublicKey:transport.transportPublicKey,fingerprint:''};request.fingerprint=viewFingerprint(request);check(request,s);
+  if(!p||Object.keys(p).sort().join(',')!==(Object.hasOwn(p,'selectionId')?'context,maximumAccountRent,maximumFee,nonce,profile,selectionId':'context,maximumAccountRent,maximumFee,nonce,profile'))throw Error('Private preparation draft fields differ.');
+  const draft=structuredClone(p);let selection;if(Object.hasOwn(draft,'selectionId')){if(!c.resolveSelection)throw Error('Private selection storage is unavailable.');selection=await c.resolveSelection(draft.selectionId,draft.context,s.wallet);current(s);draft.context.inputNotes=selection.notes.map(n=>n.encryptedOutput);delete draft.selectionId;}
+  const transport=createViewTransport(),now=Date.now(),request={version:30,kind:'drivekey-hinkal-view-request',requestId:randomUUID(),deviceId:s.wallet.deviceId,createdAt:new Date(now).toISOString(),expiresAt:new Date(now+600000).toISOString(),wallet:s.wallet,...draft,transportPublicKey:transport.transportPublicKey,fingerprint:''};request.fingerprint=viewFingerprint(request);check(request,s);
   await c.ready();current(s);
   // Private transport key is encrypted before the public request can escape.
   await c.sessionStore.claim(s.wallet.deviceId,request,{version:30,kind:'private-view-transport-session',deviceId:request.deviceId,requestId:request.requestId,fingerprint:request.fingerprint,privateKey:transport.privateKey});transport.privateKey='';
-  await c.requestStore.put({version:1,request,state:'prepared',updatedAt:new Date().toISOString()});current(s);
+  await c.requestStore.put({version:1,request,state:'prepared',updatedAt:new Date().toISOString(),...selection?{noteSelectionFingerprint:selection.fingerprint}:{}});current(s);
   const file=await c.saveJSON('Transfer private view request to offline Companion','drivekey-private-view-request.json',request);current(s);
   return {saved:!!file,id:request.fingerprint,review:viewReview(request),recoverable:true};
  });

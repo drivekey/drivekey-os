@@ -19,7 +19,7 @@ const reconciliation = new Set([
   'hinkal-evm-swap-reconcile', 'hinkal-solana-swap-reconcile', 'hinkal-product-chain-reconcile',
 ]);
 const blockedIpc = new Set(['import-prepared-private', 'import-prepared-bridge', 'hinkal-discover',
-  'import-provider-proof-authorization','finalize-provider-proof','export-provider-proof-result','import-private-view-request','authorize-private-view','create-private-view','export-private-view-request','export-private-view-response','import-private-view-response','prepare-private-view-job','export-private-view-job','observe-private-view-inputs','list-private-input-observations','cancel-private-input-observation','import-product-proof','review-product-proof','sign-product-proof','export-product-proof','prove-product-proof','export-product-proof-result','import-product-proof-package']);
+  'import-provider-proof-authorization','finalize-provider-proof','export-provider-proof-result','import-private-view-request','authorize-private-view','create-private-view','export-private-view-request','export-private-view-response','import-private-view-response','prepare-private-view-job','export-private-view-job','cancel-private-note-selection','export-private-note-selection','import-private-note-selection','list-private-note-selections','export-saved-private-note-selection','observe-private-view-inputs','list-private-input-observations','cancel-private-input-observation','import-product-proof','review-product-proof','sign-product-proof','export-product-proof','prove-product-proof','export-product-proof-result','import-product-proof-package']);
 
 function assertChain(chain) {
   if(publicHistoryQualification)throw Error(qualificationNotice);

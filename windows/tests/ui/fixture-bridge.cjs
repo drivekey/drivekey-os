@@ -9,7 +9,7 @@ function installFixture(options) {
   const walletB = {id:'22222222-2222-4222-8222-222222222222',name:'Fixture reserve wallet',deviceId:'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',evmAddress:'0x2222222222222222222222222222222222222222',solanaAddress:'So11111111111111111111111111111111111111112',backupVerified:false,watchOnly:false};
   const state = {
     offline:Boolean(options.offline), wallets:options.empty?[]:[walletA,walletB], activeId:null,
-    calls:[], unexpected:[], queues:{}, counter:0, prepared:null, signatures:[], transactions:[], proofs:[], views:[], inputObservations:[], viewPending:null,
+    calls:[], unexpected:[], queues:{}, counter:0, prepared:null, signatures:[], transactions:[], proofs:[], views:[], inputObservations:[], inputSelections:[], viewPending:null,
     recoveryRequired:false,canRecover:false,error:null,qr:options.qr,refreshes:0
   };
   const current = () => state.wallets.find(w=>w.id===state.activeId);
@@ -43,10 +43,15 @@ function installFixture(options) {
     publicHistoryProgress:()=>({active:false}),
     downloadNoteHistory:chain=>{if(!options.noteDiscovery||state.offline)throw Error('History unavailable');return {saved:true,chain};},
     inspectNoteHistory:password=>{if(!options.noteDiscovery||!state.offline||!requireCurrent().backupVerified||password!==options.passphrase)throw Error('Inspection unavailable');return {inspected:true};},
-    listNoteDiscoveries:()=>{requireCurrent();return [{chain:'ethereum',state:'verification-pending',ownedNoteIdentities:1,pendingAmounts:[{formatted:'1.000001 USDC'}],eligibleForSigning:false},{chain:'solana',state:'inspection-incomplete',completedPages:1,totalPages:3,pendingAmounts:[],eligibleForSigning:false}];},
+    listNoteDiscoveries:()=>{requireCurrent();return [{id:'0x'+'a'.repeat(64),chain:'ethereum',state:'verification-pending',ownedNoteIdentities:1,pendingAmounts:[{formatted:'1.000001 USDC'}],eligibleForSigning:false},{chain:'solana',state:'inspection-incomplete',completedPages:1,totalPages:3,pendingAmounts:[],eligibleForSigning:false}];},
     noteDiscoveryProgress:()=>({active:false}),
     cancelNoteDiscovery:()=>({cancelled:true}),
-    createPrivateView:draft=>{if(!options.privateViews||state.offline)throw Error('Viewing fixture unavailable');const w=requireCurrent(),id='0x'+(++state.counter).toString(16).padStart(64,'0'),review={chain:draft.context.chain,asset:draft.context.asset,proofAction:draft.context.action,inputNotes:String(draft.context.inputNotes.length),amount:draft.context.amount,fingerprint:id,transportPublicKey:'SYNTHETIC-PUBLIC-TRANSPORT-KEY',authority:'Sensitive read access only. Separate proof and chain approvals required.'},row={id,walletId:w.id,createdAt:now(),expiresAt:new Date(Date.now()+300000).toISOString(),review,state:'requested',hasResponse:false,hasPreparedJob:false};state.views.push(row);return {id,saved:false,recoverable:true,review};},
+    exportPrivateNoteSelection:(discoveryId,asset,amount,pass)=>{const w=requireCurrent();if(!state.offline||!w.backupVerified||pass!==options.passphrase)throw Error('Verified offline backup required');const id='0x'+(++state.counter).toString(16).padStart(64,'0'),review={chain:'ethereum',asset,requestedAmount:amount,formattedRequestedAmount:units(amount,asset)+' '+asset,inputCount:1,ownershipVerified:false,eligibleForSigning:false};state.inputSelections.push({id,walletId:w.id,review,eligibleForSigning:false});return {saved:false,recoverable:true,id,review};},
+    listPrivateNoteSelections:()=>state.inputSelections.filter(r=>r.walletId===requireCurrent().id),
+    exportSavedPrivateNoteSelection:id=>{if(!state.inputSelections.some(r=>r.id===id&&r.walletId===requireCurrent().id))throw Error('Original selection missing');return {saved:false,id,original:true};},
+    cancelPrivateNoteSelection:()=>({cancelled:true}),
+    importPrivateNoteSelection:()=>{const w=requireCurrent();if(state.offline)throw Error('Online selection import required');const id='0x'+'9'.repeat(64),review={chain:'ethereum',asset:'ETH',requestedAmount:'100',formattedRequestedAmount:'0.0000000000000001 ETH',inputCount:1,ownershipVerified:false,eligibleForSigning:false};if(!state.inputSelections.some(r=>r.id===id&&r.walletId===w.id))state.inputSelections.push({id,walletId:w.id,review,eligibleForSigning:false});return {imported:true,untrusted:true,id,review};},
+    createPrivateView:draft=>{if(!options.privateViews||state.offline)throw Error('Viewing fixture unavailable');const w=requireCurrent(),id='0x'+(++state.counter).toString(16).padStart(64,'0'),review={chain:draft.context.chain,asset:draft.context.asset,proofAction:draft.context.action,inputNotes:String(draft.selectionId?1:draft.context.inputNotes.length),amount:draft.context.amount,fingerprint:id,transportPublicKey:'SYNTHETIC-PUBLIC-TRANSPORT-KEY',authority:'Sensitive read access only. Separate proof and chain approvals required.'},row={id,walletId:w.id,createdAt:now(),expiresAt:new Date(Date.now()+300000).toISOString(),review,state:'requested',hasResponse:false,hasPreparedJob:false};state.views.push(row);return {id,saved:false,recoverable:true,review};},
     listPrivateViews:()=>state.views.filter(row=>row.walletId===requireCurrent().id),
     observePrivateViewInputs:id=>{const row=state.views.find(r=>r.id===id&&r.walletId===requireCurrent().id);if(!row?.hasResponse||state.offline)throw Error('Matching online viewing request required');const observation={viewId:id,walletId:row.walletId,chain:row.review.chain,asset:row.review.asset,inputCount:1,observedAt:now(),state:'recent-input-observation',eligibleForSigning:false};state.inputObservations.push(observation);return {observed:true,...observation};},
     listPrivateInputObservations:()=>state.inputObservations.filter(r=>r.walletId===requireCurrent().id),
@@ -128,7 +133,7 @@ function installFixture(options) {
   };
   const api = {};
   for(const [name,handler] of Object.entries(methods))api[name]=async(...args)=>{
-    state.calls.push({method:name,args:args.map((v,i)=>(name==='generateProductProof'&&i===1)||['createVault','verifyBackup','sign','authorizeProductProof','authorizePrivateView','inspectNoteHistory'].includes(name)&&(!['sign','authorizeProductProof'].includes(name)||i===2)?'[redacted fixture secret]':clone(v))});
+    state.calls.push({method:name,args:args.map((v,i)=>(name==='generateProductProof'&&i===1)||(name==='exportPrivateNoteSelection'&&i===3)||['createVault','verifyBackup','sign','authorizeProductProof','authorizePrivateView','inspectNoteHistory'].includes(name)&&(!['sign','authorizeProductProof'].includes(name)||i===2)?'[redacted fixture secret]':clone(v))});
     const scripted=state.queues[name]?.shift();
     try {
       if(scripted?.delay)await new Promise(r=>setTimeout(r,scripted.delay));

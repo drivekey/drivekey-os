@@ -34,7 +34,14 @@ function installNoteDiscovery(c){
    else rows.push({id:job.fingerprint,chain:job.manifest.chain,ownedNoteIdentities:0,duplicateLeafIdentities:0,pendingAmounts:[],state:'inspection-incomplete',completedPages,totalPages:job.manifest.pageHashes.length,requiresOriginalHistory:true,spendabilityVerified:false,eligibleForSigning:false});
   }current(s);return rows;
  });
- return {clear};
+ // Privileged native repository boundary only; never registered with IPC.
+ async function readCandidates(id){
+  c.policy.assertPrivateView();if(!c.isOffline())throw Error('Read inspected note candidates on the offline Companion.');if(typeof id!=='string'||!/^0x[0-9a-f]{64}$/.test(id))throw Error('Choose an original private discovery.');const s=scope();await c.ready();current(s);
+  const original=await c.jobStore.load(s.wallet.deviceId,id.slice(2));current(s);if(!original)throw Error('The original private discovery job is missing. Preserve every original page.');const manifest=validatePublicNoteSnapshot(original.request?.manifest),job=checkedJob(original,s,manifest),saved=await c.resultStore.load(s.wallet.deviceId,id.slice(2));current(s);if(!saved)throw Error('Finish the original offline inspection before selecting notes.');const pages=[],responses=[];
+  for(let i=0;i<manifest.pageHashes.length;i++){const request=pageRequest(job,i),record=await c.pageStore.load(s.wallet.deviceId,request.fingerprint.slice(2)),page=await c.publicPages.get(manifest,i);current(s);if(!record||!page||!isDeepStrictEqual(record.request,request))throw Error('Original private inspection pages or public witnesses are missing. Preserve this profile.');pages.push(page);responses.push(validateOwnedNoteCandidates(s.wallet,manifest,page,withoutStoreIdentity(record.response)));}
+  if(!isDeepStrictEqual(saved.request,job)||!isDeepStrictEqual(saved.response,summary(job,responses)))throw Error('Original private discovery completion differs. Preserve every record.');current(s);return {wallet:structuredClone(s.wallet),manifest,pages,responses,jobFingerprint:job.fingerprint};
+ }
+ return {clear,readCandidates};
 }
 // SignatureStore binds every internal result to a request/fingerprint. The
 // private inspection wire itself carries no transferable wallet approval.
