@@ -29,7 +29,10 @@ function assertFixtureChannel(channel,metadata){if(!CHANNELS.has(channel)&&!(sco
 function assertFixtureRequest(request,metadata){
  if(!scoped(metadata)){if(request?.version!==8||request.action!=='payment'||request.chain!=='solana'||request.network!=='solana'||!['SOL','USDC'].includes(request.asset))throw Error(NOTICE);return;}
  const chains={8:null,9:'ethereum',10:'ethereum',11:'solana',12:'ethereum',14:'solana',16:'solana',18:'ethereum',21:'solana',22:'ethereum',23:'solana',24:'ethereum',25:'solana',26:'ethereum',29:null};
- if(!Object.hasOwn(chains,request?.version)||!['ethereum','solana'].includes(request.chain)||request.network!==request.chain||chains[request.version]&&chains[request.version]!==request.chain)throw Error(NOTICE);
+ // V29 is a strict product envelope: its network belongs to the enclosed
+ // transaction. The original dispatcher still verifies the complete envelope.
+ const transaction=request?.version===29?request.chainRequest:request;
+ if(!Object.hasOwn(chains,request?.version)||!['ethereum','solana'].includes(request.chain)||transaction?.chain!==request.chain||transaction.network!==request.chain||chains[request.version]&&chains[request.version]!==request.chain)throw Error(NOTICE);
  if(request.version===8&&(request.action!=='payment'||!['USDC',request.chain==='ethereum'?'ETH':'SOL'].includes(request.asset)))throw Error(NOTICE);
 }
 function fixturePolicy(base,metadata){

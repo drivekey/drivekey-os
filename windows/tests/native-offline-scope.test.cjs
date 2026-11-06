@@ -27,8 +27,16 @@ test('scoped native channels admit offline proof handoffs while refusing every n
 });
 test('scoped fixture review retains exact chain families and canonical payment assets without enabling normal releases',()=>{
  const p=metadata(),normal=require('../tools/store-payment-policy.cjs');
- for(const [version,chain]of [[8,'ethereum'],[8,'solana'],[9,'ethereum'],[11,'solana'],[12,'ethereum'],[22,'ethereum'],[23,'solana'],[29,'ethereum'],[29,'solana']]){
+ for(const [version,chain]of [[8,'ethereum'],[8,'solana'],[9,'ethereum'],[11,'solana'],[12,'ethereum'],[22,'ethereum'],[23,'solana']]){
   const request={version,chain,network:chain,action:version===8?'payment':'swap',asset:chain==='ethereum'?'ETH':'SOL'};fixtureApi.assertFixtureRequest(request,p);if(version!==8)assert.throws(()=>normal.assertIntent(request));assert.throws(()=>fixtureApi.assertFixtureRequest({...request,network:'devnet'},p));
+ }
+ // Actual v29 envelopes have no outer network field. Native import previously
+ // rejected the valid chain even after genuine proof generation and export.
+ for(const chain of ['ethereum','solana']){
+  const request={version:29,kind:'drivekey-hinkal-product-chain-request',chain,chainRequest:{chain,network:chain}};
+  fixtureApi.assertFixtureRequest(request,p);assert.throws(()=>normal.assertIntent(request));
+  for(const chainRequest of [undefined,{chain,network:'devnet'},{chain:chain==='solana'?'ethereum':'solana',network:chain}])assert.throws(()=>fixtureApi.assertFixtureRequest({...request,chainRequest},p));
+  assert.throws(()=>fixtureApi.assertFixtureRequest({...request,chainRequest:undefined,network:chain},p));
  }
  for(const request of [{version:8,chain:'ethereum',network:'ethereum',action:'payment',asset:'SOL'},{version:8,chain:'solana',network:'solana',action:'payment',asset:'fake'},{version:9,chain:'solana',network:'solana'},{version:999,chain:'ethereum',network:'ethereum'}])assert.throws(()=>fixtureApi.assertFixtureRequest(request,p));
 });
