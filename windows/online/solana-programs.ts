@@ -7,6 +7,13 @@ const {programs:pins}=require('../vendor/jupiter/program-pins.json');
 // on every upgrade; header/size/pointer changes therefore invalidate the proof.
 const verifiedExecutableCache=new Map<string,{header:string;slot:number;verifiedAt:number}>();
 const publicReadSchedule=new Map<string,number>();
+// Bind program bytes to the bank used by a separate state/receipt observation.
+// A stale account response must not reuse a once-valid executable cache entry.
+export async function verifySolanaProgramsAtSlot(a:OnlineAdapter,addresses:string[],additionalPins:any[],minimumSlot:number){
+ if(!Number.isSafeInteger(minimumSlot)||minimumSlot<1)throw Error('Invalid minimum executable observation slot.');let last=minimumSlot;const guarded=Object.create(a) as OnlineAdapter;
+ guarded.rpc=async(chain,method,params)=>{if(chain!=='solana'||!['getMultipleAccounts','getAccountInfo'].includes(method)||!Array.isArray(params)||params.length!==2||!params[1]||typeof params[1]!=='object')throw Error('Executable slot verification permits bounded public account reads only.');const prior=params[1].minContextSlot;if(prior!==undefined&&(!Number.isSafeInteger(prior)||prior<0))throw Error('Invalid executable account context.');const minimum=Math.max(last,prior??0),result=await a.rpc(chain,method,[params[0],{...params[1],minContextSlot:minimum}]);if(!Number.isSafeInteger(result?.context?.slot)||result.context.slot<minimum)throw Error('Solana executable context predates the required observation.');last=result.context.slot;return result;};
+ return verifySolanaPrograms(guarded,addresses,additionalPins);
+}
 // Full executable bytes are hashed in bounded chunks, with the deployment header
 // checked again afterwards to detect an upgrade during the read.
 export async function verifySolanaPrograms(a:OnlineAdapter,addresses:string[],additionalPins:any[]=[]){
