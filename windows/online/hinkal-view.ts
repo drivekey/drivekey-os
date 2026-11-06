@@ -1,5 +1,6 @@
 // Network process: holds a scoped view capability and transport decryption key,
 // never the wallet vault, login signature, spending key or circuit signature.
+export {observeOwnedViewInputs} from './hinkal-owned-inputs';
 import {z} from 'zod';
 import {randomUUID} from 'node:crypto';
 import {canonical} from '../engine/core/payment-intent';
