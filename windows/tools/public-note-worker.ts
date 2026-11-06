@@ -12,7 +12,7 @@ process.stdin.on('end',async()=>{
  try{
   const raw=Buffer.concat(chunks);let input;
   try{input=require('./strict-json.cjs').parseStrictJSON(new TextDecoder('utf-8',{fatal:true}).decode(raw),32768);}finally{raw.fill(0);for(const b of chunks)b.fill(0);}
-  policy.assertPrivateView();
+  policy.assertPublicHistory();
   const chain=z.enum(['ethereum','solana']),transactionIds=z.array(z.string().max(88)).min(1).max(4),p=z.union([
    z.object({chain}).strict(),
    z.object({chain,action:z.literal('observe-history-references'),references:z.array(z.object({transactionId:z.string().max(88),position:z.number().int().nonnegative().safe()}).strict()).min(1).max(4)}).strict(),

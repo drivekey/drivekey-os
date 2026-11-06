@@ -39,6 +39,8 @@ const {isDeepStrictEqual} = require('node:util');
 const {RequestExchange} = require('./tools/request-exchange.cjs');
 const requestExchange = new RequestExchange();
 const ROOT = __dirname, ENTRY = pathToFileURL(path.join(ROOT,'ui','index.html')).href;
+// This internal build has a dedicated profile and cannot load or sign wallets.
+if(paymentPolicy.publicHistoryQualification)require('./tools/public-history-qualification.cjs').configureQualificationProfile(app,paymentPolicy.publicHistoryQualification,process.env.DRIVEKEY_OFFLINE==='1'||require('./package.json').drivekeyOffline===true);
 let win, encryptedVault, vaultFile, publicWallet, backupVerified=false, pendingReview, busy=false, activeWalletId=null, productProofUi, productAdmissionUi, signingRecoveryUi, requestLifecycleUi, privateViewUi, providerFinalizerUi, noteDiscoveryUi, publicHistoryUi;
 const activeWorkers=new Set();
 const publicReadControllers = new Set();
@@ -132,15 +134,17 @@ async function saveJSON(title,name,data,{beforeWrite}={}) {
 }
 function requireVault() {if(!encryptedVault)throw Error('Create or open an encrypted vault first.');}
 function requirePublic(){if(!publicWallet)throw Error('Select a software or watch-only wallet first.');}
+const concurrentHistoryChannels=new Set(['cancel-public-history','public-history-progress','cancel-note-discovery','note-discovery-progress']);
 function register(channel,handler) {
   ipcMain.handle(channel,async(event,payload)=>{
     if(event.sender!==win.webContents||event.senderFrame!==win.webContents.mainFrame||event.senderFrame.url!==ENTRY)throw Error('Invalid sender.');
-    if(busy)return {ok:false,error:'Finish the current operation first.'};
-    busy=true;
-    try{paymentPolicy.assertIpcChannel(channel);const result=await handler(payload);if(result?.token&&result?.review&&pendingReview?.token===result.token)return {ok:true,result:{...result,requestCreatedAt:pendingReview.request.createdAt}};return {ok:true,result};}catch(error){return {ok:false,error:(error instanceof Error?error.message:'Operation failed.').slice(0,400)};}finally{busy=false;}
+    const serial=!concurrentHistoryChannels.has(channel);
+    if(busy&&serial)return {ok:false,error:'Finish the current operation first.'};
+    if(serial)busy=true;
+    try{paymentPolicy.assertIpcChannel(channel);const result=await handler(payload);if(result?.token&&result?.review&&pendingReview?.token===result.token)return {ok:true,result:{...result,requestCreatedAt:pendingReview.request.createdAt}};return {ok:true,result};}catch(error){return {ok:false,error:(error instanceof Error?error.message:'Operation failed.').slice(0,400)};}finally{if(serial)busy=false;}
   });
 }
-function registerPublicRead(channel,handler){let running=false;ipcMain.handle(channel,async(event,payload)=>{if(event.sender!==win.webContents||event.senderFrame!==win.webContents.mainFrame||event.senderFrame.url!==ENTRY)throw Error('Invalid sender.');if(busy||running)return {ok:false,error:'Finish the current operation first.'};running=true;try{return {ok:true,result:await handler(payload)};}catch(error){return {ok:false,error:(error instanceof Error?error.message:'Public read unavailable.').slice(0,400)};}finally{running=false;}});}
+function registerPublicRead(channel,handler){let running=false;ipcMain.handle(channel,async(event,payload)=>{if(event.sender!==win.webContents||event.senderFrame!==win.webContents.mainFrame||event.senderFrame.url!==ENTRY)throw Error('Invalid sender.');if(busy||running)return {ok:false,error:'Finish the current operation first.'};running=true;try{paymentPolicy.assertIpcChannel(channel);return {ok:true,result:await handler(payload)};}catch(error){return {ok:false,error:(error instanceof Error?error.message:'Public read unavailable.').slice(0,400)};}finally{running=false;}});}
 const accountBalanceReader=require('./account-balances.cjs').createAccountBalanceReader({
  getWallets:()=>walletList().wallets,
  online:(input,signal)=>online(input,{signal}),
@@ -169,7 +173,7 @@ register('load-vault',async()=>{
   if(previousFile!==null&&path.normalize(previousFile).toLowerCase()!==path.normalize(record.file).toLowerCase())verifiedWallets.delete(record.id);
   return selectWallet(record,picked.data,picked.file,inspected.public);
 });
-register('list-wallets',async()=>{try{await walletStore.init();await watchStore.init();}catch{}return walletList();});
+register('list-wallets',async()=>{if(paymentPolicy.publicHistoryQualification)return {wallets:[],activeId:null,recoveryRequired:false};try{await walletStore.init();await watchStore.init();}catch{}return walletList();});
 register('import-watch-wallet',async()=>{
  if(OFFLINE)throw Error('The offline companion opens encrypted vaults. Import the public identity on the online computer.');const picked=await openJSON('Import public wallet exported by offline companion');if(!picked)return {cancelled:true};
  const identity=multiPublicSchema.parse(picked.data);await watchStore.init();const record=await watchStore.upsert(picked.file,identity,identity);selectWallet(record,undefined,picked.file,identity);return selectedWallet();
@@ -257,7 +261,7 @@ registerPublicRead('market-snapshot',p=>marketService.snapshot(p));
 const interfaceZoomLevels=Object.freeze([0.5,0.67,0.8,1,1.25,1.5,1.75,2]);
 register('interface-settings',async()=>({zoom:win.webContents.getZoomFactor()}));
 register('set-interface-zoom',async p=>{if(!p||Object.keys(p).length!==1||typeof p.zoom!=='number'||!interfaceZoomLevels.includes(p.zoom))throw Error('Choose a supported interface zoom level.');win.webContents.setZoomFactor(p.zoom);return {zoom:win.webContents.getZoomFactor()};});
-register('application-mode',async()=>({offline:OFFLINE,version:require('./package.json').version,fundingReady:false,networks:['ethereum','solana','sepolia','devnet'],capabilities:{publicPayments:true,uniswapV3:false,lifiSwaps:false,relayBridge:false,preparedPrivateImport:false,preparedMayanImport:false,privateProofCreation:false,productProofAdmission:false,privateBalanceDiscovery:false,scopedPrivateView:false,savings:false}}));
+register('application-mode',async()=>({offline:OFFLINE,version:require('./package.json').version,fundingReady:false,publicHistoryQualification:!!paymentPolicy.publicHistoryQualification,networks:['ethereum','solana','sepolia','devnet'],capabilities:{publicPayments:!paymentPolicy.publicHistoryQualification,publicHistoryVerification:!OFFLINE&&!!paymentPolicy.publicHistoryQualification,uniswapV3:false,lifiSwaps:false,relayBridge:false,preparedPrivateImport:false,preparedMayanImport:false,privateProofCreation:false,productProofAdmission:false,privateBalanceDiscovery:false,scopedPrivateView:false,savings:false}}));
 register('payment-qr',async p=>{requirePublic();return scopedPaymentQR(publicWallet,p);});
 register('payment-balance',async p=>{requirePublic();if(!p||!['ethereum','sepolia','solana','devnet'].includes(p.chain)||!['ETH','SOL','USDC'].includes(p.asset)||Object.keys(p).some(k=>!['chain','asset'].includes(k)))throw Error('Invalid balance request.');const from=['ethereum','sepolia'].includes(p.chain)?publicWallet.evmAddress:publicWallet.solanaAddress;return online({action:'balance',chain:p.chain,asset:p.asset,from});});
 register('export-payment-receipt',async p=>{requirePublic();const r=await transactionStore.load(publicWallet.deviceId,p?.id);const receipt=createFinalReceipt(r);await verifyIntent(r.response,r.request,publicWallet,Date.now(),false);if(r.productProof!==undefined)await productAdmissionUi.verifyRecord(r,publicWallet,false);const f=await saveJSON('Save finalized payment receipt','drivekey-payment-receipt.json',receipt);return {saved:!!f};});
