@@ -1,6 +1,7 @@
 // Network process: holds a scoped view capability and transport decryption key,
 // never the wallet vault, login signature, spending key or circuit signature.
 export {observeOwnedViewInputs} from './hinkal-owned-inputs';
+export {preparePrivateSwapViewDraft} from './hinkal-swap-view-draft';
 import {z} from 'zod';
 import {randomUUID} from 'node:crypto';
 import {canonical} from '../engine/core/payment-intent';
@@ -11,10 +12,14 @@ import {hinkalSolanaProofFingerprint} from '../engine/core/hinkal-solana-proof-j
 import {createProductProof} from '../engine/core/hinkal-product-proof';
 import {prepareHinkalProof} from './hinkal-proof';
 import {prepareHinkalSolanaProof} from './hinkal-solana-proof';
-const schema=z.object({request:z.unknown(),response:z.unknown(),transportPrivateKey:z.string().length(64)}).strict();
+import {prepareScopedLocalSwap,type SwapViewDependencies} from './hinkal-swap-view';
+const schema=z.object({request:z.unknown(),response:z.unknown(),transportPrivateKey:z.string().length(64),witness:z.object({manifest:z.unknown(),pages:z.array(z.unknown()).min(1).max(2)}).strict().optional()}).strict();
 const prepare=(profile:number,input:any)=>profile===13?prepareHinkalProof(input):prepareHinkalSolanaProof(input);
-export async function prepareScopedViewJob(input:unknown,wallet:unknown,now=Date.now(),provider=prepare){
+export async function prepareScopedViewJob(input:unknown,wallet:unknown,now=Date.now(),provider=prepare,swapDependencies:SwapViewDependencies={}){
+ if(!input||Buffer.byteLength(JSON.stringify(input))>1024*1024)throw Error('Scoped private preparation exceeds its bounded format.');
  const p=schema.parse(JSON.parse(JSON.stringify(input))),r=validateViewRequest(p.request,now);assertViewWallet(r,wallet);const response=verifyViewResponse(r,p.response,now);
+ if(r.profile===19||r.profile===27)return prepareScopedLocalSwap(p,wallet,now,swapDependencies);
+ if(p.witness!==undefined)throw Error('Unexpected public witnesses for this provider profile.');
  const started=performance.now(),clock=()=>now+Math.floor(performance.now()-started);let view:any;
  try{view=openPrivateView(r,response.sealed,p.transportPrivateKey);p.transportPrivateKey='';
   const key=view.nullifyingKey,decimal=BigInt(key).toString(),publicKey:[string,string]=view.spendingPublicKey;
