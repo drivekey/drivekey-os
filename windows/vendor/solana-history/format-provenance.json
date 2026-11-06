@@ -21,7 +21,8 @@
     "https://ipld.io/specs/transport/car/carv1/",
     "https://docs.old-faithful.net/references/of1-files",
     "https://www.rfc-editor.org/rfc/rfc8878.html",
-    "https://github.com/Cyan4973/xxHash/blob/dev/doc/xxhash_spec.md"
+    "https://github.com/Cyan4973/xxHash/blob/dev/doc/xxhash_spec.md",
+    "https://solana.com/docs/core/transactions"
   ],
   "scope": "Protocol formats and Apache-licensed compact-index reference. The default-AGPL research RPC/metadata conversion programs are not incorporated or shipped."
 }

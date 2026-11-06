@@ -4,7 +4,7 @@ import bs58 from 'bs58';
 import {ArchiveFrame,archiveCidBytes,archiveCidText,archiveVarint,assembleArchiveFrames,decodeArchiveBlock,decodeArchiveCbor,decodeArchiveEntry,decodeArchiveFrame,decodeArchiveTransaction,parseArchiveCarSection,splitArchiveCarSpan} from '../engine/core/solana-history-codec';
 import {ArchiveIndexKind,ArchiveRangeSource,archiveOffsetAndSize,openArchiveIndex} from '../engine/core/solana-history-index';
 import {decodeArchiveMetadata,decompressArchiveMetadata} from '../engine/core/solana-history-metadata';
-import {decodeSolanaNoteReceipt} from '../engine/core/hinkal-note-history';
+import {decodeSolanaNoteReceipt,verifySolanaHistoryTransaction} from '../engine/core/hinkal-note-history';
 const ORIGIN='https://files.old-faithful.net',PAGE=4096,MAX_SPAN=16*1024*1024,MAX_BYTES=24*1024*1024;
 export class SolanaArchiveSession {
  private requests=0;private reserved=0;private downloaded=0;
@@ -51,7 +51,7 @@ export async function solanaArchiveReceiptCandidate(signature:string,slot:number
  if(targetPosition<0||!tail)throw Error('Public archive transaction is absent from its claimed block.');
  const transaction=decodeArchiveTransaction(get(transactionCid).data);if(transaction.slot!==slot||transaction.position!==null&&transaction.position!==targetPosition)throw Error('Public archive transaction position differs.');
  const assemble=(frame:ArchiveFrame)=>{const additional=new Map<string,ArchiveFrame>(),pending=[...frame.next];while(pending.length){const link=pending.shift()!,id=archiveCidText(link.bytes);if(additional.has(id)||additional.size>=63)throw Error('Duplicate/excessive public archive frame links.');const decoded=decodeArchiveFrame(decodeArchiveCbor(get(link.bytes).data));additional.set(id,decoded);pending.push(...decoded.next);}return assembleArchiveFrames(frame,additional);};
- const wire=assemble(transaction.data),meta=decodeArchiveMetadata(decompressArchiveMetadata(assemble(transaction.metadata))),blockhash=bs58.encode(tail.hash),receipt={slot,blockTime:block.blockTime,meta,transaction:[wire.toString('base64'),'base64']},events=await decodeSolanaNoteReceipt(signature,receipt,{blockhash,blockTime:block.blockTime},true);
+ const wire=assemble(transaction.data),meta=decodeArchiveMetadata(decompressArchiveMetadata(assemble(transaction.metadata))),blockhash=bs58.encode(tail.hash),receipt={slot,blockTime:block.blockTime,meta,transaction:[wire.toString('base64'),'base64']},context=verifySolanaHistoryTransaction(signature,receipt,{blockhash,blockTime:block.blockTime}),events=context.failed?[]:await decodeSolanaNoteReceipt(signature,receipt,{blockhash,blockTime:block.blockTime},true);
  const witness={epoch,rootLocator:rootCid,transactionCid:archiveCidText(transactionCid),blockCid:archiveCidText(blockCid),slot,blockTime:block.blockTime,blockhash,parentSlot:block.parentSlot,transactionPosition:targetPosition,blockTransactions:count,entryCount:block.entries.length,nodeCount:nodes.size,spanBytes:end-start};
  return {chain:'solana' as const,signature,receipt,events,witness,witnessFingerprint:createHash('sha256').update(JSON.stringify(witness)).digest('hex'),...session.stats(),contentHashesVerified:true,signedTransactionVerified:true,archiveDagMembershipVerified:true,independentCanonicalBlockVerified:false,independentReceiptMetadataVerified:false,completeHistory:false,ciphertextHistoryVerified:false,spendabilityVerified:false,eligibleForSigning:false,blockchainTransactionSigned:false,submitted:false};
 }
