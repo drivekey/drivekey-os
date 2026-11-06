@@ -1,5 +1,5 @@
-const {prepare:preparePinnedGoonQuote,tokenAmount:parsePinnedGoonAccount}=require('./hinkal-solana-direct-quote.cjs');
-export {parsePinnedGoonAccount};
+const {prepare:preparePinnedGoonQuote,tokenAmount:parsePinnedGoonAccount,quoteReaderEndpoints}=require('./hinkal-solana-direct-quote.cjs');
+export {parsePinnedGoonAccount,quoteReaderEndpoints};
 import {verifySolanaPrograms} from './solana-programs';
 import {VersionedTransaction} from '@solana/web3.js';
 import {OnlineAdapter} from './adapter';
