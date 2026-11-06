@@ -38,5 +38,5 @@ const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 for(const [file,hash]of Object.entries(manifest.binaryHashes))assert.equal(sha(await fs.readFile(path.join(root,'dist',file))),hash);
 const report={checkedAt:new Date().toISOString(),scope:policy.scope,sourceFingerprint:after.fingerprint,buildPassed:true,typecheckPassed:true,generatedArtifactsRehashed:Object.keys(manifest.binaryHashes).length,...result,legacyRunnerExitCode:full.code,fullHistoricalLogSha256:sha(full.stdout+'\n'+full.stderr),qualificationIssued:false,fundedSigningQualified:false,installedPackageQualified:false,physicalIsolationVerified:false,submissionReady:false};
 await fs.writeFile(path.join(output,'STORE-PAYMENTS-CHECKS.json'),JSON.stringify(report,null,2)+'\n');
-console.log(JSON.stringify({paymentsOnlyPassed:report.paymentsOnlyPassed,fullHistoricalSuitePassed:report.fullHistoricalSuitePassed,...report.stats,deferredFailuresDisclosed:report.classifiedDeferred.length,qualificationIssued:false,submissionReady:false}));
-if(!report.paymentsOnlyPassed)process.exitCode=1;
+console.log(JSON.stringify({localChecksPassed:report.localChecksPassed,fullHistoricalSuitePassed:report.fullHistoricalSuitePassed,...report.stats,deferredFailuresDisclosed:report.classifiedDeferred.length,qualificationIssued:false,submissionReady:false}));
+if(!report.localChecksPassed||!report.fullHistoricalSuitePassed)process.exitCode=1;

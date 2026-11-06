@@ -25,6 +25,9 @@ function classifyStoreTests(tap,policy){
  const missingDeferred=policy.deferredPositiveCases.filter(item=>!rows.some(row=>row.name===item.name)).map(item=>item.name);
  const unexpectedlyEnabled=policy.deferredPositiveCases.filter(item=>passedNames.has(item.name)).map(item=>item.name);
  const paymentsOnlyPassed=stats.tests>=policy.minimumHistoricalTestCount&&stats.skipped===0&&stats.cancelled===0&&stats.todo===0&&unexpectedFailures.length===0&&missingRequired.length===0&&missingDeferred.length===0&&unexpectedlyEnabled.length===0&&classifiedDeferred.length===expected.size;
- return {paymentsOnlyPassed,fullHistoricalSuitePassed:stats.failures===0&&stats.skipped===0&&stats.cancelled===0&&stats.todo===0,stats,classifiedDeferred,unexpectedFailures,missingRequired,missingDeferred,unexpectedlyEnabled};
+ const fullHistoricalSuitePassed=stats.failures===0&&stats.skipped===0&&stats.cancelled===0&&stats.todo===0;
+ // Keep the historical field for old evidence readers. The current local gate
+ // requires a fully passing suite as well as every named required workflow.
+ return {paymentsOnlyPassed,localChecksPassed:paymentsOnlyPassed&&fullHistoricalSuitePassed,fullHistoricalSuitePassed,stats,classifiedDeferred,unexpectedFailures,missingRequired,missingDeferred,unexpectedlyEnabled};
 }
 module.exports={classifyStoreTests};

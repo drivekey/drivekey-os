@@ -339,8 +339,8 @@ async function ingestResponse(data,scope,expected) {
  const record=await transactionStore.load(scope.wallet.deviceId,data?.fingerprint);assertImportScope(scope);
  if(!record)throw Error('No matching prepared intent for this wallet.');if(record.state==='discarded')throw Error('This discarded local draft cannot accept another response. Preserve the original files.');
  if(record.productProof!==undefined)await productAdmissionUi.verifyRecord(record,scope.wallet,false);assertImportScope(scope);
- paymentPolicy.assertIntent(record.request);
  if(expected&&!isDeepStrictEqual(record.request,expected))throw Error('Response differs from the current reviewed request.');
+ paymentPolicy.assertIntent(record.request);
  const response=await verifyIntent(data,record.request,scope.wallet,Date.now(),Boolean(expected));
  const old=await signatureStore.load(scope.wallet.deviceId,record.request.fingerprint.slice(2));assertImportScope(scope);
  if(old&&old.response.rawSignedTransaction!==response.rawSignedTransaction)throw Error('A different response already exists for this intent.');

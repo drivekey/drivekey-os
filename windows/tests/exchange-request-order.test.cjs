@@ -21,6 +21,10 @@ const {SignatureStore} = localRequire('./signature-store.cjs');
 const {RequestExchange} = localRequire('./tools/request-exchange.cjs');
 const {installRouteUi} = localRequire('./ui-routes-main.cjs');
 
+const {createProfile,persist}=require('./helpers/unfunded-execution-profile.cjs');
+const {exactFixturePolicy}=require('./helpers/unfunded-execution-policy.cjs');
+const {createRecoveryStorage}=require('../tools/recovery-storage.cjs');
+const {sourceFingerprint}=require('../BUILD-MANIFEST.json');
 const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 
 // Exercise the exact main-process handlers with an in-process IPC registrar.
@@ -42,8 +46,9 @@ function installExchangeHandlers(fixture) {
   new Function(...Object.keys(bindings), main.slice(start, end))(...Object.values(bindings));
 }
 
-async function syntheticDeposit() {
+async function syntheticDeposit(profile) {
   const signer = Wallet.createRandom();
+  persist(profile,'fresh-key.dpapi',{privateKey:signer.privateKey});
   const wallet = {deviceId: randomUUID(), evmAddress: signer.address};
   const zero = '0x' + '0'.repeat(40);
   const amount = '10000000000000';
@@ -66,19 +71,23 @@ async function syntheticDeposit() {
     approvalSignature: await signer.signMessage(hinkalApproval(request)),
   };
   assert.deepEqual(verifyHinkalResponse(response, request, wallet), response);
+  persist(profile,'signed-fixture.dpapi',{wallet,request,response});
   return {wallet, request, response};
 }
 
 async function fixture(t) {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'drivekey-exchange-order-'));
-  t.after(() => fs.rmSync(directory, {recursive: true, force: true}));
-  const codec = {seal: value => Buffer.from(value), unseal: value => value.toString('utf8')};
-  const journal = new TransactionStore(path.join(directory, 'journal'), codec);
-  const signatures = new SignatureStore(path.join(directory, 'signatures'), codec);
-  const {wallet, request, response} = await syntheticDeposit();
-  const journalRecord = {version: 1, request, state: 'prepared'};
+  const profile=createProfile(),directory=profile.directory;
+  const storage=createRecoveryStorage(directory,{});await storage.ready();
+  const codec=storage.forJournal('transactions');
+  const journal = new TransactionStore(path.join(directory, 'transactions'), codec);
+  const signatures = new SignatureStore(path.join(directory, 'signatures'), storage.forJournal('signatures'));
+  const {wallet, request, response} = await syntheticDeposit(profile);
+  // Persist deliberately different property order, while keeping every term exact.
+  const journalRecord = {version: 1, request:Object.fromEntries(Object.entries(request).reverse()), state: 'prepared'};
   await journal.put(journalRecord);
-  assert.equal(JSON.stringify((await journal.load(wallet.deviceId, request.fingerprint)).request), JSON.stringify(request));
+  assert.deepEqual(journalRecord.request,request);
+  assert.notEqual(JSON.stringify(journalRecord.request),JSON.stringify(request));
+  assert.equal(JSON.stringify((await journal.load(wallet.deviceId, request.fingerprint)).request), JSON.stringify(journalRecord.request));
   const exchange = new RequestExchange();
   const selectedDirectory = path.join(directory, 'exchange');
   fs.mkdirSync(selectedDirectory);
@@ -89,13 +98,17 @@ async function fixture(t) {
   const register = (channel, handler) => {handlers[channel] = handler;};
   let pendingReview;
   installRouteUi({
+    policy:exactFixturePolicy(request,wallet,{sourceFingerprint}),
     register, transactionStore: journal, getPublic: () => wallet, getWindow: () => win,
     getVaultHash: () => null, clearPending: () => {pendingReview = undefined; exchange.clearBinding();},
     setPending: value => {pendingReview = value;}, validateIntent: validateHinkal,
     assertIntentWallet: assertHinkalWallet, reviewIntent: hinkalReview,
   });
   await handlers['review-saved-request']({id: request.fingerprint});
+  const attempts=new (require('../tools/signing-attempts.cjs').SigningAttempts)(directory,storage,{'transaction':signatures});
+  const requestLifecycleUi=require('../tools/request-lifecycle.cjs').installRequestLifecycle({register,store:journal,attempts,getPublic:()=>wallet,getWindow:()=>win,clearPending(){},review:hinkalReview});
   installExchangeHandlers({
+    paymentPolicy:exactFixturePolicy(request,wallet,{sourceFingerprint}),requestLifecycleUi,
     register, win, activeWalletId, pendingReview, publicWallet: wallet,
     transactionStore: journal, signatureStore: signatures, requestExchange: exchange,
   });
@@ -110,14 +123,14 @@ async function fixture(t) {
     assert.equal(result.requestDirectory, request.requestId);
     const exported = JSON.parse(fs.readFileSync(requestFile, 'utf8'));
     assert.deepEqual(exported, request);
-    assert.notEqual(JSON.stringify(exported), JSON.stringify(request));
+    assert.notEqual(JSON.stringify(exported), JSON.stringify(journalRecord.request));
     assert.equal(exported.fingerprint, request.fingerprint);
     fs.writeFileSync(responseFile, JSON.stringify(response), {flag: 'wx'});
     return exported;
   };
   return {
     exportRequest, importResponse, readJournal, readSignature, requestFile, responseFile,
-    request, response, journalRecord, journalFile: journal.file(wallet.deviceId, request.fingerprint),
+    request, response, journalRecord,writeJournal:async record=>fs.promises.writeFile(journal.file(wallet.deviceId,request.fingerprint),await codec.seal(JSON.stringify(record))), journalFile: journal.file(wallet.deviceId, request.fingerprint),
   };
 }
 
@@ -127,7 +140,7 @@ test('native exchange accepts an exact signed deposit when journal key order dif
   assert.deepEqual(await f.importResponse(), {imported: true, transactionHash: f.response.transactionHash});
   const record = await f.readJournal();
   assert.equal(record.state, 'signed');
-  assert.equal(JSON.stringify(record.request), JSON.stringify(f.request));
+  assert.equal(JSON.stringify(record.request), JSON.stringify(f.journalRecord.request));
   assert.deepEqual(record.response, f.response);
   assert.deepEqual((await f.readSignature()).response, f.response);
   assert.deepEqual(await f.importResponse(), {imported: true, transactionHash: f.response.transactionHash});
@@ -137,7 +150,7 @@ test('native exchange still rejects altered journal terms before persisting a si
   const f = await fixture(t);
   await f.exportRequest();
   const request = {...f.request, amount: '10000000000001'};
-  fs.writeFileSync(f.journalFile, JSON.stringify({...f.journalRecord, request}));
+  await f.writeJournal({...f.journalRecord, request});
   await assert.rejects(f.importResponse(), /^Error: Response differs from the current reviewed request\.$/);
   assert.equal((await f.readJournal()).state, 'prepared');
   assert.equal(await f.readSignature(), null);

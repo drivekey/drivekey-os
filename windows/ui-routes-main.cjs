@@ -39,6 +39,7 @@ async function readDocument(file){
   }finally{buffer?.fill(0);await handle.close();}
 }
 function installRouteUi(c){
+ const executionPolicy=c.policy??paymentPolicy;if(!executionPolicy||typeof executionPolicy.assertIntent!=='function'||typeof executionPolicy.allowedIntent!=='function')throw Error('A trusted route execution policy is required.');
   // c.getPublic must invoke requirePublic; c.getWindow returns current window.
   const scope=()=>{if(c.isOffline())throw Error('Preparation is unavailable in the offline companion.');return {wallet:structuredClone(c.getPublic()),window:c.getWindow()};};
   const assertScope=s=>{const current=c.getPublic();if(!s.window||s.window.isDestroyed?.()||c.getWindow()!==s.window||current.deviceId!==s.wallet.deviceId||current.evmAddress!==s.wallet.evmAddress||current.solanaAddress!==s.wallet.solanaAddress)throw Error('Preparation was canceled because the wallet or window changed.');};
@@ -72,7 +73,7 @@ function installRouteUi(c){
     const s={wallet:structuredClone(c.getPublic()),window:c.getWindow()};c.clearPending();
     const record=await c.transactionStore.load(s.wallet.deviceId,input.id);assertScope(s);
     if(!record||record.state!=='prepared'||record.response)throw Error('Only an unsigned prepared request can be reviewed again.');
-    paymentPolicy.assertIntent(record.request);
+    const authorityRequest=structuredClone(record.request),freeze=value=>{if(value&&typeof value==='object'){Object.values(value).forEach(freeze);Object.freeze(value);}};freeze(authorityRequest);if(await executionPolicy.assertIntent(authorityRequest)!==undefined)throw Error('Execution authority did not authorize the saved request.');assertScope(s);
     c.validateIntent(record.request);c.assertIntentWallet(record.request,s.wallet);
     if(c.verifyPreparedBinding)await c.verifyPreparedBinding(record,s.wallet,true);assertScope(s);
     const review=c.reviewIntent(record.request);assertScope(s);
@@ -93,7 +94,7 @@ function installRouteUi(c){
     const review=historicalReview(record.request,c.bridgeCodec);
     if(c.getPublic().deviceId!==wallet.deviceId)throw Error('Selected wallet changed.');
     const signingState=c.getSigningState?await c.getSigningState(record,wallet):null;
-    return {...transactionDetail(record,wallet,review),...(signingState?{state:signingState}:{}),paymentWritable:paymentPolicy.allowedIntent(record.request),canDiscard:c.canDiscard?await c.canDiscard(record,wallet):false,handoffState:record.handoff?.state||'legacy-unknown'};
+    return {...transactionDetail(record,wallet,review),...(signingState?{state:signingState}:{}),paymentWritable:executionPolicy.allowedIntent(record.request),canDiscard:c.canDiscard?await c.canDiscard(record,wallet):false,handoffState:record.handoff?.state||'legacy-unknown'};
   });
 }
 module.exports={installRouteUi,historicalReview,readDocument};

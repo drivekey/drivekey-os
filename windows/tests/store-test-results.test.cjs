@@ -12,6 +12,7 @@ test('Store reporting discloses deferred failures without declaring full-suite s
  const result=classifyStoreTests(fixture(),policy);
  assert.equal(result.paymentsOnlyPassed,true);assert.equal(result.fullHistoricalSuitePassed,false);
  assert.equal(result.stats.failures,1);assert.equal(result.classifiedDeferred.length,1);
+  assert.equal(result.localChecksPassed,false);
 });
 test('Store reporting cannot mask an active payment failure or an unexpected failure location',()=>{
  assert.equal(classifyStoreTests(fixture({extra:true}),policy).paymentsOnlyPassed,false);
@@ -25,4 +26,11 @@ test('Store reporting rejects skips, missing required checks and incomplete summ
  assert.equal(classifyStoreTests(fixture({skip:true}),policy).paymentsOnlyPassed,false);
  assert.equal(classifyStoreTests(fixture(),{...policy,requiredTests:['missing payment']}).paymentsOnlyPassed,false);
  assert.throws(()=>classifyStoreTests(fixture().replace('# tests 2','# tests 99'),policy),/Unparsed/);
+});
+test('full local reporting requires every former deferred case to pass and never masks a failed workflow',()=>{
+ const fullPolicy={...policy,deferredPositiveCases:[],allowedDeferredDenials:[],requiredTests:['required payment','deferred swap']};
+ const passed=classifyStoreTests(fixture({deferredPass:true}),fullPolicy);
+ assert.equal(passed.localChecksPassed,true);assert.equal(passed.fullHistoricalSuitePassed,true);assert.deepEqual(passed.classifiedDeferred,[]);
+ const failed=classifyStoreTests(fixture(),fullPolicy);assert.equal(failed.localChecksPassed,false);assert.deepEqual(failed.unexpectedFailures,['deferred swap']);assert.deepEqual(failed.missingRequired,['deferred swap']);
+ assert.equal(classifyStoreTests(fixture({deferredPass:true,skip:true}),fullPolicy).localChecksPassed,false);
 });

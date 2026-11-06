@@ -1,143 +1,45 @@
 {
   "version": 1,
-  "scope": "Local payments-only engineering; no release or signing qualification",
-  "minimumHistoricalTestCount": 494,
+  "scope": "Complete local engineering suite with exact fresh-unfunded fixture authority; no mainnet, native installed-release, physical signing or release qualification",
+  "minimumHistoricalTestCount": 1012,
   "requiredTests": [
     "the Store worker signs exact ETH, SOL and USDC payments on the supported chains with disposable local keys",
     "deferred prepare, sign and broadcast paths are closed while reconciliation remains available",
     "another intent version keeps the separate preflight before durable submission",
     "market attribution opens only the pinned provider URL and preserves deferred-route denial",
-    "failed external opening does not report a successful market-source handoff"
+    "failed external opening does not report a successful market-source handoff",
+    "native exchange accepts an exact signed deposit when journal key order differs",
+    "native exchange still rejects altered journal terms before persisting a signature",
+    "native exchange still rejects a modified export or invalid signed response",
+    "Hinkal exact approval and zero revocation use the real offline worker and recover without network access",
+    "V14 native cancel does not start a worker or write a journal transition",
+    "V14 native consent persists submitting before one exact broadcast worker and its full preflight",
+    "V14 journal failure prevents any network worker or send",
+    "V14 simulation refusal keeps the saved hash uncertain without an automatic retry",
+    "V14 expired network blockhash keeps the saved hash uncertain without an automatic retry",
+    "V14 inconsistent canonical block height keeps the saved hash uncertain without an automatic retry",
+    "V14 wrong executable loader keeps the saved hash uncertain without an automatic retry",
+    "V14 null executable identity keeps the saved hash uncertain without an automatic retry",
+    "V14 missing executable flag keeps the saved hash uncertain without an automatic retry",
+    "V14 non-executable pinned identity keeps the saved hash uncertain without an automatic retry",
+    "V14 native-loader pinned identity keeps the saved hash uncertain without an automatic retry",
+    "V14 corrupted deployed executable bytes keeps the saved hash uncertain without an automatic retry",
+    "V14 mismatched RPC acknowledgement keeps the saved hash uncertain without an automatic retry",
+    "application worker reviews, signs, verifies and recovers both LI.FI directions and exact approvals offline",
+    "LI.FI rejects wrong chain, token, stale clock, wallet switching, signature replay and noncanonical payloads",
+    "Scoped unfunded compiled worker signs and recovers the exact bounded Ethereum bridge and allowance intents",
+    "real offline application worker signs and recovers both versioned Solana LI.FI directions with scoped approval",
+    "Solana LI.FI settlement independently reconciles exact input, output, lookup addresses, fees and gross temporary ATA rent",
+    "Scoped unfunded compiled worker independently derives the auxiliary authority and verifies persisted bridge responses after restart",
+    "same application worker signs and recovers ETH/USDC swaps, bounded approval and revocation",
+    "wallet switching, altered signature context and stale signing are refused",
+    "normal compiled CLI rejects every unqualified transaction version and JSON policy injection",
+    "unfunded exact authority rejects changed terms, wrong wallet/action, expiry, reuse and all private capabilities",
+    "compiled dispatcher rejects malformed policies and explicit false, true or object authorization results",
+    "compiled dispatcher snapshots the complete job before asynchronous authorization and freezes the policy scope",
+    "the fixture worker refuses vaults not freshly enrolled in this harness",
+    "full local reporting requires every former deferred case to pass and never masks a failed workflow"
   ],
-  "deferredPositiveCases": [
-    {
-      "name": "native exchange accepts an exact signed deposit when journal key order differs",
-      "file": "tests/exchange-request-order.test.cjs",
-      "reason": "Positive transaction expectations for workflows excluded by the payments-only Store policy. Historical reads and recovery remain required."
-    },
-    {
-      "name": "native exchange still rejects altered journal terms before persisting a signature",
-      "file": "tests/exchange-request-order.test.cjs",
-      "reason": "Positive transaction expectations for workflows excluded by the payments-only Store policy. Historical reads and recovery remain required."
-    },
-    {
-      "name": "native exchange still rejects a modified export or invalid signed response",
-      "file": "tests/exchange-request-order.test.cjs",
-      "reason": "Positive transaction expectations for workflows excluded by the payments-only Store policy. Historical reads and recovery remain required."
-    },
-    {
-      "name": "Hinkal exact approval and zero revocation use the real offline worker and recover without network access",
-      "file": "tests/hinkal-permissions.test.cjs",
-      "reason": "Positive transaction expectations for workflows excluded by the payments-only Store policy. Historical reads and recovery remain required."
-    },
-    {
-      "name": "V14 native cancel does not start a worker or write a journal transition",
-      "file": "tests/hinkal-solana-submit.test.cjs",
-      "reason": "Positive transaction expectations for workflows excluded by the payments-only Store policy. Historical reads and recovery remain required."
-    },
-    {
-      "name": "V14 native consent persists submitting before one exact broadcast worker and its full preflight",
-      "file": "tests/hinkal-solana-submit.test.cjs",
-      "reason": "Positive transaction expectations for workflows excluded by the payments-only Store policy. Historical reads and recovery remain required."
-    },
-    {
-      "name": "V14 journal failure prevents any network worker or send",
-      "file": "tests/hinkal-solana-submit.test.cjs",
-      "reason": "Positive transaction expectations for workflows excluded by the payments-only Store policy. Historical reads and recovery remain required."
-    },
-    {
-      "name": "V14 simulation refusal keeps the saved hash uncertain without an automatic retry",
-      "file": "tests/hinkal-solana-submit.test.cjs",
-      "reason": "Positive transaction expectations for workflows excluded by the payments-only Store policy. Historical reads and recovery remain required."
-    },
-    {
-      "name": "V14 expired network blockhash keeps the saved hash uncertain without an automatic retry",
-      "file": "tests/hinkal-solana-submit.test.cjs",
-      "reason": "Positive transaction expectations for workflows excluded by the payments-only Store policy. Historical reads and recovery remain required."
-    },
-    {
-      "name": "V14 inconsistent canonical block height keeps the saved hash uncertain without an automatic retry",
-      "file": "tests/hinkal-solana-submit.test.cjs",
-      "reason": "Positive transaction expectations for workflows excluded by the payments-only Store policy. Historical reads and recovery remain required."
-    },
-    {
-      "name": "V14 wrong executable loader keeps the saved hash uncertain without an automatic retry",
-      "file": "tests/hinkal-solana-submit.test.cjs",
-      "reason": "Positive transaction expectations for workflows excluded by the payments-only Store policy. Historical reads and recovery remain required."
-    },
-    {
-      "name": "V14 null executable identity keeps the saved hash uncertain without an automatic retry",
-      "file": "tests/hinkal-solana-submit.test.cjs",
-      "reason": "Positive transaction expectations for workflows excluded by the payments-only Store policy. Historical reads and recovery remain required."
-    },
-    {
-      "name": "V14 missing executable flag keeps the saved hash uncertain without an automatic retry",
-      "file": "tests/hinkal-solana-submit.test.cjs",
-      "reason": "Positive transaction expectations for workflows excluded by the payments-only Store policy. Historical reads and recovery remain required."
-    },
-    {
-      "name": "V14 non-executable pinned identity keeps the saved hash uncertain without an automatic retry",
-      "file": "tests/hinkal-solana-submit.test.cjs",
-      "reason": "Positive transaction expectations for workflows excluded by the payments-only Store policy. Historical reads and recovery remain required."
-    },
-    {
-      "name": "V14 native-loader pinned identity keeps the saved hash uncertain without an automatic retry",
-      "file": "tests/hinkal-solana-submit.test.cjs",
-      "reason": "Positive transaction expectations for workflows excluded by the payments-only Store policy. Historical reads and recovery remain required."
-    },
-    {
-      "name": "V14 corrupted deployed executable bytes keeps the saved hash uncertain without an automatic retry",
-      "file": "tests/hinkal-solana-submit.test.cjs",
-      "reason": "Positive transaction expectations for workflows excluded by the payments-only Store policy. Historical reads and recovery remain required."
-    },
-    {
-      "name": "V14 mismatched RPC acknowledgement keeps the saved hash uncertain without an automatic retry",
-      "file": "tests/hinkal-solana-submit.test.cjs",
-      "reason": "Positive transaction expectations for workflows excluded by the payments-only Store policy. Historical reads and recovery remain required."
-    },
-    {
-      "name": "application worker reviews, signs, verifies and recovers both LI.FI directions and exact approvals offline",
-      "file": "tests/lifi-evm-intent.test.cjs",
-      "reason": "Positive transaction expectations for workflows excluded by the payments-only Store policy. Historical reads and recovery remain required."
-    },
-    {
-      "name": "LI.FI rejects wrong chain, token, stale clock, wallet switching, signature replay and noncanonical payloads",
-      "file": "tests/lifi-evm-intent.test.cjs",
-      "reason": "Positive transaction expectations for workflows excluded by the payments-only Store policy. Historical reads and recovery remain required."
-    },
-    {
-      "name": "Normal isolated worker signs and recovers the exact bounded Ethereum bridge and allowance intents",
-      "file": "tests/lifi-mayan-evm.test.cjs",
-      "reason": "Positive transaction expectations for workflows excluded by the payments-only Store policy. Historical reads and recovery remain required."
-    },
-    {
-      "name": "real offline application worker signs and recovers both versioned Solana LI.FI directions with scoped approval",
-      "file": "tests/lifi-solana-intent.test.cjs",
-      "reason": "Positive transaction expectations for workflows excluded by the payments-only Store policy. Historical reads and recovery remain required."
-    },
-    {
-      "name": "Solana LI.FI settlement independently reconciles exact input, output, lookup addresses, fees and gross temporary ATA rent",
-      "file": "tests/lifi-solana-intent.test.cjs",
-      "reason": "Positive transaction expectations for workflows excluded by the payments-only Store policy. Historical reads and recovery remain required."
-    },
-    {
-      "name": "Normal offline worker independently derives the auxiliary authority and verifies persisted bridge responses after restart",
-      "file": "tests/mayan-solana.test.cjs",
-      "reason": "Positive transaction expectations for workflows excluded by the payments-only Store policy. Historical reads and recovery remain required."
-    },
-    {
-      "name": "same application worker signs and recovers ETH/USDC swaps, bounded approval and revocation",
-      "file": "tests/uniswap-intent.test.cjs",
-      "reason": "Positive transaction expectations for workflows excluded by the payments-only Store policy. Historical reads and recovery remain required."
-    },
-    {
-      "name": "wallet switching, altered signature context and stale signing are refused",
-      "file": "tests/uniswap-intent.test.cjs",
-      "reason": "Positive transaction expectations for workflows excluded by the payments-only Store policy. Historical reads and recovery remain required."
-    }
-  ],
-  "allowedDeferredDenials": [
-    "This Windows release supports direct ETH, SOL and USDC payments.",
-    "Local signer rejected the operation. Check the passphrase, vault and reviewed request."
-  ]
+  "deferredPositiveCases": [],
+  "allowedDeferredDenials": []
 }

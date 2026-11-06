@@ -40,11 +40,16 @@ const programs = pins.map(pin => {
   return {pin, bytes, pointer};
 });
 assert.equal(offset, programBytes.length);
+const {createProfile,persist}=require('./helpers/unfunded-execution-profile.cjs');
+const {exactFixturePolicy}=require('./helpers/unfunded-execution-policy.cjs');
+const {createRecoveryStorage}=require('../tools/recovery-storage.cjs');
+const {sourceFingerprint}=require('../BUILD-MANIFEST.json');
 let nextFixturePort = 8899;
 
-function solanaRequest({expired = false, badSignature = false} = {}) {
+function solanaRequest(profile,{expired = false, badSignature = false} = {}) {
   const key = Keypair.generate();
   const secret = key.secretKey;
+  persist(profile,'fresh-key.dpapi',{solanaSecret:Array.from(secret)});
   try {
     const now = Date.now(), created = expired ? now - 300000 : now;
     const original = VersionedTransaction.deserialize(Buffer.from(plan.unsignedTransaction, 'base64'));
@@ -67,12 +72,14 @@ function solanaRequest({expired = false, badSignature = false} = {}) {
       transactionHash: bs58.encode(tx.signatures[0]), approvalSignature: bs58.encode(nacl.sign.detached(hinkalSolanaApproval(request), secret))};
     verifyHinkalSolanaResponse(response, request, wallet, Date.now(), false);
     if (badSignature) response.approvalSignature = bs58.encode(Buffer.alloc(64, 1));
-    return {wallet, request, response};
+    persist(profile,'signed-fixture.dpapi',{wallet,request,response});
+  return {wallet, request, response};
   } finally {secret.fill(0);}
 }
 
-async function paymentRequest() {
+async function paymentRequest(profile) {
   const key = Wallet.createRandom(), now = Date.now();
+  persist(profile,'fresh-key.dpapi',{privateKey:key.privateKey});
   const wallet = {deviceId: randomUUID(), evmAddress: key.address};
   const recipient = '0x' + '1'.repeat(40);
   const request = {version: 8, action: 'payment', chain: 'ethereum', network: 'ethereum', requestId: randomUUID(),
@@ -86,6 +93,7 @@ async function paymentRequest() {
   const response = {version: 8, deviceId: wallet.deviceId, requestId: request.requestId, fingerprint: request.fingerprint,
     signedAt: new Date(now).toISOString(), rawSignedTransaction: raw, transactionHash: Transaction.from(raw).hash,
     approvalSignature: await key.signMessage(paymentApproval(request))};
+  persist(profile,'signed-fixture.dpapi',{wallet,request,response});
   return {wallet, request, response};
 }
 
@@ -177,7 +185,7 @@ function rpcFixture(request, response, control, checkSend = async () => {}) {
 
 function installSubmit(bindings) {
   // The extracted native handler uses the same policy dependency as the app.
-  bindings.paymentPolicy = require("../tools/store-payment-policy.cjs");
+  assert.ok(bindings.paymentPolicy);
   const begin = main.indexOf("register('submit-payment',");
   const end = main.indexOf("register('reconcile-payment',", begin);
   assert.ok(begin >= 0 && end > begin);
@@ -186,23 +194,24 @@ function installSubmit(bindings) {
 }
 
 async function mainFixture(t, options = {}) {
-  const {wallet, request, response} = options.ethereum ? await paymentRequest() : solanaRequest(options);
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'drivekey-v14-submit-'));
-  t.after(() => fs.rmSync(directory, {recursive: true, force: true}));
-  const codec = {seal: text => Buffer.from(text), unseal: bytes => bytes.toString('utf8')};
-  const store = new TransactionStore(directory, codec);
+  const profile=createProfile(),directory=profile.directory;
+  const {wallet, request, response} = options.ethereum ? await paymentRequest(profile) : solanaRequest(profile,options);
+  const storage=createRecoveryStorage(directory,{});await storage.ready();
+  const codec=storage.forJournal('transactions'),journalDirectory=path.join(directory,'transactions');
+  const store = new TransactionStore(journalDirectory, codec);
   const read = () => store.load(wallet.deviceId, request.fingerprint);
   await store.put({version: 1, request, response, state: options.initialState || 'signed'});
   const control = {confirmation: 1, blockhashValid: true, simulationError: null, rpc: [], programSlices: [], journal: [], jobs: [], dialogs: []};
   const adapter = options.ethereum ? null : rpcFixture(request, response, control, async () => {
-    const persisted = await new TransactionStore(directory, codec).load(wallet.deviceId, request.fingerprint);
+    const persisted = await new TransactionStore(journalDirectory, codec).load(wallet.deviceId, request.fingerprint);
     assert.equal(persisted.state, 'submitting');
     assert.deepEqual(persisted.response, response);
   });
   let submit;
   const window = {isDestroyed:()=>false};
-  const signatures=new SignatureStore(path.join(directory,'signature-fixture'),codec),signingAttempts=new SigningAttempts(path.join(directory,'recovery-fixture'),{forJournal:()=>codec},{'transaction':signatures});
+  const signatures=new SignatureStore(path.join(directory,'signatures'),storage.forJournal('signatures')),signingAttempts=new SigningAttempts(directory,storage,{'transaction':signatures});
   installSubmit({
+    paymentPolicy:exactFixturePolicy(request,wallet,{sourceFingerprint}),
     register(channel, handler) {assert.equal(channel, 'submit-payment'); submit = handler;},
     requirePublic() {}, OFFLINE: false, publicWallet: wallet, win: window,activeWalletId:wallet.deviceId,signingAttempts,require,
     transactionStore: {load: store.load.bind(store), async put(record) {

@@ -1,7 +1,7 @@
 const {test,before}=require('node:test'),assert=require('node:assert/strict'),{randomUUID}=require('node:crypto'),{spawnSync}=require('node:child_process'),{Transaction,Wallet}=require('ethers');
 const {UNISWAP_V3,SWAP_ROUTER,SWAP_TOKEN,swapCalldata,swapFingerprint,validateSwap,verifySwapResponse}=require('../dist/swap.cjs');
 let vault;const password='Local cryptography fixture, never fund this vault!';
-function worker(j){const p=spawnSync(process.execPath,['dist/worker.cjs'],{input:JSON.stringify(j),encoding:'utf8',windowsHide:true});const r=JSON.parse(p.stdout);if(!r.ok)throw Error(r.error);return r.result;}
+const {worker}=require('./helpers/unfunded-execution-worker.cjs');
 before(()=>{vault=worker({action:'create',password});});
 function request(tokenIn='ETH',action='swap'){
  const now=Date.now(),r={version:9,action,provider:'uniswap-v3',chain:'ethereum',network:'ethereum',requestId:randomUUID(),deviceId:vault.public.deviceId,createdAt:new Date(now).toISOString(),expiresAt:new Date(now+300000).toISOString(),from:vault.public.evmAddress,recipient:action==='swap'?Wallet.createRandom().address:vault.public.evmAddress,tokenIn,tokenOut:tokenIn==='ETH'?'USDC':'ETH',amount:action==='revoke'?'0':tokenIn==='ETH'?'100000000000000':'100000',quotedOutput:action==='swap'?'100000':'0',minimumOutput:action==='swap'?'99000':'0',slippageBps:action==='swap'?100:0,poolFee:500,deadline:Math.floor((now+240000)/1000),maximumFee:'60000000000000',routerCodeHash:UNISWAP_V3.routerCodeHash};
